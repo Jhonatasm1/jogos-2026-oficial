@@ -225,6 +225,33 @@ function normalizeYesNo(value) {
     return value;
 }
 
+function getRowMultiplayerType(row) {
+    const multiplayerHeader = state.resolvedHeaders.multiplayer;
+    const primaryRaw = getRowValue(row, multiplayerHeader);
+
+    // Prefer the dedicated multiplayer column; if empty, fallback to row text.
+    const fallbackRaw = state.headers.map((header) => getRowValue(row, header)).join(" ");
+    const raw = primaryRaw || fallbackRaw;
+    const text = normalizeText(raw);
+
+    if (!text) return "";
+
+    const pvpTokens = ["pvp", "versus", "x1", "1v1", "competitivo", "ranked", "ranqueada", "arena"];
+    const coopTokens = ["coop", "co-op", "co op", "cooperativo", "multiplayer", "multijogador", "online coop", "online cooperativo"];
+    const soloTokens = ["solo", "single player", "singleplayer", "campanha", "historia", "história", "offline", "nao", "não", "false", "0"];
+
+    if (pvpTokens.some((token) => text.includes(token))) return "PVP";
+    if (coopTokens.some((token) => text.includes(token))) return "COOP";
+    if (soloTokens.some((token) => text.includes(token))) return "SOLO";
+
+    // If it explicitly says "sim" for multiplayer but no subtype, classify as COOP by default.
+    if (["sim", "yes", "true", "1"].some((token) => text === token || text.includes(`${token} `) || text.includes(` ${token}`))) {
+        return "COOP";
+    }
+
+    return "";
+}
+
 function extractYear(value) {
     const text = String(value || "");
     const match = text.match(/(19\d{2}|20\d{2}|21\d{2})/);
@@ -271,9 +298,8 @@ function getOverviewFilteredRows() {
         }
 
         if (multiplayer) {
-            const rowMultiRaw = getRowValue(row, headers.multiplayer);
-            const rowMulti = normalizeYesNo(rowMultiRaw);
-            if (normalizeText(rowMulti) !== normalizeText(multiplayer)) return false;
+            const rowMultiType = getRowMultiplayerType(row);
+            if (normalizeText(rowMultiType) !== normalizeText(multiplayer)) return false;
         }
 
         if (anoConclusao) {
@@ -408,17 +434,22 @@ function updateOverviewFilterSelects() {
     }
 
     if (dom.filterMultiplayer) {
-        const values = headers.multiplayer
-            ? Array.from(new Set(state.rows.map((row) => normalizeYesNo(getRowValue(row, headers.multiplayer))).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
-            : [];
+        dom.filterMultiplayer.innerHTML = "";
 
-        dom.filterMultiplayer.innerHTML = '<option value="">Todos<\/option>';
-        values.forEach((value) => {
+        const options = [
+            { value: "", label: "Todos" },
+            { value: "SOLO", label: "SOLO" },
+            { value: "COOP", label: "COOP" },
+            { value: "PVP", label: "PvP" }
+        ];
+
+        options.forEach((entry) => {
             const option = document.createElement("option");
-            option.value = value;
-            option.textContent = value;
+            option.value = entry.value;
+            option.textContent = entry.label;
             dom.filterMultiplayer.appendChild(option);
         });
+
         dom.filterMultiplayer.value = state.overviewFilters.multiplayer || "";
     }
 
