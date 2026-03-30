@@ -1,0 +1,247 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap");
+
+:root {
+    --bg-0: #0a0d12;
+    --bg-1: #101722;
+    --bg-2: #192234;
+    --card: #111927cc;
+    --line: #2a3752;
+    --line-soft: #223149;
+    --text: #e9eef8;
+    --text-soft: #9fb0cc;
+    --accent: #52d3a2;
+    --accent-2: #ffb84d;
+    --danger: #ff6b6b;
+    --radius: 16px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--text);
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    background:
+        radial-gradient(circle at 10% 10%, #1c3f5680 0%, transparent 42%),
+        radial-gradient(circle at 90% 0%, #50392080 0%, transparent 35%),
+        linear-gradient(130deg, var(--bg-0) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+}
+
+.layout {
+    width: min(1240px, 94vw);
+    margin: 0 auto;
+    padding: 36px 0 42px;
+}
+
+.hero {
+    margin-bottom: 20px;
+}
+
+.badge {
+    margin: 0;
+    display: inline-block;
+    padding: 6px 12px;
+    border: 1px solid #5fdab033;
+    border-radius: 999px;
+    color: #aceed5;
+    background: #5fdab012;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+h1 {
+    margin: 14px 0 8px;
+    font-family: "Syne", "Manrope", sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1;
+}
+
+.subtitle {
+    margin: 0;
+    color: var(--text-soft);
+}
+
+.panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: 0 16px 48px #02050a80;
+    backdrop-filter: blur(4px);
+}
+
+.controls-panel {
+    padding: 18px;
+    margin-bottom: 18px;
+}
+
+.controls-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #b4c3dc;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+select,
+input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #0d1421;
+    color: var(--text);
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select:focus,
+input:focus {
+    border-color: #58c7ff;
+    box-shadow: 0 0 0 3px #58c7ff29;
+}
+
+#refresh-button {
+    border: 1px solid #78e7bd;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #7bf2c4 0%, #4ecf9f 100%);
+    color: #0a1512;
+    font-weight: 800;
+    font-family: inherit;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+#refresh-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.03);
+}
+
+#refresh-button:active {
+    transform: translateY(0);
+}
+
+.status-row {
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--text-soft);
+    font-size: 0.92rem;
+}
+
+#status-atualizacao.is-error {
+    color: var(--danger);
+}
+
+#status-atualizacao.is-success {
+    color: var(--accent);
+}
+
+.table-panel {
+    padding: 14px;
+}
+
+.table-wrapper {
+    overflow: auto;
+    border-radius: 14px;
+    border: 1px solid var(--line-soft);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 860px;
+    background: #0b121c;
+}
+
+thead tr:first-child {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: linear-gradient(180deg, #20304a 0%, #1a2a42 100%);
+}
+
+th,
+td {
+    border-bottom: 1px solid var(--line-soft);
+    text-align: left;
+    padding: 12px 14px;
+    white-space: nowrap;
+}
+
+th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #d8e5fb;
+}
+
+#linha-filtros th {
+    background: #121d2d;
+    padding: 10px;
+}
+
+#linha-filtros input,
+#linha-filtros select {
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+}
+
+tbody tr {
+    transition: background-color 0.25s ease;
+}
+
+tbody tr:nth-child(even) {
+    background: #0d1624;
+}
+
+tbody tr:hover {
+    background: #18304f;
+}
+
+.empty-state td {
+    text-align: center;
+    color: var(--text-soft);
+    font-style: italic;
+    padding: 26px 14px;
+}
+
+@media (max-width: 960px) {
+    .layout {
+        width: min(1250px, 96vw);
+        padding-top: 20px;
+    }
+
+    .controls-row {
+        grid-template-columns: 1fr;
+    }
+
+    #refresh-button {
+        width: 100%;
+    }
+
+    .table-panel {
+        padding: 10px;
+    }
+}

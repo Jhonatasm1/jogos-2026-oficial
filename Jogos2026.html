@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogos 2026</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <main class="layout">
+        <header class="hero">
+            <p class="badge">Atualizacao automatica</p>
+            <h1>Jogos 2026</h1>
+            <p class="subtitle">Ranking conectado com sua aba do Google Sheets</p>
+        </header>
+
+        <section class="panel controls-panel" aria-label="Controles de ordenacao e atualizacao">
+            <div class="controls-row">
+                <div class="control-group">
+                    <label for="sort-mode">Ordenar por</label>
+                    <select id="sort-mode">
+                        <option value="none">Sem ordenacao</option>
+                        <option value="personal-desc">Avaliacao pessoal (maior para menor)</option>
+                        <option value="tempo-asc">Menor tempo</option>
+                        <option value="tempo-desc">Maior tempo</option>
+                        <option value="ano-desc">Ano de lancamento (mais recente)</option>
+                        <option value="ano-asc">Ano de lancamento (mais antigo)</option>
+                        <option value="alfabetica-asc">Ordem alfabetica (A-Z)</option>
+                        <option value="alfabetica-desc">Ordem alfabetica (Z-A)</option>
+                        <option value="custom">Personalizada</option>
+                    </select>
+                </div>
+
+                <div class="control-group custom-sort" id="custom-sort" hidden>
+                    <label for="sort-column">Coluna personalizada</label>
+                    <select id="sort-column"></select>
+                </div>
+
+                <div class="control-group custom-sort" id="custom-direction-wrap" hidden>
+                    <label for="sort-direction">Direcao</label>
+                    <select id="sort-direction">
+                        <option value="asc">Crescente</option>
+                        <option value="desc">Decrescente</option>
+                    </select>
+                </div>
+
+                <button id="refresh-button" type="button">Atualizar agora</button>
+            </div>
+
+            <div class="status-row">
+                <p id="status-atualizacao">Aguardando primeira sincronizacao...</p>
+                <p id="ultima-atualizacao">Ultima atualizacao: -</p>
+            </div>
+        </section>
+
+        <section class="panel table-panel" aria-label="Tabela do ranking">
+            <div class="table-wrapper">
+                <table>
+                    <thead id="cabecalho-tabela"></thead>
+                    <tbody id="corpo-tabela"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
