@@ -13,7 +13,12 @@ const state = {
     customSortColumn: "",
     customSortDirection: "asc",
     lastPayload: "",
-    charts: {}
+    charts: {},
+    visaoGeralFilters: {
+        plataforma: "",
+        multiplayer: "",
+        anoConclusao: ""
+    }
 };
 
 const dom = {
@@ -27,8 +32,9 @@ const dom = {
     customSortDirectionWrap: document.getElementById("custom-direction-wrap"),
     customSortDirection: document.getElementById("sort-direction"),
     refreshButton: document.getElementById("refresh-button"),
-    filterPlataforma: document.getElementById("filter-plataforma"),
-    filterStatus: document.getElementById("filter-status"),
+    filterVGPlataforma: document.getElementById("filter-vg-plataforma"),
+    filterVGMultiplayer: document.getElementById("filter-vg-multiplayer"),
+    filterVGAnoConclusao: document.getElementById("filter-vg-ano-conclusao"),
     tabsContainer: document.querySelector(".tabs-container"),
     tabsNav: document.querySelector(".tabs-nav"),
     tabBtns: document.querySelectorAll(".tab-btn"),
@@ -268,6 +274,8 @@ function renderHeaderAndFilters() {
 }
 
 function renderSortColumnOptions() {
+    if (!dom.customSortColumn) return;
+
     dom.customSortColumn.innerHTML = "";
     state.headers.forEach((header) => {
         const option = document.createElement("option");
@@ -283,39 +291,112 @@ function renderSortColumnOptions() {
     dom.customSortColumn.value = state.customSortColumn;
 }
 
-function updateFilterSelects() {
-    const platHeader = findHeader([/plataforma/, /platform/]);
-    const statusHeader = findHeader([/status/, /estado/]);
+function getOverviewHeaders() {
+    return {
+        plataforma: findHeader([/plataforma/, /platform/]),
+        multiplayer: findHeader([/multiplayer/, /co-?op/, /coop/, /online/]),
+        anoConclusao: findHeader([/ano de conclusao/, /conclusao/, /concluido em/, /finalizado em/]),
+        status: findHeader([/status/, /estado/, /situacao/])
+    };
+}
 
-    if (dom.filterPlataforma && platHeader) {
-        dom.filterPlataforma.innerHTML = '<option value="">Todas<\/option>';
-        const plats = Array.from(new Set(state.rows.map(r => String(r[platHeader] || "").trim()).filter(Boolean)));
-        plats.sort().forEach(p => {
-            const opt = document.createElement("option");
-            opt.value = p;
-            opt.textContent = p;
-            dom.filterPlataforma.appendChild(opt);
-        });
-        dom.filterPlataforma.addEventListener("change", (e) => {
-            if (platHeader) state.filters[platHeader] = e.target.value;
-            renderTable();
-        });
-    }
+function createUniqueSortedValues(header) {
+    if (!header) return [];
 
-    if (dom.filterStatus && statusHeader) {
-        dom.filterStatus.innerHTML = '<option value="">Todos<\/option>';
-        const statuses = Array.from(new Set(state.rows.map(r => String(r[statusHeader] || "").trim()).filter(Boolean)));
-        statuses.sort().forEach(s => {
-            const opt = document.createElement("option");
-            opt.value = s;
-            opt.textContent = s;
-            dom.filterStatus.appendChild(opt);
-        });
-        dom.filterStatus.addEventListener("change", (e) => {
-            if (statusHeader) state.filters[statusHeader] = e.target.value;
-            renderTable();
-        });
-    }
+    const values = Array.from(
+        new Set(state.rows.map((row) => String(row[header] || "").trim()).filter(Boolean))
+    );
+
+    return values.sort((a, b) => {
+        const na = parseNumber(a);
+        const nb = parseNumber(b);
+        if (na !== null && nb !== null) return nb - na;
+        return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+    });
+}
+
+function fillSelectOptions(selectElement, values, allLabel, selectedValue) {
+    if (!selectElement) return;
+
+    selectElement.innerHTML = "";
+    const allOption = document.createElement("option");
+    allOption.value = "";
+    allOption.textContent = allLabel;
+    selectElement.appendChild(allOption);
+
+    values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        selectElement.appendChild(option);
+    });
+
+    selectElement.value = selectedValue || "";
+}
+
+function updateVisaoGeralFilterOptions() {
+    const headers = getOverviewHeaders();
+
+    fillSelectOptions(
+        dom.filterVGPlataforma,
+        createUniqueSortedValues(headers.plataforma),
+        "Todas",
+        state.visaoGeralFilters.plataforma
+    );
+
+    fillSelectOptions(
+        dom.filterVGMultiplayer,
+        createUniqueSortedValues(headers.multiplayer),
+        "Todos",
+        state.visaoGeralFilters.multiplayer
+    );
+
+    fillSelectOptions(
+        dom.filterVGAnoConclusao,
+        createUniqueSortedValues(headers.anoConclusao),
+        "Todos",
+        state.visaoGeralFilters.anoConclusao
+    );
+}
+
+function getFilteredRowsForVisaoGeral() {
+    const headers = getOverviewHeaders();
+
+    return state.rows.filter((row) => {
+        const valuePlataforma = String(row[headers.plataforma] || "").trim();
+        const valueMultiplayer = String(row[headers.multiplayer] || "").trim();
+        const valueAnoConclusao = String(row[headers.anoConclusao] || "").trim();
+
+        const byPlataforma = !state.visaoGeralFilters.plataforma
+            || normalizeText(valuePlataforma) === normalizeText(state.visaoGeralFilters.plataforma);
+
+        const byMultiplayer = !state.visaoGeralFilters.multiplayer
+            || normalizeText(valueMultiplayer) === normalizeText(state.visaoGeralFilters.multiplayer);
+
+        const byAno = !state.visaoGeralFilters.anoConclusao
+            || normalizeText(valueAnoConclusao) === normalizeText(state.visaoGeralFilters.anoConclusao);
+
+        return byPlataforma && byMultiplayer && byAno;
+    });
+}
+
+function isConcluido(statusValue, anoConclusaoValue) {
+    const status = normalizeText(statusValue);
+    const anoConclusao = String(anoConclusaoValue || "").trim();
+
+    const byStatus = /concluido|completado|finalizado|zerado|platinado|100%/.test(status);
+    const byAno = /^\d{4}$/.test(anoConclusao);
+    return byStatus || byAno;
+}
+
+function isJogando(statusValue) {
+    const status = normalizeText(statusValue);
+    return /jogando|em andamento|andamento|atual|playing|progresso/.test(status);
+}
+
+function isPendente(statusValue) {
+    const status = normalizeText(statusValue);
+    return /pendente|nao iniciado|não iniciado|quero comprar|wishlist|backlog|pretendo|talvez/.test(status);
 }
 
 function applyFilters(rows) {
@@ -465,45 +546,26 @@ async function fetchCsvPayload() {
 }
 
 function renderVisaoGeral() {
-    const totalJogos = state.rows.length;
-    const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
-    const statusHeader = findHeader([/status/, /estado/]);
-    const tempoHeader = findHeader([/tempo/, /duracao/, /horas/]);
-    const avaliacaoHeader = findHeader([/avaliacao pessoal/, /avaliacao/, /nota/]);
-    const platHeader = findHeader([/plataforma/, /platform/]);
+    const headers = getOverviewHeaders();
+    const rows = getFilteredRowsForVisaoGeral();
+
+    const totalJogos = rows.length;
 
     document.getElementById("total-jogos").textContent = totalJogos;
 
-    const concluidos = state.rows.filter(r => 
-        normalizeText(r[statusHeader] || "").includes("concluído") || 
-        normalizeText(r[statusHeader] || "").includes("completado")
-    ).length;
+    const concluidos = rows.filter((row) => isConcluido(row[headers.status], row[headers.anoConclusao])).length;
     document.getElementById("total-concluidos").textContent = concluidos;
 
-    let totalHoras = 0;
-    state.rows.forEach(row => {
-        const tempo = parseTimeToSeconds(row[tempoHeader] || "");
-        if (tempo) totalHoras += tempo;
-    });
-    const horas = Math.floor(totalHoras / 3600);
-    document.getElementById("total-horas").textContent = horas + "h";
+    const jogando = rows.filter((row) => isJogando(row[headers.status])).length;
+    document.getElementById("total-jogando").textContent = jogando;
 
-    let somaAvaliacoes = 0;
-    let countAvaliacoes = 0;
-    state.rows.forEach(row => {
-        const avaliacao = parseNumber(row[avaliacaoHeader] || "");
-        if (avaliacao !== null) {
-            somaAvaliacoes += avaliacao;
-            countAvaliacoes++;
-        }
-    });
-    const mediaAval = countAvaliacoes > 0 ? (somaAvaliacoes / countAvaliacoes).toFixed(1) : "-";
-    document.getElementById("media-avaliacao").textContent = mediaAval;
+    const pendentes = rows.filter((row) => isPendente(row[headers.status])).length;
+    document.getElementById("total-pendentes").textContent = pendentes;
 
-    renderCharts(platHeader, statusHeader);
+    renderCharts(rows, headers.plataforma, headers.status);
 }
 
-function renderCharts(platHeader, statusHeader) {
+function renderCharts(rows, platHeader, statusHeader) {
     const ctxPlat = document.getElementById("chart-plataformas");
     const ctxStatus = document.getElementById("chart-status");
 
@@ -512,7 +574,7 @@ function renderCharts(platHeader, statusHeader) {
     const platCount = {};
     const statusCount = {};
 
-    state.rows.forEach(row => {
+    rows.forEach(row => {
         const plat = String(row[platHeader] || "").trim();
         const stat = String(row[statusHeader] || "").trim();
         if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
@@ -692,7 +754,7 @@ async function fetchRankingData() {
         keepValidFilters();
         renderHeaderAndFilters();
         renderSortColumnOptions();
-        updateFilterSelects();
+        updateVisaoGeralFilterOptions();
         renderTable();
         renderVisaoGeral();
 
@@ -706,27 +768,54 @@ async function fetchRankingData() {
 }
 
 function bindEvents() {
-    if (!dom.sortMode || !dom.customSortColumn || !dom.customSortDirection || !dom.refreshButton) return;
+    if (dom.sortMode) {
+        dom.sortMode.addEventListener("change", (event) => {
+            state.sortMode = event.target.value;
+            updateCustomSortVisibility();
+            renderTable();
+        });
+    }
 
-    dom.sortMode.addEventListener("change", (event) => {
-        state.sortMode = event.target.value;
-        updateCustomSortVisibility();
-        renderTable();
-    });
+    if (dom.customSortColumn) {
+        dom.customSortColumn.addEventListener("change", (event) => {
+            state.customSortColumn = event.target.value;
+            renderTable();
+        });
+    }
 
-    dom.customSortColumn.addEventListener("change", (event) => {
-        state.customSortColumn = event.target.value;
-        renderTable();
-    });
+    if (dom.customSortDirection) {
+        dom.customSortDirection.addEventListener("change", (event) => {
+            state.customSortDirection = event.target.value;
+            renderTable();
+        });
+    }
 
-    dom.customSortDirection.addEventListener("change", (event) => {
-        state.customSortDirection = event.target.value;
-        renderTable();
-    });
+    if (dom.refreshButton) {
+        dom.refreshButton.addEventListener("click", () => {
+            fetchRankingData();
+        });
+    }
 
-    dom.refreshButton.addEventListener("click", () => {
-        fetchRankingData();
-    });
+    if (dom.filterVGPlataforma) {
+        dom.filterVGPlataforma.addEventListener("change", (event) => {
+            state.visaoGeralFilters.plataforma = event.target.value;
+            renderVisaoGeral();
+        });
+    }
+
+    if (dom.filterVGMultiplayer) {
+        dom.filterVGMultiplayer.addEventListener("change", (event) => {
+            state.visaoGeralFilters.multiplayer = event.target.value;
+            renderVisaoGeral();
+        });
+    }
+
+    if (dom.filterVGAnoConclusao) {
+        dom.filterVGAnoConclusao.addEventListener("change", (event) => {
+            state.visaoGeralFilters.anoConclusao = event.target.value;
+            renderVisaoGeral();
+        });
+    }
 
     dom.tabBtns.forEach(btn => {
         btn.addEventListener("click", (e) => {

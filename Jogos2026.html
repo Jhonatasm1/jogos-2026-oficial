@@ -28,36 +28,15 @@
             <button class="tab-btn" data-tab="tabela">Tabela Completa</button>
         </nav>
 
-        <div class="filters-container" id="filters-top">
-            <label>Plataforma:<select id="filter-plataforma"></select></label>
-            <label>Status:<select id="filter-status"></select></label>
-            <label>Ordenar por:
-                <select id="sort-mode">
-                    <option value="none">Sem ordenação</option>
-                    <option value="personal-desc">Avaliação Pessoal (Maior)</option>
-                    <option value="tempo-desc">Tempo de Jogo (Maior)</option>
-                    <option value="tempo-asc">Tempo de Jogo (Menor)</option>
-                    <option value="ano-desc">Ano de Lançamento (Mais Novo)</option>
-                    <option value="ano-asc">Ano de Lançamento (Mais Velho)</option>
-                    <option value="alfabetica-asc">Alfabética (A→Z)</option>
-                    <option value="alfabetica-desc">Alfabética (Z→A)</option>
-                    <option value="custom">Personalizado</option>
-                </select>
-            </label>
-            <div id="custom-sort" hidden>
-                <label>Coluna:<select id="sort-column"></select></label>
-                <div id="custom-direction-wrap" hidden>
-                    <label>Ordem:<select id="sort-direction">
-                        <option value="asc">Crescente</option>
-                        <option value="desc">Decrescente</option>
-                    </select></label>
-                </div>
-            </div>
-        </div>
-
         <div class="tabs-container">
             <!-- Visão Geral -->
             <section class="tab-content active" id="visao-geral">
+                <div class="filters-container" id="filters-visao-geral">
+                    <label>Plataforma:<select id="filter-vg-plataforma"></select></label>
+                    <label>Multiplayer:<select id="filter-vg-multiplayer"></select></label>
+                    <label>Ano de Conclusão:<select id="filter-vg-ano-conclusao"></select></label>
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <span class="stat-label">Total de Jogos</span>
@@ -68,12 +47,12 @@
                         <span class="stat-value" id="total-concluidos">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Horas Totais</span>
-                        <span class="stat-value" id="total-horas">-</span>
+                        <span class="stat-label">Jogando</span>
+                        <span class="stat-value" id="total-jogando">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Avaliação Média</span>
-                        <span class="stat-value" id="media-avaliacao">-</span>
+                        <span class="stat-label">Pendentes</span>
+                        <span class="stat-value" id="total-pendentes">-</span>
                     </div>
                 </div>
                 <div class="charts-grid">
@@ -108,6 +87,31 @@
 
             <!-- Tabela Completa -->
             <section class="tab-content" id="tabela">
+                <div class="filters-container" id="filters-tabela">
+                    <label>Ordenar por:
+                        <select id="sort-mode">
+                            <option value="none">Sem ordenação</option>
+                            <option value="personal-desc">Avaliação Pessoal (Maior)</option>
+                            <option value="tempo-desc">Tempo de Jogo (Maior)</option>
+                            <option value="tempo-asc">Tempo de Jogo (Menor)</option>
+                            <option value="ano-desc">Ano de Lançamento (Mais Novo)</option>
+                            <option value="ano-asc">Ano de Lançamento (Mais Velho)</option>
+                            <option value="alfabetica-asc">Alfabética (A→Z)</option>
+                            <option value="alfabetica-desc">Alfabética (Z→A)</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </label>
+                    <div id="custom-sort" hidden>
+                        <label>Coluna:<select id="sort-column"></select></label>
+                        <div id="custom-direction-wrap" hidden>
+                            <label>Ordem:<select id="sort-direction">
+                                <option value="asc">Crescente</option>
+                                <option value="desc">Decrescente</option>
+                            </select></label>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-container">
                     <table>
                         <thead id="cabecalho-tabela"></thead>
