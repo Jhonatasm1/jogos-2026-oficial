@@ -195,6 +195,13 @@ function findHeader(patterns) {
     return state.headers.find((header) => patterns.some((pattern) => pattern.test(normalizeText(header))));
 }
 
+function findHeaderByKeywords(keywords) {
+    return state.headers.find((header) => {
+        const normalizedHeader = normalizeText(header);
+        return keywords.every((keyword) => normalizedHeader.includes(normalizeText(keyword)));
+    });
+}
+
 function resolveHeaders() {
     state.resolvedHeaders = {
         jogo: findHeader([/jogo/, /titulo/, /nome/]),
@@ -203,7 +210,9 @@ function resolveHeaders() {
         avaliacao: findHeader([/avaliacao pessoal/, /avaliacao/, /nota pessoal/, /nota/, /score/]),
         plataforma: findHeader([/plataforma/, /platform/]),
         multiplayer: findHeader([/multiplayer/, /multijogador/, /multi jogador/, /co-op/, /coop/, /online/]),
-        anoConclusao: findHeader([/ano de conclusao/, /ano conclusao/, /conclusao/, /ano que concluiu/, /finalizado em/])
+        anoConclusao:
+            findHeader([/ano de conclusao/, /ano conclusao/, /ano.*conclus/, /conclusao/, /ano que concluiu/, /finalizado em/]) ||
+            findHeaderByKeywords(["ano", "conclusao"])
     };
 }
 
@@ -256,6 +265,26 @@ function extractYear(value) {
     const text = String(value || "");
     const match = text.match(/(19\d{2}|20\d{2}|21\d{2})/);
     return match ? match[1] : "";
+}
+
+function extractYears(value) {
+    const text = String(value || "");
+    const matches = text.match(/(19\d{2}|20\d{2}|21\d{2})/g);
+    return matches || [];
+}
+
+function getAvailableCompletionYears(rows) {
+    const anoHeader = state.resolvedHeaders.anoConclusao;
+    if (!anoHeader) return [];
+
+    const years = new Set();
+    rows.forEach((row) => {
+        const raw = getRowValue(row, anoHeader);
+        const extracted = extractYears(raw);
+        extracted.forEach((year) => years.add(year));
+    });
+
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
 }
 
 function isConcluidoByStatus(statusValue) {
@@ -454,9 +483,7 @@ function updateOverviewFilterSelects() {
     }
 
     if (dom.filterAnoConclusao) {
-        const values = headers.anoConclusao
-            ? Array.from(new Set(state.rows.map((row) => extractYear(getRowValue(row, headers.anoConclusao))).filter(Boolean))).sort((a, b) => Number(b) - Number(a))
-            : [];
+        const values = getAvailableCompletionYears(state.rows);
 
         dom.filterAnoConclusao.innerHTML = '<option value="">Todos<\/option>';
         values.forEach((value) => {
