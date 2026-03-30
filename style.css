@@ -17,11 +17,41 @@
 
 body {
     font-family: "Manrope", sans-serif;
-    background: var(--bg-0);
+    background-color: var(--bg-0);
     color: var(--fg-base);
     line-height: 1.6;
     font-size: 14px;
     font-weight: 400;
+    min-height: 100vh;
+    position: relative;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: url("Fundo.jpg");
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: 0.46;
+    z-index: 0;
+    pointer-events: none;
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(rgba(7, 13, 18, 0.58), rgba(7, 13, 18, 0.72));
+    z-index: 0;
+    pointer-events: none;
+}
+
+header,
+main {
+    position: relative;
+    z-index: 1;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -127,7 +157,7 @@ main {
     margin-bottom: 2rem;
     flex-wrap: wrap;
     padding: 1rem;
-    background: var(--bg-1);
+    background: rgba(26, 35, 41, 0.78);
     border-radius: 6px;
     border-left: 4px solid var(--accent);
 }
@@ -230,7 +260,7 @@ main {
 }
 
 .chart-container {
-    background: var(--bg-1);
+    background: rgba(26, 35, 41, 0.78);
     border: 1px solid var(--bg-2);
     border-radius: 8px;
     padding: 1.5rem;
@@ -251,7 +281,7 @@ main {
     justify-content: space-between;
     align-items: center;
     padding: 1rem;
-    background: var(--bg-1);
+    background: rgba(26, 35, 41, 0.8);
     border-left: 4px solid var(--accent);
     border-radius: 4px;
     transition: all 0.2s ease;
@@ -319,7 +349,7 @@ main {
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: var(--bg-1);
+    background: rgba(26, 35, 41, 0.8);
     border-radius: 6px;
     border-left: 4px solid var(--accent-warm);
     transition: all 0.2s ease;
@@ -346,7 +376,7 @@ main {
     overflow-x: auto;
     border: 1px solid var(--bg-2);
     border-radius: 8px;
-    background: var(--bg-1);
+    background: rgba(26, 35, 41, 0.78);
 }
 
 table {
