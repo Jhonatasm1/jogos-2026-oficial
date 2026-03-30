@@ -1,4 +1,4 @@
-const CSV_URLS = [
+﻿const CSV_URLS = [
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQZcOOu3eivDQ7v0b6bxVCvxtNjhYFkbSq2I-tBevYwQ07jEaHCWff0j14eHE8BOR7EA7L1ko4RFIMu/pub?gid=268101817&single=true&output=csv",
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQZcOOu3eivDQ7v0b6bxVCvxtNjhYFkbSq2I-tBevYwQ07jEaHCWff0j14eHE8BOR7EA7L1ko4RFIMu/gviz/tq?tqx=out:csv&gid=268101817"
 ];
@@ -12,7 +12,8 @@ const state = {
     sortMode: "none",
     customSortColumn: "",
     customSortDirection: "asc",
-    lastPayload: ""
+    lastPayload: "",
+    charts: {}
 };
 
 const dom = {
@@ -25,7 +26,13 @@ const dom = {
     customSortColumn: document.getElementById("sort-column"),
     customSortDirectionWrap: document.getElementById("custom-direction-wrap"),
     customSortDirection: document.getElementById("sort-direction"),
-    refreshButton: document.getElementById("refresh-button")
+    refreshButton: document.getElementById("refresh-button"),
+    filterPlataforma: document.getElementById("filter-plataforma"),
+    filterStatus: document.getElementById("filter-status"),
+    tabsContainer: document.querySelector(".tabs-container"),
+    tabsNav: document.querySelector(".tabs-nav"),
+    tabBtns: document.querySelectorAll(".tab-btn"),
+    tabContents: document.querySelectorAll(".tab-content")
 };
 
 function appendCacheBuster(url) {
@@ -94,7 +101,6 @@ function fixEncoding(value) {
     if (!/[ÃÂâ€]/.test(text)) {
         return text;
     }
-
     try {
         return decodeURIComponent(escape(text));
     } catch {
@@ -104,9 +110,7 @@ function fixEncoding(value) {
 
 function parseNumber(value) {
     const raw = String(value || "").trim();
-    if (!raw) {
-        return null;
-    }
+    if (!raw) return null;
 
     let normalized = raw.replace(/\s+/g, "").replace(/[^\d,.-]/g, "");
 
@@ -121,9 +125,7 @@ function parseNumber(value) {
     }
 
     const cleaned = normalized.match(/-?\d+(\.\d+)?/);
-    if (!cleaned) {
-        return null;
-    }
+    if (!cleaned) return null;
 
     const parsed = Number(cleaned[0]);
     return Number.isFinite(parsed) ? parsed : null;
@@ -131,9 +133,7 @@ function parseNumber(value) {
 
 function parseTimeToSeconds(value) {
     const raw = normalizeText(value);
-    if (!raw) {
-        return null;
-    }
+    if (!raw) return null;
 
     const hhmmss = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (hhmmss) {
@@ -269,7 +269,6 @@ function renderHeaderAndFilters() {
 
 function renderSortColumnOptions() {
     dom.customSortColumn.innerHTML = "";
-
     state.headers.forEach((header) => {
         const option = document.createElement("option");
         option.value = header;
@@ -284,13 +283,46 @@ function renderSortColumnOptions() {
     dom.customSortColumn.value = state.customSortColumn;
 }
 
+function updateFilterSelects() {
+    const platHeader = findHeader([/plataforma/, /platform/]);
+    const statusHeader = findHeader([/status/, /estado/]);
+
+    if (dom.filterPlataforma && platHeader) {
+        dom.filterPlataforma.innerHTML = '<option value="">Todas<\/option>';
+        const plats = Array.from(new Set(state.rows.map(r => String(r[platHeader] || "").trim()).filter(Boolean)));
+        plats.sort().forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p;
+            opt.textContent = p;
+            dom.filterPlataforma.appendChild(opt);
+        });
+        dom.filterPlataforma.addEventListener("change", (e) => {
+            if (platHeader) state.filters[platHeader] = e.target.value;
+            renderTable();
+        });
+    }
+
+    if (dom.filterStatus && statusHeader) {
+        dom.filterStatus.innerHTML = '<option value="">Todos<\/option>';
+        const statuses = Array.from(new Set(state.rows.map(r => String(r[statusHeader] || "").trim()).filter(Boolean)));
+        statuses.sort().forEach(s => {
+            const opt = document.createElement("option");
+            opt.value = s;
+            opt.textContent = s;
+            dom.filterStatus.appendChild(opt);
+        });
+        dom.filterStatus.addEventListener("change", (e) => {
+            if (statusHeader) state.filters[statusHeader] = e.target.value;
+            renderTable();
+        });
+    }
+}
+
 function applyFilters(rows) {
     return rows.filter((row) => {
         return state.headers.every((header) => {
             const filterValue = String(state.filters[header] || "").trim();
-            if (!filterValue) {
-                return true;
-            }
+            if (!filterValue) return true;
 
             const cellValue = String(row[header] || "");
             return normalizeText(cellValue).includes(normalizeText(filterValue));
@@ -299,9 +331,7 @@ function applyFilters(rows) {
 }
 
 function applySort(rows) {
-    if (!rows.length) {
-        return rows;
-    }
+    if (!rows.length) return rows;
 
     if (state.sortMode === "custom") {
         const header = state.customSortColumn || state.headers[0];
@@ -309,14 +339,10 @@ function applySort(rows) {
         return [...rows].sort((a, b) => compareValues(a[header], b[header], direction, false));
     }
 
-    if (state.sortMode === "none") {
-        return rows;
-    }
+    if (state.sortMode === "none") return rows;
 
     const preset = getPresetConfig(state.sortMode);
-    if (!preset || !preset.header) {
-        return rows;
-    }
+    if (!preset || !preset.header) return rows;
 
     return [...rows].sort((a, b) => compareValues(a[preset.header], b[preset.header], preset.direction, preset.preferTime));
 }
@@ -350,9 +376,7 @@ function renderTable() {
 }
 
 function updateStatus(message, isError) {
-    if (!dom.status || !dom.updatedAt) {
-        return;
-    }
+    if (!dom.status || !dom.updatedAt) return;
 
     dom.status.textContent = message;
     dom.status.classList.toggle("is-error", Boolean(isError));
@@ -364,9 +388,7 @@ function updateStatus(message, isError) {
 
 function normalizeRows(parsedRows) {
     const nonEmpty = parsedRows.filter((row) => row.some((cell) => String(cell || "").trim() !== ""));
-    if (!nonEmpty.length) {
-        return { headers: [], rows: [] };
-    }
+    if (!nonEmpty.length) return { headers: [], rows: [] };
 
     const headers = nonEmpty[0].map((header, index) => {
         const text = fixEncoding(String(header || "").replace(/^\uFEFF/, "").trim());
@@ -393,10 +415,7 @@ function keepValidFilters() {
 }
 
 function updateCustomSortVisibility() {
-    if (!dom.customSortWrap || !dom.customSortDirectionWrap) {
-        return;
-    }
-
+    if (!dom.customSortWrap || !dom.customSortDirectionWrap) return;
     const isCustom = state.sortMode === "custom";
     dom.customSortWrap.hidden = !isCustom;
     dom.customSortDirectionWrap.hidden = !isCustom;
@@ -426,21 +445,14 @@ async function fetchCsvPayload() {
         try {
             const response = await fetchWithTimeout(
                 appendCacheBuster(sourceUrl),
-                {
-                    cache: "no-store",
-                    mode: "cors"
-                },
+                { cache: "no-store", mode: "cors" },
                 FETCH_TIMEOUT_MS
             );
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const payload = await response.text();
-            if (!payload.trim()) {
-                throw new Error("resposta vazia");
-            }
+            if (!payload.trim()) throw new Error("resposta vazia");
 
             return payload;
         } catch (error) {
@@ -450,6 +462,217 @@ async function fetchCsvPayload() {
     }
 
     throw new Error(errors.join(" | "));
+}
+
+function renderVisaoGeral() {
+    const totalJogos = state.rows.length;
+    const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
+    const statusHeader = findHeader([/status/, /estado/]);
+    const tempoHeader = findHeader([/tempo/, /duracao/, /horas/]);
+    const avaliacaoHeader = findHeader([/avaliacao pessoal/, /avaliacao/, /nota/]);
+    const platHeader = findHeader([/plataforma/, /platform/]);
+
+    document.getElementById("total-jogos").textContent = totalJogos;
+
+    const concluidos = state.rows.filter(r => 
+        normalizeText(r[statusHeader] || "").includes("concluído") || 
+        normalizeText(r[statusHeader] || "").includes("completado")
+    ).length;
+    document.getElementById("total-concluidos").textContent = concluidos;
+
+    let totalHoras = 0;
+    state.rows.forEach(row => {
+        const tempo = parseTimeToSeconds(row[tempoHeader] || "");
+        if (tempo) totalHoras += tempo;
+    });
+    const horas = Math.floor(totalHoras / 3600);
+    document.getElementById("total-horas").textContent = horas + "h";
+
+    let somaAvaliacoes = 0;
+    let countAvaliacoes = 0;
+    state.rows.forEach(row => {
+        const avaliacao = parseNumber(row[avaliacaoHeader] || "");
+        if (avaliacao !== null) {
+            somaAvaliacoes += avaliacao;
+            countAvaliacoes++;
+        }
+    });
+    const mediaAval = countAvaliacoes > 0 ? (somaAvaliacoes / countAvaliacoes).toFixed(1) : "-";
+    document.getElementById("media-avaliacao").textContent = mediaAval;
+
+    renderCharts(platHeader, statusHeader);
+}
+
+function renderCharts(platHeader, statusHeader) {
+    const ctxPlat = document.getElementById("chart-plataformas");
+    const ctxStatus = document.getElementById("chart-status");
+
+    if (!ctxPlat || !ctxStatus) return;
+
+    const platCount = {};
+    const statusCount = {};
+
+    state.rows.forEach(row => {
+        const plat = String(row[platHeader] || "").trim();
+        const stat = String(row[statusHeader] || "").trim();
+        if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
+        if (stat) statusCount[stat] = (statusCount[stat] || 0) + 1;
+    });
+
+    const colors = ["#5a9d6a", "#d4896e", "#ffb84d", "#cc6b6b", "#a8c5d5", "#5a9d6a"];
+
+    if (state.charts.plat) state.charts.plat.destroy();
+    state.charts.plat = new Chart(ctxPlat, {
+        type: "doughnut",
+        data: {
+            labels: Object.keys(platCount),
+            datasets: [{
+                data: Object.values(platCount),
+                backgroundColor: colors.slice(0, Object.keys(platCount).length),
+                borderColor: "#0f1419",
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { labels: { color: "#a8c5d5" } } }
+        }
+    });
+
+    if (state.charts.status) state.charts.status.destroy();
+    state.charts.status = new Chart(ctxStatus, {
+        type: "bar",
+        data: {
+            labels: Object.keys(statusCount),
+            datasets: [{
+                label: "Quantidade",
+                data: Object.values(statusCount),
+                backgroundColor: "#5a9d6a",
+                borderColor: "#3d7550",
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { labels: { color: "#a8c5d5" } } },
+            scales: {
+                y: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
+                x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+            }
+        }
+    });
+}
+
+function renderTempoJogo() {
+    const tempoHeader = findHeader([/tempo/, /duracao/, /horas/]);
+    const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
+
+    const lista = document.getElementById("lista-tempo");
+    lista.innerHTML = "";
+
+    const sorted = [...state.rows].sort((a, b) => {
+        const tempoA = parseTimeToSeconds(a[tempoHeader] || "") || 0;
+        const tempoB = parseTimeToSeconds(b[tempoHeader] || "") || 0;
+        return tempoB - tempoA;
+    });
+
+    sorted.slice(0, 20).forEach(row => {
+        const item = document.createElement("div");
+        item.className = "list-item";
+        const tempo = String(row[tempoHeader] || "");
+        const jogo = String(row[jogoHeader] || "");
+        item.innerHTML = `
+            <div class="list-item-title">${jogo}<\/div>
+            <div class="list-item-value">${tempo}<\/div>
+        `;
+        lista.appendChild(item);
+    });
+}
+
+function renderDificuldade() {
+    const dificuldadeHeader = findHeader([/dificuldade/, /difficulty/]);
+    const grid = document.getElementById("grid-dificuldade");
+    grid.innerHTML = "";
+
+    const dificCount = {};
+    state.rows.forEach(row => {
+        const dif = String(row[dificuldadeHeader] || "").trim();
+        if (dif) dificCount[dif] = (dificCount[dif] || 0) + 1;
+    });
+
+    Object.entries(dificCount).forEach(([dif, count]) => {
+        const card = document.createElement("div");
+        card.className = "dificuldade-card";
+        card.innerHTML = `<strong>${dif}<\/strong><span>${count} jogos<\/span>`;
+        grid.appendChild(card);
+    });
+}
+
+function renderPlataforma() {
+    const platHeader = findHeader([/plataforma/, /platform/]);
+    const grid = document.getElementById("grid-plataforma");
+    grid.innerHTML = "";
+
+    const platCount = {};
+    state.rows.forEach(row => {
+        const plat = String(row[platHeader] || "").trim();
+        if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
+    });
+
+    Object.entries(platCount).sort((a, b) => b[1] - a[1]).forEach(([plat, count]) => {
+        const item = document.createElement("div");
+        item.className = "platform-item";
+        item.innerHTML = `<strong>${count}<\/strong><span>${plat}<\/span>`;
+        grid.appendChild(item);
+    });
+}
+
+function renderAvaliacao() {
+    const avaliacaoHeader = findHeader([/avaliacao pessoal/, /avaliacao/, /nota/]);
+    const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
+
+    const lista = document.getElementById("lista-avaliacao");
+    lista.innerHTML = "";
+
+    const sorted = [...state.rows].sort((a, b) => {
+        const avaA = parseNumber(a[avaliacaoHeader] || "") || 0;
+        const avaB = parseNumber(b[avaliacaoHeader] || "") || 0;
+        return avaB - avaA;
+    });
+
+    sorted.slice(0, 20).forEach(row => {
+        const item = document.createElement("div");
+        item.className = "list-item";
+        const ava = String(row[avaliacaoHeader] || "");
+        const jogo = String(row[jogoHeader] || "");
+        item.innerHTML = `
+            <div class="list-item-title">${jogo}<\/div>
+            <div class="list-item-value">${ava}<\/div>
+        `;
+        lista.appendChild(item);
+    });
+}
+
+function switchTab(tabId) {
+    dom.tabBtns.forEach(btn => btn.classList.remove("active"));
+    dom.tabContents.forEach(content => content.classList.remove("active"));
+
+    document.querySelector(`[data-tab="${tabId}"]`).classList.add("active");
+    document.getElementById(tabId).classList.add("active");
+
+    if (tabId === "visao-geral") {
+        renderVisaoGeral();
+    } else if (tabId === "tempo-jogo") {
+        renderTempoJogo();
+    } else if (tabId === "dificuldade") {
+        renderDificuldade();
+    } else if (tabId === "plataforma") {
+        renderPlataforma();
+    } else if (tabId === "avaliacao") {
+        renderAvaliacao();
+    }
 }
 
 async function fetchRankingData() {
@@ -469,7 +692,9 @@ async function fetchRankingData() {
         keepValidFilters();
         renderHeaderAndFilters();
         renderSortColumnOptions();
+        updateFilterSelects();
         renderTable();
+        renderVisaoGeral();
 
         state.lastPayload = payload;
         updateStatus("Dados sincronizados com sucesso.", false);
@@ -481,9 +706,7 @@ async function fetchRankingData() {
 }
 
 function bindEvents() {
-    if (!dom.sortMode || !dom.customSortColumn || !dom.customSortDirection || !dom.refreshButton) {
-        return;
-    }
+    if (!dom.sortMode || !dom.customSortColumn || !dom.customSortDirection || !dom.refreshButton) return;
 
     dom.sortMode.addEventListener("change", (event) => {
         state.sortMode = event.target.value;
@@ -504,18 +727,22 @@ function bindEvents() {
     dom.refreshButton.addEventListener("click", () => {
         fetchRankingData();
     });
+
+    dom.tabBtns.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const tabId = e.target.getAttribute("data-tab");
+            switchTab(tabId);
+        });
+    });
 }
 
 function init() {
-    if (!dom.thead || !dom.tbody) {
-        return;
-    }
+    if (!dom.thead || !dom.tbody) return;
 
     bindEvents();
     updateCustomSortVisibility();
     fetchRankingData();
 
-    // Google Sheets publicado em CSV nao envia evento push; atualizacao por polling.
     setInterval(fetchRankingData, AUTO_REFRESH_MS);
 }
 
