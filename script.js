@@ -313,7 +313,10 @@ function isPendenteByStatus(statusValue) {
     if (!status) return true;
     const pendenteTokens = ["pendente", "quero comprar", "nao iniciado", "não iniciado", "wishlist", "backlog", "so de graca", "só de graça", "talvez eu jogue", "descartado"];
     if (isConcluidoByStatus(statusValue) || isJogandoByStatus(statusValue)) return false;
-    return pendenteTokens.some((token) => status.includes(token));
+
+    // Any status that is not concluded/jogando is treated as pending.
+    if (pendenteTokens.some((token) => status.includes(token))) return true;
+    return true;
 }
 
 function getOverviewFilteredRows() {
@@ -661,9 +664,7 @@ function renderVisaoGeral() {
 
     rows.forEach((row) => {
         const status = getRowValue(row, headers.status);
-        const anoConclusao = extractYear(getRowValue(row, headers.anoConclusao));
-
-        const concluido = isConcluidoByStatus(status) || Boolean(anoConclusao);
+        const concluido = isConcluidoByStatus(status);
         const emJogo = isJogandoByStatus(status) && !concluido;
         const pendente = !concluido && !emJogo && isPendenteByStatus(status);
 
