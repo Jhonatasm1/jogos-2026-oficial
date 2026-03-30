@@ -313,6 +313,8 @@ function shouldUseSelectFilter(header) {
 }
 
 function renderHeaderAndFilters() {
+    if (!dom.thead) return;
+
     dom.thead.innerHTML = "";
 
     const headerRow = document.createElement("tr");
@@ -466,6 +468,8 @@ function applySort(rows) {
 }
 
 function renderTable() {
+    if (!dom.tbody) return;
+
     dom.tbody.innerHTML = "";
 
     const filteredRows = applyFilters(state.rows);
@@ -621,7 +625,7 @@ function renderCharts(rows, platHeader, statusHeader) {
     const ctxPlat = document.getElementById("chart-plataformas");
     const ctxStatus = document.getElementById("chart-status");
 
-    if (!ctxPlat || !ctxStatus) return;
+    if (!ctxPlat || !ctxStatus || typeof Chart === "undefined") return;
 
     const platCount = {};
     const statusCount = {};
@@ -684,6 +688,7 @@ function renderTempoJogo() {
     const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
 
     const lista = document.getElementById("lista-tempo");
+    if (!lista) return;
     lista.innerHTML = "";
 
     const sorted = [...state.rows].sort((a, b) => {
@@ -708,6 +713,7 @@ function renderTempoJogo() {
 function renderDificuldade() {
     const dificuldadeHeader = findHeader([/dificuldade/, /difficulty/]);
     const grid = document.getElementById("grid-dificuldade");
+    if (!grid) return;
     grid.innerHTML = "";
 
     const dificCount = {};
@@ -727,6 +733,7 @@ function renderDificuldade() {
 function renderPlataforma() {
     const platHeader = findHeader([/plataforma/, /platform/]);
     const grid = document.getElementById("grid-plataforma");
+    if (!grid) return;
     grid.innerHTML = "";
 
     const platCount = {};
@@ -748,6 +755,7 @@ function renderAvaliacao() {
     const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
 
     const lista = document.getElementById("lista-avaliacao");
+    if (!lista) return;
     lista.innerHTML = "";
 
     const sorted = [...state.rows].sort((a, b) => {
@@ -773,8 +781,12 @@ function switchTab(tabId) {
     dom.tabBtns.forEach(btn => btn.classList.remove("active"));
     dom.tabContents.forEach(content => content.classList.remove("active"));
 
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add("active");
-    document.getElementById(tabId).classList.add("active");
+    const targetBtn = document.querySelector(`[data-tab="${tabId}"]`);
+    const targetContent = document.getElementById(tabId);
+    if (!targetBtn || !targetContent) return;
+
+    targetBtn.classList.add("active");
+    targetContent.classList.add("active");
 
     if (dom.filtersTop) {
         dom.filtersTop.hidden = tabId !== "visao-geral";
@@ -809,6 +821,8 @@ async function fetchRankingData() {
         resolveHeaders();
 
         keepValidFilters();
+
+        // Keep data updates resilient even if some UI blocks are not present.
         renderHeaderAndFilters();
         renderSortColumnOptions();
         updateOverviewFilterSelects();
