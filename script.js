@@ -9,15 +9,24 @@ const state = {
     headers: [],
     rows: [],
     filters: {},
+    overviewFilters: {
+        plataforma: "",
+        multiplayer: "",
+        anoConclusao: ""
+    },
     sortMode: "none",
     customSortColumn: "",
     customSortDirection: "asc",
     lastPayload: "",
     charts: {},
-    visaoGeralFilters: {
-        plataforma: "",
-        multiplayer: "",
-        anoConclusao: ""
+    resolvedHeaders: {
+        jogo: null,
+        status: null,
+        tempo: null,
+        avaliacao: null,
+        plataforma: null,
+        multiplayer: null,
+        anoConclusao: null
     }
 };
 
@@ -26,15 +35,11 @@ const dom = {
     tbody: document.getElementById("corpo-tabela"),
     status: document.getElementById("status-atualizacao"),
     updatedAt: document.getElementById("ultima-atualizacao"),
-    sortMode: document.getElementById("sort-mode"),
-    customSortWrap: document.getElementById("custom-sort"),
-    customSortColumn: document.getElementById("sort-column"),
-    customSortDirectionWrap: document.getElementById("custom-direction-wrap"),
-    customSortDirection: document.getElementById("sort-direction"),
     refreshButton: document.getElementById("refresh-button"),
-    filterVGPlataforma: document.getElementById("filter-vg-plataforma"),
-    filterVGMultiplayer: document.getElementById("filter-vg-multiplayer"),
-    filterVGAnoConclusao: document.getElementById("filter-vg-ano-conclusao"),
+    filterPlataforma: document.getElementById("filter-plataforma"),
+    filterMultiplayer: document.getElementById("filter-multiplayer"),
+    filterAnoConclusao: document.getElementById("filter-ano-conclusao"),
+    filtersTop: document.getElementById("filters-top"),
     tabsContainer: document.querySelector(".tabs-container"),
     tabsNav: document.querySelector(".tabs-nav"),
     tabBtns: document.querySelectorAll(".tab-btn"),
@@ -190,6 +195,97 @@ function findHeader(patterns) {
     return state.headers.find((header) => patterns.some((pattern) => pattern.test(normalizeText(header))));
 }
 
+function resolveHeaders() {
+    state.resolvedHeaders = {
+        jogo: findHeader([/jogo/, /titulo/, /nome/]),
+        status: findHeader([/status/, /estado/, /situacao/]),
+        tempo: findHeader([/tempo/, /duracao/, /duracao total/, /horas/, /time/]),
+        avaliacao: findHeader([/avaliacao pessoal/, /avaliacao/, /nota pessoal/, /nota/, /score/]),
+        plataforma: findHeader([/plataforma/, /platform/]),
+        multiplayer: findHeader([/multiplayer/, /multijogador/, /multi jogador/, /co-op/, /coop/, /online/]),
+        anoConclusao: findHeader([/ano de conclusao/, /ano conclusao/, /conclusao/, /ano que concluiu/, /finalizado em/])
+    };
+}
+
+function getRowValue(row, header) {
+    if (!row || !header) return "";
+    return String(row[header] || "").trim();
+}
+
+function normalizeYesNo(value) {
+    const text = normalizeText(value);
+    if (!text) return "";
+
+    if (["sim", "yes", "y", "true", "verdadeiro", "1"].includes(text)) return "Sim";
+    if (["nao", "não", "no", "n", "false", "falso", "0"].includes(text)) return "Não";
+
+    if (text.includes("solo") || text.includes("single")) return "Não";
+    if (text.includes("coop") || text.includes("co-op") || text.includes("online") || text.includes("multijogador") || text.includes("multiplayer")) return "Sim";
+
+    return value;
+}
+
+function extractYear(value) {
+    const text = String(value || "");
+    const match = text.match(/(19\d{2}|20\d{2}|21\d{2})/);
+    return match ? match[1] : "";
+}
+
+function isConcluidoByStatus(statusValue) {
+    const status = normalizeText(statusValue);
+    if (!status) return false;
+
+    const concluidoTokens = ["concluido", "concluida", "completado", "completada", "finalizado", "finalizada", "zerado", "zerada", "platinado", "platinada", "100"];
+    const pendenteTokens = ["pendente", "backlog", "nao iniciado", "não iniciado", "quero comprar", "wishlist", "jogando", "em andamento", "pausado"];
+
+    if (pendenteTokens.some((token) => status.includes(token))) {
+        return false;
+    }
+
+    return concluidoTokens.some((token) => status.includes(token));
+}
+
+function isJogandoByStatus(statusValue) {
+    const status = normalizeText(statusValue);
+    if (!status) return false;
+    const jogandoTokens = ["jogando", "em andamento", "in progress", "iniciando", "atual", "ativo", "pausado", "talvez eu jogue"];
+    return jogandoTokens.some((token) => status.includes(token));
+}
+
+function isPendenteByStatus(statusValue) {
+    const status = normalizeText(statusValue);
+    if (!status) return true;
+    const pendenteTokens = ["pendente", "quero comprar", "nao iniciado", "não iniciado", "wishlist", "backlog", "so de graca", "só de graça", "talvez eu jogue", "descartado"];
+    if (isConcluidoByStatus(statusValue) || isJogandoByStatus(statusValue)) return false;
+    return pendenteTokens.some((token) => status.includes(token));
+}
+
+function getOverviewFilteredRows() {
+    const { plataforma, multiplayer, anoConclusao } = state.overviewFilters;
+    const headers = state.resolvedHeaders;
+
+    return state.rows.filter((row) => {
+        if (plataforma) {
+            const rowPlat = getRowValue(row, headers.plataforma);
+            if (normalizeText(rowPlat) !== normalizeText(plataforma)) return false;
+        }
+
+        if (multiplayer) {
+            const rowMultiRaw = getRowValue(row, headers.multiplayer);
+            const rowMulti = normalizeYesNo(rowMultiRaw);
+            if (normalizeText(rowMulti) !== normalizeText(multiplayer)) return false;
+        }
+
+        if (anoConclusao) {
+            const rowYearRaw = getRowValue(row, headers.anoConclusao);
+            const rowYear = extractYear(rowYearRaw);
+            if (rowYear !== anoConclusao) return false;
+        }
+
+        return true;
+    });
+}
+
 function getPresetConfig(mode) {
     const personalHeader = findHeader([/avaliacao pessoal/, /avaliacao/, /nota pessoal/, /nota/, /score/]);
     const tempoHeader = findHeader([/tempo/, /duracao/, /duracao total/, /horas/, /time/]);
@@ -291,112 +387,53 @@ function renderSortColumnOptions() {
     dom.customSortColumn.value = state.customSortColumn;
 }
 
-function getOverviewHeaders() {
-    return {
-        plataforma: findHeader([/plataforma/, /platform/]),
-        multiplayer: findHeader([/multiplayer/, /co-?op/, /coop/, /online/]),
-        anoConclusao: findHeader([/ano de conclusao/, /conclusao/, /concluido em/, /finalizado em/]),
-        status: findHeader([/status/, /estado/, /situacao/])
-    };
-}
+function updateOverviewFilterSelects() {
+    const headers = state.resolvedHeaders;
 
-function createUniqueSortedValues(header) {
-    if (!header) return [];
+    if (dom.filterPlataforma) {
+        const values = headers.plataforma
+            ? Array.from(new Set(state.rows.map((row) => getRowValue(row, headers.plataforma)).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
+            : [];
 
-    const values = Array.from(
-        new Set(state.rows.map((row) => String(row[header] || "").trim()).filter(Boolean))
-    );
+        dom.filterPlataforma.innerHTML = '<option value="">Todas<\/option>';
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            dom.filterPlataforma.appendChild(option);
+        });
+        dom.filterPlataforma.value = state.overviewFilters.plataforma || "";
+    }
 
-    return values.sort((a, b) => {
-        const na = parseNumber(a);
-        const nb = parseNumber(b);
-        if (na !== null && nb !== null) return nb - na;
-        return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
-    });
-}
+    if (dom.filterMultiplayer) {
+        const values = headers.multiplayer
+            ? Array.from(new Set(state.rows.map((row) => normalizeYesNo(getRowValue(row, headers.multiplayer))).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
+            : [];
 
-function fillSelectOptions(selectElement, values, allLabel, selectedValue) {
-    if (!selectElement) return;
+        dom.filterMultiplayer.innerHTML = '<option value="">Todos<\/option>';
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            dom.filterMultiplayer.appendChild(option);
+        });
+        dom.filterMultiplayer.value = state.overviewFilters.multiplayer || "";
+    }
 
-    selectElement.innerHTML = "";
-    const allOption = document.createElement("option");
-    allOption.value = "";
-    allOption.textContent = allLabel;
-    selectElement.appendChild(allOption);
+    if (dom.filterAnoConclusao) {
+        const values = headers.anoConclusao
+            ? Array.from(new Set(state.rows.map((row) => extractYear(getRowValue(row, headers.anoConclusao))).filter(Boolean))).sort((a, b) => Number(b) - Number(a))
+            : [];
 
-    values.forEach((value) => {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = value;
-        selectElement.appendChild(option);
-    });
-
-    selectElement.value = selectedValue || "";
-}
-
-function updateVisaoGeralFilterOptions() {
-    const headers = getOverviewHeaders();
-
-    fillSelectOptions(
-        dom.filterVGPlataforma,
-        createUniqueSortedValues(headers.plataforma),
-        "Todas",
-        state.visaoGeralFilters.plataforma
-    );
-
-    fillSelectOptions(
-        dom.filterVGMultiplayer,
-        createUniqueSortedValues(headers.multiplayer),
-        "Todos",
-        state.visaoGeralFilters.multiplayer
-    );
-
-    fillSelectOptions(
-        dom.filterVGAnoConclusao,
-        createUniqueSortedValues(headers.anoConclusao),
-        "Todos",
-        state.visaoGeralFilters.anoConclusao
-    );
-}
-
-function getFilteredRowsForVisaoGeral() {
-    const headers = getOverviewHeaders();
-
-    return state.rows.filter((row) => {
-        const valuePlataforma = String(row[headers.plataforma] || "").trim();
-        const valueMultiplayer = String(row[headers.multiplayer] || "").trim();
-        const valueAnoConclusao = String(row[headers.anoConclusao] || "").trim();
-
-        const byPlataforma = !state.visaoGeralFilters.plataforma
-            || normalizeText(valuePlataforma) === normalizeText(state.visaoGeralFilters.plataforma);
-
-        const byMultiplayer = !state.visaoGeralFilters.multiplayer
-            || normalizeText(valueMultiplayer) === normalizeText(state.visaoGeralFilters.multiplayer);
-
-        const byAno = !state.visaoGeralFilters.anoConclusao
-            || normalizeText(valueAnoConclusao) === normalizeText(state.visaoGeralFilters.anoConclusao);
-
-        return byPlataforma && byMultiplayer && byAno;
-    });
-}
-
-function isConcluido(statusValue, anoConclusaoValue) {
-    const status = normalizeText(statusValue);
-    const anoConclusao = String(anoConclusaoValue || "").trim();
-
-    const byStatus = /concluido|completado|finalizado|zerado|platinado|100%/.test(status);
-    const byAno = /^\d{4}$/.test(anoConclusao);
-    return byStatus || byAno;
-}
-
-function isJogando(statusValue) {
-    const status = normalizeText(statusValue);
-    return /jogando|em andamento|andamento|atual|playing|progresso/.test(status);
-}
-
-function isPendente(statusValue) {
-    const status = normalizeText(statusValue);
-    return /pendente|nao iniciado|não iniciado|quero comprar|wishlist|backlog|pretendo|talvez/.test(status);
+        dom.filterAnoConclusao.innerHTML = '<option value="">Todos<\/option>';
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            dom.filterAnoConclusao.appendChild(option);
+        });
+        dom.filterAnoConclusao.value = state.overviewFilters.anoConclusao || "";
+    }
 }
 
 function applyFilters(rows) {
@@ -546,21 +583,36 @@ async function fetchCsvPayload() {
 }
 
 function renderVisaoGeral() {
-    const headers = getOverviewHeaders();
-    const rows = getFilteredRowsForVisaoGeral();
+    const rows = getOverviewFilteredRows();
+    const headers = state.resolvedHeaders;
 
-    const totalJogos = rows.length;
+    const totalJogosEl = document.getElementById("total-jogos");
+    const totalConcluidosEl = document.getElementById("total-concluidos");
+    const totalJogandoEl = document.getElementById("total-jogando");
+    const totalPendentesEl = document.getElementById("total-pendentes");
 
-    document.getElementById("total-jogos").textContent = totalJogos;
+    if (totalJogosEl) totalJogosEl.textContent = String(rows.length);
 
-    const concluidos = rows.filter((row) => isConcluido(row[headers.status], row[headers.anoConclusao])).length;
-    document.getElementById("total-concluidos").textContent = concluidos;
+    let concluidos = 0;
+    let jogando = 0;
+    let pendentes = 0;
 
-    const jogando = rows.filter((row) => isJogando(row[headers.status])).length;
-    document.getElementById("total-jogando").textContent = jogando;
+    rows.forEach((row) => {
+        const status = getRowValue(row, headers.status);
+        const anoConclusao = extractYear(getRowValue(row, headers.anoConclusao));
 
-    const pendentes = rows.filter((row) => isPendente(row[headers.status])).length;
-    document.getElementById("total-pendentes").textContent = pendentes;
+        const concluido = isConcluidoByStatus(status) || Boolean(anoConclusao);
+        const emJogo = isJogandoByStatus(status) && !concluido;
+        const pendente = !concluido && !emJogo && isPendenteByStatus(status);
+
+        if (concluido) concluidos += 1;
+        if (emJogo) jogando += 1;
+        if (pendente) pendentes += 1;
+    });
+
+    if (totalConcluidosEl) totalConcluidosEl.textContent = String(concluidos);
+    if (totalJogandoEl) totalJogandoEl.textContent = String(jogando);
+    if (totalPendentesEl) totalPendentesEl.textContent = String(pendentes);
 
     renderCharts(rows, headers.plataforma, headers.status);
 }
@@ -724,6 +776,10 @@ function switchTab(tabId) {
     document.querySelector(`[data-tab="${tabId}"]`).classList.add("active");
     document.getElementById(tabId).classList.add("active");
 
+    if (dom.filtersTop) {
+        dom.filtersTop.hidden = tabId !== "visao-geral";
+    }
+
     if (tabId === "visao-geral") {
         renderVisaoGeral();
     } else if (tabId === "tempo-jogo") {
@@ -750,11 +806,12 @@ async function fetchRankingData() {
 
         state.headers = normalized.headers;
         state.rows = normalized.rows;
+        resolveHeaders();
 
         keepValidFilters();
         renderHeaderAndFilters();
         renderSortColumnOptions();
-        updateVisaoGeralFilterOptions();
+        updateOverviewFilterSelects();
         renderTable();
         renderVisaoGeral();
 
@@ -790,30 +847,30 @@ function bindEvents() {
         });
     }
 
+    if (dom.filterPlataforma) {
+        dom.filterPlataforma.addEventListener("change", (event) => {
+            state.overviewFilters.plataforma = event.target.value;
+            renderVisaoGeral();
+        });
+    }
+
+    if (dom.filterMultiplayer) {
+        dom.filterMultiplayer.addEventListener("change", (event) => {
+            state.overviewFilters.multiplayer = event.target.value;
+            renderVisaoGeral();
+        });
+    }
+
+    if (dom.filterAnoConclusao) {
+        dom.filterAnoConclusao.addEventListener("change", (event) => {
+            state.overviewFilters.anoConclusao = event.target.value;
+            renderVisaoGeral();
+        });
+    }
+
     if (dom.refreshButton) {
         dom.refreshButton.addEventListener("click", () => {
             fetchRankingData();
-        });
-    }
-
-    if (dom.filterVGPlataforma) {
-        dom.filterVGPlataforma.addEventListener("change", (event) => {
-            state.visaoGeralFilters.plataforma = event.target.value;
-            renderVisaoGeral();
-        });
-    }
-
-    if (dom.filterVGMultiplayer) {
-        dom.filterVGMultiplayer.addEventListener("change", (event) => {
-            state.visaoGeralFilters.multiplayer = event.target.value;
-            renderVisaoGeral();
-        });
-    }
-
-    if (dom.filterVGAnoConclusao) {
-        dom.filterVGAnoConclusao.addEventListener("change", (event) => {
-            state.visaoGeralFilters.anoConclusao = event.target.value;
-            renderVisaoGeral();
         });
     }
 
@@ -830,6 +887,7 @@ function init() {
 
     bindEvents();
     updateCustomSortVisibility();
+    if (dom.filtersTop) dom.filtersTop.hidden = false;
     fetchRankingData();
 
     setInterval(fetchRankingData, AUTO_REFRESH_MS);
