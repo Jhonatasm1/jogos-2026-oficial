@@ -289,34 +289,17 @@ function getAvailableCompletionYears(rows) {
 
 function isConcluidoByStatus(statusValue) {
     const status = normalizeText(statusValue);
-    if (!status) return false;
-
-    const concluidoTokens = ["concluido", "concluida", "completado", "completada", "finalizado", "finalizada", "zerado", "zerada", "platinado", "platinada", "100"];
-    const pendenteTokens = ["pendente", "backlog", "nao iniciado", "não iniciado", "quero comprar", "wishlist", "jogando", "em andamento", "pausado"];
-
-    if (pendenteTokens.some((token) => status.includes(token))) {
-        return false;
-    }
-
-    return concluidoTokens.some((token) => status.includes(token));
+    return status === "concluido";
 }
 
 function isJogandoByStatus(statusValue) {
     const status = normalizeText(statusValue);
-    if (!status) return false;
-    const jogandoTokens = ["jogando", "em andamento", "in progress", "iniciando", "atual", "ativo", "pausado", "talvez eu jogue"];
-    return jogandoTokens.some((token) => status.includes(token));
+    return status === "jogando";
 }
 
 function isPendenteByStatus(statusValue) {
     const status = normalizeText(statusValue);
-    if (!status) return true;
-    const pendenteTokens = ["pendente", "quero comprar", "nao iniciado", "não iniciado", "wishlist", "backlog", "so de graca", "só de graça", "talvez eu jogue", "descartado"];
-    if (isConcluidoByStatus(statusValue) || isJogandoByStatus(statusValue)) return false;
-
-    // Any status that is not concluded/jogando is treated as pending.
-    if (pendenteTokens.some((token) => status.includes(token))) return true;
-    return true;
+    return status === "pendente";
 }
 
 function getOverviewFilteredRows() {
@@ -665,8 +648,8 @@ function renderVisaoGeral() {
     rows.forEach((row) => {
         const status = getRowValue(row, headers.status);
         const concluido = isConcluidoByStatus(status);
-        const emJogo = isJogandoByStatus(status) && !concluido;
-        const pendente = !concluido && !emJogo && isPendenteByStatus(status);
+        const emJogo = isJogandoByStatus(status);
+        const pendente = isPendenteByStatus(status);
 
         if (concluido) concluidos += 1;
         if (emJogo) jogando += 1;
