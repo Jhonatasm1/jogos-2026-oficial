@@ -804,7 +804,7 @@ function renderTempoJogo() {
         const multiType = normalizeText(getRowMultiplayerType(row));
 
         const isJogado = st === "concluido" || st === "dropado" || st === "jogando";
-        const isPendente = st === "iniciado" || st === "jogando" || st === "pausado" || st === "pendente";
+        const isPendente = st === "iniciado" || st === "logo jogo" || st === "logo" || st === "pausado" || st === "pendente";
 
         if (seconds > 0) {
             if (isJogado) {
@@ -837,9 +837,28 @@ function renderTempoJogo() {
         totalHorasPendentesEl.textContent = Math.floor(segundosPendentes / 3600) + "h";
     }
 
-    // Removido outros calculos para focar exclusivamente no total de horas jogadas como pedido
-
     const jogadosSemCS = parsedRows.filter(item => item.isJogado && !item.isCS2).sort((a, b) => b.seconds - a.seconds);
+
+    const mediaGameplayEl = document.getElementById("media-gameplay");
+    if (mediaGameplayEl) {
+        const totalSegundosSemCS = jogadosSemCS.reduce((acc, item) => acc + item.seconds, 0);
+        const mediaGameplay = jogadosSemCS.length > 0 ? totalSegundosSemCS / jogadosSemCS.length : 0;
+        mediaGameplayEl.textContent = Math.floor(mediaGameplay / 3600) + "h";
+    }
+
+    const concluidos = parsedRows.filter(item => item.st === "concluido");
+    const mediaZeradosEl = document.getElementById("media-zerados");
+    if (mediaZeradosEl) {
+        const totalSegundosZerados = concluidos.reduce((acc, item) => acc + item.seconds, 0);
+        const mediaZerados = concluidos.length > 0 ? totalSegundosZerados / concluidos.length : 0;
+        mediaZeradosEl.textContent = Math.floor(mediaZerados / 3600) + "h";
+    }
+
+    const soloMaisJogadoEl = document.getElementById("solo-mais-jogado");
+    if (soloMaisJogadoEl) {
+        const jogosSoloJogados = parsedRows.filter(item => item.isJogado && item.isSolo).sort((a,b) => b.seconds - a.seconds);
+        soloMaisJogadoEl.textContent = jogosSoloJogados.length > 0 ? jogosSoloJogados[0].jogo : "-";
+    }
 
     if (ctxTopTempo && typeof Chart !== "undefined") {
         const top10Jogados = jogadosSemCS.slice(0, 10);
@@ -910,14 +929,15 @@ function renderTempoJogo() {
         });
     }
 
-    if (lista) {
-        lista.innerHTML = "";
+    const listaTempo = document.getElementById("lista-tempo");
+    if (listaTempo) {
+        listaTempo.innerHTML = "";
         const top30 = jogadosSemCS.slice(0, 30);
         top30.forEach(item => {
             const div = document.createElement("div");
             div.className = "list-item";
             div.innerHTML = `<div class="list-item-title">${item.jogo}</div><div class="list-item-value">${item.tempoRaw}</div>`;
-            lista.appendChild(div);
+            listaTempo.appendChild(div);
         });
     }
 }
