@@ -538,3 +538,14 @@ td {
         padding: 0.5rem;
     }
 }
+
+
+#tempo-jogo .stats-grid {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 1200px) {
+    #tempo-jogo .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
