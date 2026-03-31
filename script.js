@@ -626,13 +626,10 @@ function renderVisaoGeral() {
 
     if (totalJogosEl) totalJogosEl.textContent = String(rows.length);
 
-    const platCount = {};
     const statusCount = {};
 
     rows.forEach(row => {
-        const plat = String(row[headers.plataforma] || "").trim();
         const stat = String(row[headers.status] || "").trim();
-        if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
         if (stat) statusCount[stat] = (statusCount[stat] || 0) + 1;
     });
 
@@ -649,25 +646,48 @@ function renderVisaoGeral() {
     if (totalJogandoEl) totalJogandoEl.textContent = String(jogando);
     if (totalPendentesEl) totalPendentesEl.textContent = String(pendentes);
 
-    renderCharts(platCount, statusCount);
+    renderCharts(statusCount);
 }
 
-function renderCharts(platCount, statusCount) {
-    const ctxPlat = document.getElementById("chart-plataformas");
+function renderCharts(statusCount) {
+    const ctxSetores = document.getElementById("chart-status-setores");
     const ctxStatus = document.getElementById("chart-status");
 
-    if (!ctxPlat || !ctxStatus || typeof Chart === "undefined") return;
+    if (!ctxSetores || !ctxStatus || typeof Chart === "undefined") return;
 
-    const colors = ["#5a9d6a", "#d4896e", "#ffb84d", "#cc6b6b", "#a8c5d5", "#5a9d6a"];
+    const doughnutConfig = [
+        { key: "pendente", label: "Pendente", color: "#ffcc00" }, // Amarelo
+        { key: "concluido", label: "Concluído", color: "#4a90e2" }, // Azul
+        { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
+        { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
+        { key: "jogando", label: "Jogando", color: "#5a9d6a" }, // Verde
+        { key: "iniciado", label: "Iniciado", color: "#56b6c2" } // Ciano
+    ];
 
-    if (state.charts.plat) state.charts.plat.destroy();
-    state.charts.plat = new Chart(ctxPlat, {
+    const doughnutLabels = [];
+    const doughnutData = [];
+    const doughnutColors = [];
+
+    doughnutConfig.forEach(config => {
+        const statusKey = Object.keys(statusCount).find(k => k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === config.key);
+        const count = statusKey ? statusCount[statusKey] : 0;
+        if (count > 0) {
+            doughnutLabels.push(config.label);
+            doughnutData.push(count);
+            doughnutColors.push(config.color);
+        }
+    });
+
+    if (state.charts.plat) state.charts.plat.destroy(); // Safely clear old var if exists
+    if (state.charts.setores) state.charts.setores.destroy();
+    
+    state.charts.setores = new Chart(ctxSetores, {
         type: "doughnut",
         data: {
-            labels: Object.keys(platCount),
+            labels: doughnutLabels,
             datasets: [{
-                data: Object.values(platCount),
-                backgroundColor: colors.slice(0, Object.keys(platCount).length),
+                data: doughnutData,
+                backgroundColor: doughnutColors,
                 borderColor: "#0f1419",
                 borderWidth: 2
             }]
