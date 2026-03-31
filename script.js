@@ -26,7 +26,8 @@ const state = {
         avaliacao: null,
         plataforma: null,
         multiplayer: null,
-        anoConclusao: null
+        anoConclusao: null,
+        anoLancamento: null
     }
 };
 
@@ -212,7 +213,8 @@ function resolveHeaders() {
         multiplayer: findHeader([/multiplayer/, /multijogador/, /multi jogador/, /co-op/, /coop/, /online/]),
         anoConclusao:
             findHeader([/ano de conclusao/, /ano conclusao/, /ano.*conclus/, /conclusao/, /ano que concluiu/, /finalizado em/]) ||
-            findHeaderByKeywords(["ano", "conclusao"])
+            findHeaderByKeywords(["ano", "conclusao"]),
+        anoLancamento: findHeader([/ano de lancamento/, /ano lancamento/, /lancamento/, /^ano$/])
     };
 }
 
@@ -646,10 +648,10 @@ function renderVisaoGeral() {
     if (totalJogandoEl) totalJogandoEl.textContent = String(jogando);
     if (totalPendentesEl) totalPendentesEl.textContent = String(pendentes);
 
-    renderCharts(statusCount);
+    renderCharts(rows, statusCount);
 }
 
-function renderCharts(statusCount) {
+function renderCharts(rows, statusCount) {
     const ctxSetores = document.getElementById("chart-status-setores");
     const ctxStatus = document.getElementById("chart-status");
 
@@ -695,30 +697,76 @@ function renderCharts(statusCount) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: "#a8c5d5" } } }
+            plugins: { 
+                legend: { labels: { color: "#a8c5d5" } },
+                title: { display: true, text: "STATUS", color: "#a8c5d5", font: { size: 16 } }
+            }
         }
     });
+
+    const barConfigMap = {
+        pendente: { label: "Pendente", color: "#ffcc00" },
+        concluido: { label: "Concluído", color: "#4a90e2" },
+        pausado: { label: "Pausado", color: "#ff9800" },
+        dropado: { label: "Dropado", color: "#e06c75" },
+        jogando: { label: "Jogando", color: "#5a9d6a" },
+        iniciado: { label: "Iniciado", color: "#56b6c2" },
+        outro: { label: "Outro", color: "#ff1493" }
+    };
+
+    const anosMap = {};
+
+    rows.forEach(row => {
+        const anoRaw = getRowValue(row, state.resolvedHeaders.anoLancamento);
+        const ano = extractYear(anoRaw) || "Desconhecido";
+        
+        const statRaw = getRowValue(row, state.resolvedHeaders.status);
+        const statKey = String(statRaw || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        
+        let mappedKey = "outro";
+        if (Object.keys(barConfigMap).includes(statKey) && statKey !== "outro") {
+            mappedKey = statKey;
+        }
+
+        if (!anosMap[ano]) {
+            anosMap[ano] = { pendente: 0, concluido: 0, pausado: 0, dropado: 0, jogando: 0, iniciado: 0, outro: 0 };
+        }
+        anosMap[ano][mappedKey]++;
+    });
+
+    const labelsAnos = Object.keys(anosMap).sort((a, b) => {
+        if (a === "Desconhecido") return 1;
+        if (b === "Desconhecido") return -1;
+        return Number(a) - Number(b);
+    });
+
+    const datasetsBar = Object.keys(barConfigMap).map(key => {
+        return {
+            label: barConfigMap[key].label,
+            data: labelsAnos.map(ano => anosMap[ano][key]),
+            backgroundColor: barConfigMap[key].color,
+            borderColor: barConfigMap[key].color,
+            borderWidth: 1
+        };
+    }).filter(dataset => dataset.data.some(val => val > 0));
 
     if (state.charts.status) state.charts.status.destroy();
     state.charts.status = new Chart(ctxStatus, {
         type: "bar",
         data: {
-            labels: Object.keys(statusCount),
-            datasets: [{
-                label: "Quantidade",
-                data: Object.values(statusCount),
-                backgroundColor: "#5a9d6a",
-                borderColor: "#3d7550",
-                borderWidth: 1
-            }]
+            labels: labelsAnos,
+            datasets: datasetsBar
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: "#a8c5d5" } } },
+            plugins: { 
+                legend: { labels: { color: "#a8c5d5" } },
+                title: { display: true, text: "LANÇAMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
+            },
             scales: {
-                y: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
-                x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                y: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
+                x: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
             }
         }
     });
