@@ -166,6 +166,11 @@ function parseTimeToSeconds(value) {
         return Math.round((hours * 3600) + (minutes * 60) + seconds);
     }
 
+    const numericOnly = parseNumber(value);
+    if (numericOnly !== null) {
+        return Math.round(numericOnly * 3600);
+    }
+
     return null;
 }
 
@@ -794,9 +799,16 @@ function renderTempoJogo() {
             totalSeconds += seconds;
             validGamesCount++;
         }
+        
+        let formattedTempo = tempoRaw;
+        // If the user typed only numbers (e.g. "12", "19", "9,5"), append an "h" to display nicely
+        if (/^[\d,.-]+$/.test(tempoRaw.trim())) {
+            formattedTempo += "h";
+        }
+
         return {
             jogo: String(row[jogoHeader] || "Desconhecido"),
-            tempoRaw: tempoRaw,
+            tempoRaw: formattedTempo,
             seconds: seconds
         };
     }).filter(item => item.seconds > 0);
