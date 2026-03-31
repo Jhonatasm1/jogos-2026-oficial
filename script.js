@@ -782,6 +782,9 @@ function renderTempoJogo() {
     const jogoHeader = state.resolvedHeaders.jogo;
     const statusHeader = state.resolvedHeaders.status;
 
+    const ctxTopTempo = document.getElementById("chart-top-tempo");
+    const ctxCurtosZerados = document.getElementById("chart-curtos-zerados");
+
     if (!tempoHeader || !jogoHeader || !statusHeader) return;
 
     let segundosJogados = 0;
