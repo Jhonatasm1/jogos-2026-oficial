@@ -287,21 +287,6 @@ function getAvailableCompletionYears(rows) {
     return Array.from(years).sort((a, b) => Number(b) - Number(a));
 }
 
-function isConcluidoByStatus(statusValue) {
-    const status = normalizeText(statusValue);
-    return status === "concluido";
-}
-
-function isJogandoByStatus(statusValue) {
-    const status = normalizeText(statusValue);
-    return status === "jogando";
-}
-
-function isPendenteByStatus(statusValue) {
-    const status = normalizeText(statusValue);
-    return status === "pendente";
-}
-
 function getOverviewFilteredRows() {
     const { plataforma, multiplayer, anoConclusao } = state.overviewFilters;
     const headers = state.resolvedHeaders;
@@ -630,30 +615,6 @@ async function fetchCsvPayload() {
     throw new Error(errors.join(" | "));
 }
 
-function buildStatusDistribution(rows, statusHeader) {
-    const countsByKey = {};
-    const labelsByKey = {};
-    const orderedKeys = [];
-
-    rows.forEach((row) => {
-        const rawStatus = getRowValue(row, statusHeader);
-        if (!rawStatus) return;
-
-        const key = normalizeText(rawStatus);
-        if (!key) return;
-
-        if (!countsByKey[key]) {
-            countsByKey[key] = 0;
-            labelsByKey[key] = rawStatus.toUpperCase();
-            orderedKeys.push(key);
-        }
-
-        countsByKey[key] += 1;
-    });
-
-    return { countsByKey, labelsByKey, orderedKeys };
-}
-
 function renderVisaoGeral() {
     const rows = getOverviewFilteredRows();
     const headers = state.resolvedHeaders;
@@ -665,33 +626,37 @@ function renderVisaoGeral() {
 
     if (totalJogosEl) totalJogosEl.textContent = String(rows.length);
 
-    const { countsByKey } = buildStatusDistribution(rows, headers.status);
-    const concluidos = countsByKey.concluido || 0;
-    const jogando = countsByKey.jogando || 0;
-    const pendentes = countsByKey.pendente || 0;
+    const platCount = {};
+    const statusCount = {};
+
+    rows.forEach(row => {
+        const plat = String(row[headers.plataforma] || "").trim();
+        const stat = String(row[headers.status] || "").trim();
+        if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
+        if (stat) statusCount[stat] = (statusCount[stat] || 0) + 1;
+    });
+
+    const getCountExact = (word) => {
+        const key = Object.keys(statusCount).find(k => k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === word);
+        return key ? statusCount[key] : 0;
+    };
+
+    const concluidos = getCountExact("concluido");
+    const jogando = getCountExact("jogando");
+    const pendentes = getCountExact("pendente");
 
     if (totalConcluidosEl) totalConcluidosEl.textContent = String(concluidos);
     if (totalJogandoEl) totalJogandoEl.textContent = String(jogando);
     if (totalPendentesEl) totalPendentesEl.textContent = String(pendentes);
 
-    renderCharts(rows, headers.plataforma, headers.status);
+    renderCharts(platCount, statusCount);
 }
 
-function renderCharts(rows, platHeader, statusHeader) {
+function renderCharts(platCount, statusCount) {
     const ctxPlat = document.getElementById("chart-plataformas");
     const ctxStatus = document.getElementById("chart-status");
 
     if (!ctxPlat || !ctxStatus || typeof Chart === "undefined") return;
-
-    const platCount = {};
-    rows.forEach(row => {
-        const plat = String(row[platHeader] || "").trim();
-        if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
-    });
-
-    const statusDistribution = buildStatusDistribution(rows, statusHeader);
-    const statusLabels = statusDistribution.orderedKeys.map((key) => statusDistribution.labelsByKey[key]);
-    const statusValues = statusDistribution.orderedKeys.map((key) => statusDistribution.countsByKey[key]);
 
     const colors = ["#5a9d6a", "#d4896e", "#ffb84d", "#cc6b6b", "#a8c5d5", "#5a9d6a"];
 
@@ -718,10 +683,10 @@ function renderCharts(rows, platHeader, statusHeader) {
     state.charts.status = new Chart(ctxStatus, {
         type: "bar",
         data: {
-            labels: statusLabels,
+            labels: Object.keys(statusCount),
             datasets: [{
                 label: "Quantidade",
-                data: statusValues,
+                data: Object.values(statusCount),
                 backgroundColor: "#5a9d6a",
                 borderColor: "#3d7550",
                 borderWidth: 1
