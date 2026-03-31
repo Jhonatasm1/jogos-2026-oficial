@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Game of Us - Ranking Oficial</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260330-12">
+    <link rel="stylesheet" href="style.css?v=20260331-01">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 </head>
 <body>
@@ -103,7 +103,27 @@
 
             <!-- Dificuldade -->
             <section class="tab-content" id="dificuldade">
-                <div class="grid-container" id="grid-dificuldade"></div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Jogos Avaliados</span>
+                        <span class="stat-value" id="dif-total">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Dificuldade Mais Comum</span>
+                        <span class="stat-value" id="dif-comum" style="font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block;">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Dificuldade com Mais Horas</span>
+                        <span class="stat-value" id="dif-horas" style="font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block;">-</span>
+                    </div>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-container" style="grid-column: 1 / -1;">
+                        <canvas id="chart-dificuldade-bar"></canvas>
+                    </div>
+                </div>
+                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Todos os Níveis de Dificuldade</h3>
+                <div class="grid-container" id="grid-dificuldade" style="margin-top: 1rem;"></div>
             </section>
 
             <!-- Plataforma -->
@@ -128,6 +148,6 @@
         </div>
     </main>
 
-    <script src="script.js?v=20260330-12"></script>
+    <script src="script.js?v=20260331-01"></script>
 </body>
 </html>

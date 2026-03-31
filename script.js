@@ -948,17 +948,80 @@ function renderTempoJogo() {
 
 function renderDificuldade() {
     const dificuldadeHeader = findHeader([/dificuldade/, /difficulty/]);
+    const tempoHeader = state.resolvedHeaders.tempo;
+    
     const grid = document.getElementById("grid-dificuldade");
+    const ctxDifBar = document.getElementById("chart-dificuldade-bar");
+
     if (!grid) return;
     grid.innerHTML = "";
 
     const dificCount = {};
+    const dificHoras = {};
+    let totalJogosAvaliados = 0;
+
     getOverviewFilteredRows().forEach(row => {
         const dif = String(row[dificuldadeHeader] || "").trim();
-        if (dif) dificCount[dif] = (dificCount[dif] || 0) + 1;
+        const tempoRaw = String(row[tempoHeader] || "");
+        const seconds = parseTimeToSeconds(tempoRaw) || 0;
+
+        if (dif) {
+            dificCount[dif] = (dificCount[dif] || 0) + 1;
+            dificHoras[dif] = (dificHoras[dif] || 0) + seconds;
+            totalJogosAvaliados++;
+        }
     });
 
-    Object.entries(dificCount).forEach(([dif, count]) => {
+    const difTotalEl = document.getElementById("dif-total");
+    if (difTotalEl) difTotalEl.textContent = totalJogosAvaliados;
+
+    const sortedDifs = Object.entries(dificCount).sort((a, b) => b[1] - a[1]);
+    
+    const difComumEl = document.getElementById("dif-comum");
+    if (difComumEl) {
+        difComumEl.textContent = sortedDifs.length > 0 ? sortedDifs[0][0] : "-";
+    }
+
+    const sortedHoras = Object.entries(dificHoras).sort((a, b) => b[1] - a[1]);
+    const difHorasEl = document.getElementById("dif-horas");
+    if (difHorasEl) {
+        difHorasEl.textContent = sortedHoras.length > 0 ? sortedHoras[0][0] : "-";
+    }
+
+    if (ctxDifBar && typeof Chart !== "undefined") {
+        const labels = sortedDifs.map(item => item[0]);
+        const data = sortedDifs.map(item => item[1]);
+
+        if (state.charts.dificuldadeBar) state.charts.dificuldadeBar.destroy();
+        state.charts.dificuldadeBar = new Chart(ctxDifBar, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Jogos",
+                    data: data,
+                    backgroundColor: "#e07a5f",
+                    borderColor: "#c1664e",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: "JOGOS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } }
+                },
+                scales: {
+                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
+                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                }
+            }
+        });
+    }
+
+    Object.entries(dificCount).sort((a, b) => b[1] - a[1]).forEach(([dif, count]) => {
         const card = document.createElement("div");
         card.className = "dificuldade-card";
         card.innerHTML = `<strong>${dif}<\/strong><span>${count} jogos<\/span>`;
