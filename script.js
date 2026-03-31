@@ -1011,8 +1011,16 @@ function renderDificuldade() {
                         color: "#fff"
                     },
                     backgroundColor: (ctx) => {
-                        const colors = ['#1f3849', '#0d5b5a', '#d4896e', '#5a9d6a', '#a8c5d5', '#e07a5f', '#3b8d99'];
-                        return colors[ctx.dataIndex % colors.length] || "#1f3849";
+                        const levelColors = {
+                            "BASTA TER CÉREBRO": "#a3d1ff", // Light Blue
+                            "MAMÃO COM AÇÚCAR": "#82b4ff", // Slightly darker blue
+                            "MÉDIO": "#6699ff", // Medium blue
+                            "PRECISA DE UM ESFORÇO": "#ffa3a3", // Light Red
+                            "REALMENTE TRABALHOSO": "#ff6666", // Red
+                            "SEKIRO": "#cc0000" // Dark Red
+                        };
+                        const label = ctx.raw ? ctx.raw._data.name : "";
+                        return levelColors[label] || "#1f3849";
                     },
                     borderColor: "var(--bg-2)",
                     borderWidth: 2,
