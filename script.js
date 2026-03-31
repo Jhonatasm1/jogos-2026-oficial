@@ -952,6 +952,7 @@ function renderDificuldade() {
     
     const grid = document.getElementById("grid-dificuldade");
     const ctxDifBar = document.getElementById("chart-dificuldade-bar");
+    const ctxDifHoras = document.getElementById("chart-dificuldade-horas");
 
     if (!grid) return;
     grid.innerHTML = "";
@@ -1042,6 +1043,44 @@ function renderDificuldade() {
                             }
                         }
                     }
+                }
+            }
+        });
+    }
+
+    if (ctxDifHoras && typeof Chart !== "undefined") {
+        const labelsDifsHoras = sortedHoras.map(item => item[0]);
+        const dataDifsHoras = sortedHoras.map(item => (item[1] / 3600).toFixed(1));
+        const bgColorsHoras = labelsDifsHoras.map(label => {
+            const levelColors = {
+                "BASTA TER CÉREBRO": "#a3d1ff", // Light Blue
+                "MAMÃO COM AÇÚCAR": "#82b4ff", // Slightly darker blue
+                "MÉDIO": "#6699ff", // Medium blue
+                "PRECISA DE UM ESFORÇO": "#ffa3a3", // Light Red
+                "REALMENTE TRABALHOSO": "#ff6666", // Red
+                "SEKIRO": "#cc0000" // Dark Red
+            };
+            return levelColors[label] || "#1f3849";
+        });
+
+        if (state.charts.dificuldadeHoras) state.charts.dificuldadeHoras.destroy();
+        state.charts.dificuldadeHoras = new Chart(ctxDifHoras, {
+            type: "pie",
+            data: {
+                labels: labelsDifsHoras,
+                datasets: [{
+                    data: dataDifsHoras,
+                    backgroundColor: bgColorsHoras,
+                    borderColor: "var(--bg-2)",
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: "right", labels: { color: "#a8c5d5" } },
+                    title: { display: true, text: "HORAS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } }
                 }
             }
         });
