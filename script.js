@@ -790,7 +790,7 @@ function renderTempoJogo() {
     const parsedRows = state.rows.map(row => {
         const tempoRaw = String(row[tempoHeader] || "");
         const seconds = parseTimeToSeconds(tempoRaw) || 0;
-
+        
         let formattedTempo = tempoRaw;
         if (/^[\d,.-]+$/.test(tempoRaw.trim())) {
             formattedTempo += "h";
@@ -804,13 +804,13 @@ function renderTempoJogo() {
         const multiType = normalizeText(getRowMultiplayerType(row));
 
         const isJogado = st === "concluido" || st === "dropado" || st === "jogando";
-        const isPendenteTotal = st === "pendente" || st === "pausado" || st === "logo jogo" || st === "iniciado";
+        const isPendente = st === "iniciado" || st === "jogando" || st === "pausado" || st === "pendente";
 
         if (seconds > 0) {
             if (isJogado) {
                 segundosJogados += seconds;
             }
-            if (isPendenteTotal) {
+            if (isPendente) {
                 segundosPendentes += seconds;
             }
         }
@@ -836,6 +836,9 @@ function renderTempoJogo() {
     if (totalHorasPendentesEl) {
         totalHorasPendentesEl.textContent = Math.floor(segundosPendentes / 3600) + "h";
     }
+
+    // Removido outros calculos para focar exclusivamente no total de horas jogadas como pedido
+
     const jogadosSemCS = parsedRows.filter(item => item.isJogado && !item.isCS2).sort((a, b) => b.seconds - a.seconds);
 
     if (ctxTopTempo && typeof Chart !== "undefined") {
