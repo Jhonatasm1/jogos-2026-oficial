@@ -711,7 +711,7 @@ function renderCharts(rows, statusCount) {
         dropado: { label: "Dropado", color: "#e06c75" },
         jogando: { label: "Jogando", color: "#5a9d6a" },
         iniciado: { label: "Iniciado", color: "#56b6c2" },
-        outro: { label: "Outro", color: "#ff1493" }
+        outros: { label: "Outros", color: "#ff1493" }
     };
 
     const anosMap = {};
@@ -723,13 +723,13 @@ function renderCharts(rows, statusCount) {
         const statRaw = getRowValue(row, state.resolvedHeaders.status);
         const statKey = String(statRaw || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         
-        let mappedKey = "outro";
-        if (Object.keys(barConfigMap).includes(statKey) && statKey !== "outro") {
+        let mappedKey = "outros";
+        if (Object.keys(barConfigMap).includes(statKey) && statKey !== "outross") {
             mappedKey = statKey;
         }
 
         if (!anosMap[ano]) {
-            anosMap[ano] = { pendente: 0, concluido: 0, pausado: 0, dropado: 0, jogando: 0, iniciado: 0, outro: 0 };
+            anosMap[ano] = { pendente: 0, concluido: 0, pausado: 0, dropado: 0, jogando: 0, iniciado: 0, outros: 0 };
         }
         anosMap[ano][mappedKey]++;
     });
