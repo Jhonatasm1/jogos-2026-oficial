@@ -724,7 +724,7 @@ function renderCharts(rows, statusCount) {
         const statKey = String(statRaw || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         
         let mappedKey = "outros";
-        if (Object.keys(barConfigMap).includes(statKey) && statKey !== "outross") {
+        if (Object.keys(barConfigMap).includes(statKey) && statKey !== "outros") {
             mappedKey = statKey;
         }
 
@@ -773,30 +773,103 @@ function renderCharts(rows, statusCount) {
 }
 
 function renderTempoJogo() {
-    const tempoHeader = findHeader([/tempo/, /duracao/, /horas/]);
-    const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
+    const tempoHeader = state.resolvedHeaders.tempo;
+    const jogoHeader = state.resolvedHeaders.jogo;
 
     const lista = document.getElementById("lista-tempo");
-    if (!lista) return;
-    lista.innerHTML = "";
+    const totalHorasEl = document.getElementById("total-horas");
+    const mediaHorasEl = document.getElementById("media-horas");
+    const maiorTempoEl = document.getElementById("maior-tempo");
+    const ctxTempo = document.getElementById("chart-top-tempo");
 
-    const sorted = [...state.rows].sort((a, b) => {
-        const tempoA = parseTimeToSeconds(a[tempoHeader] || "") || 0;
-        const tempoB = parseTimeToSeconds(b[tempoHeader] || "") || 0;
-        return tempoB - tempoA;
-    });
+    if (!tempoHeader || !jogoHeader) return;
 
-    sorted.slice(0, 20).forEach(row => {
-        const item = document.createElement("div");
-        item.className = "list-item";
-        const tempo = String(row[tempoHeader] || "");
-        const jogo = String(row[jogoHeader] || "");
-        item.innerHTML = `
-            <div class="list-item-title">${jogo}<\/div>
-            <div class="list-item-value">${tempo}<\/div>
-        `;
-        lista.appendChild(item);
-    });
+    let totalSeconds = 0;
+    let validGamesCount = 0;
+
+    const parsedRows = state.rows.map(row => {
+        const tempoRaw = String(row[tempoHeader] || "");
+        const seconds = parseTimeToSeconds(tempoRaw) || 0;
+        if (seconds > 0) {
+            totalSeconds += seconds;
+            validGamesCount++;
+        }
+        return {
+            jogo: String(row[jogoHeader] || "Desconhecido"),
+            tempoRaw: tempoRaw,
+            seconds: seconds
+        };
+    }).filter(item => item.seconds > 0);
+
+    const sorted = parsedRows.sort((a, b) => b.seconds - a.seconds);
+
+    if (totalHorasEl) {
+        const hours = Math.floor(totalSeconds / 3600);
+        totalHorasEl.textContent = `${hours}h`;
+    }
+
+    if (mediaHorasEl) {
+        const media = validGamesCount > 0 ? (totalSeconds / 3600) / validGamesCount : 0;
+        mediaHorasEl.textContent = `${media.toFixed(1)}h`;
+    }
+
+    if (maiorTempoEl) {
+        const topGame = sorted[0];
+        if (topGame && topGame.seconds > 0) {
+            maiorTempoEl.textContent = `${topGame.jogo} (${topGame.tempoRaw})`;
+            maiorTempoEl.title = `${topGame.jogo} (${topGame.tempoRaw})`;
+        } else {
+            maiorTempoEl.textContent = "-";
+            maiorTempoEl.title = "";
+        }
+    }
+
+    if (ctxTempo && typeof Chart !== "undefined") {
+        const top10 = sorted.slice(0, 10);
+        const labels = top10.map(item => item.jogo.length > 20 ? item.jogo.substring(0, 17) + "..." : item.jogo);
+        const data = top10.map(item => (item.seconds / 3600).toFixed(1));
+
+        if (state.charts.tempo) state.charts.tempo.destroy();
+        state.charts.tempo = new Chart(ctxTempo, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Horas Jogadas",
+                    data: data,
+                    backgroundColor: "#d4896e",
+                    borderColor: "#b66f56",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: "TOP 10 JOGOS MAIS LONGOS", color: "#a8c5d5", font: { size: 16 } }
+                },
+                scales: {
+                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
+                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                }
+            }
+        });
+    }
+
+    if (lista) {
+        lista.innerHTML = "";
+        sorted.slice(0, 30).forEach(item => {
+            const div = document.createElement("div");
+            div.className = "list-item";
+            div.innerHTML = `
+                <div class="list-item-title">${item.jogo}<\/div>
+                <div class="list-item-value">${item.tempoRaw}<\/div>
+            `;
+            lista.appendChild(div);
+        });
+    }
 }
 
 function renderDificuldade() {

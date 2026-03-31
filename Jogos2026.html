@@ -67,7 +67,26 @@
 
             <!-- Tempo de Jogo -->
             <section class="tab-content" id="tempo-jogo">
-                <div class="list-container" id="lista-tempo"></div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Total de Horas</span>
+                        <span class="stat-value" id="total-horas">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Média por Jogo</span>
+                        <span class="stat-value" id="media-horas">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Jogo Mais Longo</span>
+                        <span class="stat-value" id="maior-tempo" style="font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block;">-</span>
+                    </div>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-container" style="grid-column: 1 / -1;">
+                        <canvas id="chart-top-tempo"></canvas>
+                    </div>
+                </div>
+                <div class="list-container" id="lista-tempo" style="margin-top: 1rem;"></div>
             </section>
 
             <!-- Dificuldade -->
@@ -97,6 +116,6 @@
         </div>
     </main>
 
-    <script src="script.js?v=20260330-5"></script>
+    <script src="script.js?v=20260330-6"></script>
 </body>
 </html>
