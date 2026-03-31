@@ -989,33 +989,51 @@ function renderDificuldade() {
     }
 
     if (ctxDifBar && typeof Chart !== "undefined") {
-        const labels = sortedDifs.map(item => item[0]);
-        const data = sortedDifs.map(item => item[1]);
+        const treemapData = sortedDifs.map(item => ({ name: item[0], value: item[1] }));
 
         if (state.charts.dificuldadeBar) state.charts.dificuldadeBar.destroy();
         state.charts.dificuldadeBar = new Chart(ctxDifBar, {
-            type: "bar",
+            type: "treemap",
             data: {
-                labels: labels,
                 datasets: [{
-                    label: "Jogos",
-                    data: data,
-                    backgroundColor: "#e07a5f",
-                    borderColor: "#c1664e",
-                    borderWidth: 1
+                    tree: treemapData,
+                    key: "value",
+                    labels: {
+                        display: true,
+                        formatter: (ctx) => {
+                            const data = ctx.raw._data;
+                            if (data && data.name) {
+                                return [data.name, String(data.value)];
+                            }
+                            return "";
+                        },
+                        font: [{ size: 14, weight: 'bold' }, { size: 12 }],
+                        color: "#fff"
+                    },
+                    backgroundColor: (ctx) => {
+                        const colors = ['#1f3849', '#0d5b5a', '#d4896e', '#5a9d6a', '#a8c5d5', '#e07a5f', '#3b8d99'];
+                        return colors[ctx.dataIndex % colors.length] || "#1f3849";
+                    },
+                    borderColor: "var(--bg-2)",
+                    borderWidth: 2,
+                    spacing: 1
                 }]
             },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "JOGOS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } }
-                },
-                scales: {
-                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
-                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                    title: { display: true, text: "JOGOS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } },
+                    tooltip: {
+                        callbacks: {
+                            title: () => "",
+                            label: (ctx) => {
+                                const data = ctx.raw._data;
+                                return data ? `${data.name}: ${data.value} jogos` : "";
+                            }
+                        }
+                    }
                 }
             }
         });
