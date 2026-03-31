@@ -1050,9 +1050,46 @@ function renderDificuldade() {
     Object.entries(dificCount).sort((a, b) => b[1] - a[1]).forEach(([dif, count]) => {
         const card = document.createElement("div");
         card.className = "dificuldade-card";
-        card.innerHTML = `<strong>${dif}<\/strong><span>${count} jogos<\/span>`;
+        card.innerHTML = `<strong>${dif}</strong><span>${count} jogos</span>`;
         grid.appendChild(card);
     });
+
+    // Show hardcore games (SEKIRO e REALMENTE TRABALHOSO)
+    const listSekiro = document.getElementById("list-sekiro");
+    const listTrabalhoso = document.getElementById("list-trabalhoso");
+    
+    if (listSekiro && listTrabalhoso) {
+        listSekiro.innerHTML = "";
+        listTrabalhoso.innerHTML = "";
+        
+        const titleHeader = findHeader([/jogo/, /titulo/, /nome/]);
+        
+        const sekiroGames = [];
+        const trabalhosoGames = [];
+        
+        getOverviewFilteredRows().forEach(row => {
+            const dif = String(row[dificuldadeHeader] || "").trim().toUpperCase();
+            const name = String(row[titleHeader] || "").trim();
+            if (dif === "SEKIRO") sekiroGames.push(name);
+            if (dif === "REALMENTE TRABALHOSO") trabalhosoGames.push(name);
+        });
+        
+        if (sekiroGames.length === 0) listSekiro.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
+        else sekiroGames.forEach(jogo => {
+            const el = document.createElement("div");
+            el.className = "hardcore-game-item";
+            el.textContent = jogo;
+            listSekiro.appendChild(el);
+        });
+        
+        if (trabalhosoGames.length === 0) listTrabalhoso.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
+        else trabalhosoGames.forEach(jogo => {
+            const el = document.createElement("div");
+            el.className = "hardcore-game-item";
+            el.textContent = jogo;
+            listTrabalhoso.appendChild(el);
+        });
+    }
 }
 
 function renderPlataforma() {

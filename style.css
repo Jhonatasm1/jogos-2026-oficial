@@ -549,3 +549,93 @@ td {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
 }
+/* Hardcore Showcase */
+.hardcore-showcase {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.hardcore-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-size: cover;
+    background-position: center;
+    border-radius: 12px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    min-height: 150px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border: 3px solid transparent;
+}
+
+.hardcore-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.8) 100%);
+    z-index: 1;
+}
+
+#banner-sekiro {
+    background-image: url('sekiro.png');
+    border-color: #cc0000;
+}
+
+#banner-trabalhoso {
+    background-image: url('cuphead.png');
+    border-color: #ff6666;
+}
+
+.hardcore-title {
+    position: relative;
+    z-index: 2;
+    font-family: 'Syne', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    text-transform: uppercase;
+    line-height: 1.1;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    flex: 1;
+}
+
+.hardcore-games {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    align-items: flex-end;
+}
+
+.hardcore-game-item {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+    border-left: 4px solid var(--accent);
+}
+
+@media (max-width: 768px) {
+    .hardcore-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+    .hardcore-games {
+        align-items: flex-start;
+        width: 100%;
+    }
+}
