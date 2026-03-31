@@ -630,6 +630,30 @@ async function fetchCsvPayload() {
     throw new Error(errors.join(" | "));
 }
 
+function buildStatusDistribution(rows, statusHeader) {
+    const countsByKey = {};
+    const labelsByKey = {};
+    const orderedKeys = [];
+
+    rows.forEach((row) => {
+        const rawStatus = getRowValue(row, statusHeader);
+        if (!rawStatus) return;
+
+        const key = normalizeText(rawStatus);
+        if (!key) return;
+
+        if (!countsByKey[key]) {
+            countsByKey[key] = 0;
+            labelsByKey[key] = rawStatus.toUpperCase();
+            orderedKeys.push(key);
+        }
+
+        countsByKey[key] += 1;
+    });
+
+    return { countsByKey, labelsByKey, orderedKeys };
+}
+
 function renderVisaoGeral() {
     const rows = getOverviewFilteredRows();
     const headers = state.resolvedHeaders;
@@ -641,20 +665,10 @@ function renderVisaoGeral() {
 
     if (totalJogosEl) totalJogosEl.textContent = String(rows.length);
 
-    let concluidos = 0;
-    let jogando = 0;
-    let pendentes = 0;
-
-    rows.forEach((row) => {
-        const status = getRowValue(row, headers.status);
-        const concluido = isConcluidoByStatus(status);
-        const emJogo = isJogandoByStatus(status);
-        const pendente = isPendenteByStatus(status);
-
-        if (concluido) concluidos += 1;
-        if (emJogo) jogando += 1;
-        if (pendente) pendentes += 1;
-    });
+    const { countsByKey } = buildStatusDistribution(rows, headers.status);
+    const concluidos = countsByKey.concluido || 0;
+    const jogando = countsByKey.jogando || 0;
+    const pendentes = countsByKey.pendente || 0;
 
     if (totalConcluidosEl) totalConcluidosEl.textContent = String(concluidos);
     if (totalJogandoEl) totalJogandoEl.textContent = String(jogando);
@@ -670,14 +684,14 @@ function renderCharts(rows, platHeader, statusHeader) {
     if (!ctxPlat || !ctxStatus || typeof Chart === "undefined") return;
 
     const platCount = {};
-    const statusCount = {};
-
     rows.forEach(row => {
         const plat = String(row[platHeader] || "").trim();
-        const stat = String(row[statusHeader] || "").trim();
         if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
-        if (stat) statusCount[stat] = (statusCount[stat] || 0) + 1;
     });
+
+    const statusDistribution = buildStatusDistribution(rows, statusHeader);
+    const statusLabels = statusDistribution.orderedKeys.map((key) => statusDistribution.labelsByKey[key]);
+    const statusValues = statusDistribution.orderedKeys.map((key) => statusDistribution.countsByKey[key]);
 
     const colors = ["#5a9d6a", "#d4896e", "#ffb84d", "#cc6b6b", "#a8c5d5", "#5a9d6a"];
 
@@ -704,10 +718,10 @@ function renderCharts(rows, platHeader, statusHeader) {
     state.charts.status = new Chart(ctxStatus, {
         type: "bar",
         data: {
-            labels: Object.keys(statusCount),
+            labels: statusLabels,
             datasets: [{
                 label: "Quantidade",
-                data: Object.values(statusCount),
+                data: statusValues,
                 backgroundColor: "#5a9d6a",
                 borderColor: "#3d7550",
                 borderWidth: 1
