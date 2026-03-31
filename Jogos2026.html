@@ -69,23 +69,35 @@
             <section class="tab-content" id="tempo-jogo">
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <span class="stat-label">Total de Horas</span>
-                        <span class="stat-value" id="total-horas">-</span>
+                        <span class="stat-label">Total de Horas Jogadas</span>
+                        <span class="stat-value" id="total-horas-jogadas">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Média por Jogo</span>
-                        <span class="stat-value" id="media-horas">-</span>
+                        <span class="stat-label">Total de Horas Pendentes</span>
+                        <span class="stat-value" id="total-horas-pendentes">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Jogo Mais Longo</span>
-                        <span class="stat-value" id="maior-tempo" style="font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block;">-</span>
+                        <span class="stat-label">Média de Tempo de Gameplay</span>
+                        <span class="stat-value" id="media-gameplay">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Média dos Jogos Zerados</span>
+                        <span class="stat-value" id="media-zerados">-</span>
+                    </div>
+                    <div class="stat-card" style="grid-column: 1 / -1;">
+                        <span class="stat-label">Jogo Solo Mais Jogado</span>
+                        <span class="stat-value" id="solo-mais-jogado" style="font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block;">-</span>
                     </div>
                 </div>
                 <div class="charts-grid">
-                    <div class="chart-container" style="grid-column: 1 / -1;">
+                    <div class="chart-container">
                         <canvas id="chart-top-tempo"></canvas>
                     </div>
+                    <div class="chart-container">
+                        <canvas id="chart-curtos-zerados"></canvas>
+                    </div>
                 </div>
+                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Top 30 Jogos Mais Jogados</h3>
                 <div class="list-container" id="lista-tempo" style="margin-top: 1rem;"></div>
             </section>
 
