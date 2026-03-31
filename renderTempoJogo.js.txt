@@ -1,0 +1,187 @@
+function renderTempoJogo() {
+    const tempoHeader = state.resolvedHeaders.tempo;
+    const jogoHeader = state.resolvedHeaders.jogo;
+    const statusHeader = state.resolvedHeaders.status;
+
+    const lista = document.getElementById("lista-tempo");
+    const totalHorasJogadasEl = document.getElementById("total-horas-jogadas");
+    const totalHorasPendentesEl = document.getElementById("total-horas-pendentes");
+    const mediaGameplayEl = document.getElementById("media-gameplay");
+    const mediaZeradosEl = document.getElementById("media-zerados");
+    const soloMaisJogadoEl = document.getElementById("solo-mais-jogado");
+    
+    const ctxTopTempo = document.getElementById("chart-top-tempo");
+    const ctxCurtosZerados = document.getElementById("chart-curtos-zerados");
+
+    if (!tempoHeader || !jogoHeader || !statusHeader) return;
+
+    let segundosJogados = 0;
+    let segundosPendentes = 0;
+    
+    let segundosGameplaySemCS = 0;
+    let qtdGameplaySemCS = 0;
+
+    let segundosZerados = 0;
+    let qtdZerados = 0;
+
+    // Use full rows before filtering to count all headers. But we map first correctly.
+    // Ensure you do not filter state.rows but process them!
+    const parsedRows = state.rows.map(row => {
+        const tempoRaw = String(row[tempoHeader] || "");
+        const seconds = parseTimeToSeconds(tempoRaw) || 0;
+        
+        let formattedTempo = tempoRaw;
+        // If the user typed only numbers (e.g. "12", "19", "9,5"), append an "h" to display nicely
+        if (/^[\d,.-]+$/.test(tempoRaw.trim())) {
+            formattedTempo += "h";
+        }
+
+        const jogoNome = String(row[jogoHeader] || "Desconhecido");
+        const jogoNomeLower = normalizeText(jogoNome);
+        const statusReal = String(row[statusHeader] || "");
+        const st = normalizeText(statusReal);
+        const isCS2 = jogoNomeLower.includes("counter strike 2") || jogoNomeLower.includes("counter-strike 2");
+        const multiType = normalizeText(getRowMultiplayerType(row));
+
+        // Group: Concluído, Dropado, Jogando
+        const isJogado = st === "concluido" || st === "dropado" || st === "jogando";
+        // Group: Iniciado, Logo Jogo, Pausado, Pendente
+        const isPendenteGroup = st === "iniciado" || st === "logo jogo" || st === "logojogo" || st === "pausado" || st === "pendente";
+
+        if (seconds > 0) {
+            if (isJogado) {
+                segundosJogados += seconds;
+                if (!isCS2) {
+                    segundosGameplaySemCS += seconds;
+                    qtdGameplaySemCS++;
+                }
+            }
+            if (isPendenteGroup) {
+                segundosPendentes += seconds;
+            }
+            if (st === "concluido") {
+                segundosZerados += seconds;
+                qtdZerados++;
+            }
+        }
+
+        return {
+            row: row,
+            jogo: jogoNome,
+            isCS2: isCS2,
+            st: st,
+            isJogado: isJogado,
+            isSolo: multiType === "solo",
+            tempoRaw: formattedTempo,
+            seconds: seconds
+        };
+    }).filter(item => item.seconds > 0);
+
+    if (totalHorasJogadasEl) totalHorasJogadasEl.textContent = `${Math.floor(segundosJogados / 3600)}h`;
+    if (totalHorasPendentesEl) totalHorasPendentesEl.textContent = `${Math.floor(segundosPendentes / 3600)}h`;
+    
+    if (mediaGameplayEl) {
+        const media = qtdGameplaySemCS > 0 ? (segundosGameplaySemCS / 3600) / qtdGameplaySemCS : 0;
+        mediaGameplayEl.textContent = `${media.toFixed(1)}h`;
+    }
+
+    if (mediaZeradosEl) {
+        const mediaZ = qtdZerados > 0 ? (segundosZerados / 3600) / qtdZerados : 0;
+        mediaZeradosEl.textContent = `${mediaZ.toFixed(1)}h`;
+    }
+
+    if (soloMaisJogadoEl) {
+        const soloGames = parsedRows.filter(item => item.isSolo && item.isJogado).sort((a, b) => b.seconds - a.seconds);
+        const topSolo = soloGames[0];
+        if (topSolo) {
+            soloMaisJogadoEl.textContent = `${topSolo.jogo} (${topSolo.tempoRaw})`;
+            soloMaisJogadoEl.title = `${topSolo.jogo} (${topSolo.tempoRaw})`;
+        } else {
+            soloMaisJogadoEl.textContent = "-";
+            soloMaisJogadoEl.title = "";
+        }
+    }
+
+    const jogadosSemCS = parsedRows.filter(item => item.isJogado && !item.isCS2).sort((a, b) => b.seconds - a.seconds);
+
+    if (ctxTopTempo && typeof Chart !== "undefined") {
+        const top10Jogados = jogadosSemCS.slice(0, 10);
+        const labels10 = top10Jogados.map(item => item.jogo.length > 20 ? item.jogo.substring(0, 17) + "..." : item.jogo);
+        const data10 = top10Jogados.map(item => (item.seconds / 3600).toFixed(1));
+
+        if (state.charts.tempoTop) state.charts.tempoTop.destroy();
+        state.charts.tempoTop = new Chart(ctxTopTempo, {
+            type: "bar",
+            data: {
+                labels: labels10,
+                datasets: [{
+                    label: "Horas Jogadas",
+                    data: data10,
+                    backgroundColor: "#d4896e",
+                    borderColor: "#b66f56",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: "TOP 10 JOGOS MAIS JOGADOS", color: "#a8c5d5", font: { size: 16 } }
+                },
+                scales: {
+                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
+                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                }
+            }
+        });
+    }
+
+    if (ctxCurtosZerados && typeof Chart !== "undefined") {
+        const concluidosAsc = parsedRows.filter(item => item.st === "concluido").sort((a, b) => a.seconds - b.seconds);
+        const top10Curtos = concluidosAsc.slice(0, 10);
+        const labelsCurtos = top10Curtos.map(item => item.jogo.length > 20 ? item.jogo.substring(0, 17) + "..." : item.jogo);
+        const dataCurtos = top10Curtos.map(item => (item.seconds / 3600).toFixed(1));
+
+        if (state.charts.tempoCurtos) state.charts.tempoCurtos.destroy();
+        state.charts.tempoCurtos = new Chart(ctxCurtosZerados, {
+            type: "bar",
+            data: {
+                labels: labelsCurtos,
+                datasets: [{
+                    label: "Horas Jogadas",
+                    data: dataCurtos,
+                    backgroundColor: "#56b6c2",
+                    borderColor: "#3b8d99",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: "TOP 10 JOGOS MAIS CURTOS ZERADOS", color: "#a8c5d5", font: { size: 16 } }
+                },
+                scales: {
+                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
+                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                }
+            }
+        });
+    }
+
+    if (lista) {
+        lista.innerHTML = "";
+        const top30 = jogadosSemCS.slice(0, 30);
+        top30.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "list-item";
+            div.innerHTML = `<div class="list-item-title">${item.jogo}</div><div class="list-item-value">${item.tempoRaw}</div>`;
+            lista.appendChild(div);
+        });
+    }
+}
+

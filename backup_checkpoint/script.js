@@ -1,4 +1,4 @@
-const CSV_URLS = [
+ï»¿const CSV_URLS = [
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQZcOOu3eivDQ7v0b6bxVCvxtNjhYFkbSq2I-tBevYwQ07jEaHCWff0j14eHE8BOR7EA7L1ko4RFIMu/pub?gid=268101817&single=true&output=csv",
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQZcOOu3eivDQ7v0b6bxVCvxtNjhYFkbSq2I-tBevYwQ07jEaHCWff0j14eHE8BOR7EA7L1ko4RFIMu/gviz/tq?tqx=out:csv&gid=268101817"
 ];
@@ -110,7 +110,7 @@ function normalizeText(value) {
 
 function fixEncoding(value) {
     const text = String(value || "");
-    if (!/[ÃÂâ€]/.test(text)) {
+    if (!/[ÃƒÃ‚Ã¢â‚¬]/.test(text)) {
         return text;
     }
     try {
@@ -233,9 +233,9 @@ function normalizeYesNo(value) {
     if (!text) return "";
 
     if (["sim", "yes", "y", "true", "verdadeiro", "1"].includes(text)) return "Sim";
-    if (["nao", "não", "no", "n", "false", "falso", "0"].includes(text)) return "Não";
+    if (["nao", "nÃ£o", "no", "n", "false", "falso", "0"].includes(text)) return "NÃ£o";
 
-    if (text.includes("solo") || text.includes("single")) return "Não";
+    if (text.includes("solo") || text.includes("single")) return "NÃ£o";
     if (text.includes("coop") || text.includes("co-op") || text.includes("online") || text.includes("multijogador") || text.includes("multiplayer")) return "Sim";
 
     return value;
@@ -254,7 +254,7 @@ function getRowMultiplayerType(row) {
 
     const pvpTokens = ["pvp", "versus", "x1", "1v1", "competitivo", "ranked", "ranqueada", "arena"];
     const coopTokens = ["coop", "co-op", "co op", "cooperativo", "multiplayer", "multijogador", "online coop", "online cooperativo"];
-    const soloTokens = ["solo", "single player", "singleplayer", "campanha", "historia", "história", "offline", "nao", "não", "false", "0"];
+    const soloTokens = ["solo", "single player", "singleplayer", "campanha", "historia", "histÃ³ria", "offline", "nao", "nÃ£o", "false", "0"];
 
     if (pvpTokens.some((token) => text.includes(token))) return "PVP";
     if (coopTokens.some((token) => text.includes(token))) return "COOP";
@@ -664,7 +664,7 @@ function renderCharts(rows, statusCount) {
 
     const doughnutConfig = [
         { key: "pendente", label: "Pendente", color: "#ffcc00" }, // Amarelo
-        { key: "concluido", label: "Concluído", color: "#4a90e2" }, // Azul
+        { key: "concluido", label: "ConcluÃ­do", color: "#4a90e2" }, // Azul
         { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
         { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
         { key: "jogando", label: "Jogando", color: "#5a9d6a" }, // Verde
@@ -711,7 +711,7 @@ function renderCharts(rows, statusCount) {
 
     const barConfigMap = {
         pendente: { label: "Pendente", color: "#ffcc00" },
-        concluido: { label: "Concluído", color: "#4a90e2" },
+        concluido: { label: "ConcluÃ­do", color: "#4a90e2" },
         pausado: { label: "Pausado", color: "#ff9800" },
         dropado: { label: "Dropado", color: "#e06c75" },
         jogando: { label: "Jogando", color: "#5a9d6a" },
@@ -767,7 +767,7 @@ function renderCharts(rows, statusCount) {
             maintainAspectRatio: true,
             plugins: { 
                 legend: { labels: { color: "#a8c5d5" } },
-                title: { display: true, text: "LANÇAMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
+                title: { display: true, text: "LANÃ‡AMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
             },
             scales: {
                 y: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
@@ -952,7 +952,7 @@ function renderDificuldade() {
     
     const grid = document.getElementById("grid-dificuldade");
     const ctxDifBar = document.getElementById("chart-dificuldade-bar");
-    const divDifHoras = document.getElementById("chart-dificuldade-horas");
+    const ctxDifHoras = document.getElementById("chart-dificuldade-horas");
 
     if (!grid) return;
     grid.innerHTML = "";
@@ -1013,10 +1013,10 @@ function renderDificuldade() {
                     },
                     backgroundColor: (ctx) => {
                         const levelColors = {
-                            "BASTA TER CÉREBRO": "#a3d1ff", // Light Blue
-                            "MAMÃO COM AÇÚCAR": "#82b4ff", // Slightly darker blue
-                            "MÉDIO": "#6699ff", // Medium blue
-                            "PRECISA DE UM ESFORÇO": "#ffa3a3", // Light Red
+                            "BASTA TER CÃ‰REBRO": "#a3d1ff", // Light Blue
+                            "MAMÃƒO COM AÃ‡ÃšCAR": "#82b4ff", // Slightly darker blue
+                            "MÃ‰DIO": "#6699ff", // Medium blue
+                            "PRECISA DE UM ESFORÃ‡O": "#ffa3a3", // Light Red
                             "REALMENTE TRABALHOSO": "#ff6666", // Red
                             "SEKIRO": "#cc0000" // Dark Red
                         };
@@ -1048,44 +1048,43 @@ function renderDificuldade() {
         });
     }
 
-    if (divDifHoras && typeof google !== "undefined") {
-          google.charts.load("current", {packages:["corechart"]});
-          const drawChart = () => {
-              const dataTable = new google.visualization.DataTable();
-              dataTable.addColumn("string", "Dificuldade");
-              dataTable.addColumn("number", "Horas");
+    if (ctxDifHoras && typeof Chart !== "undefined") {
+        const labelsDifsHoras = sortedHoras.map(item => item[0]);
+        const dataDifsHoras = sortedHoras.map(item => (item[1] / 3600).toFixed(1));
+        const bgColorsHoras = labelsDifsHoras.map(label => {
+            const levelColors = {
+                "BASTA TER CÃ‰REBRO": "#a3d1ff", // Light Blue
+                "MAMÃƒO COM AÃ‡ÃšCAR": "#82b4ff", // Slightly darker blue
+                "MÃ‰DIO": "#6699ff", // Medium blue
+                "PRECISA DE UM ESFORÃ‡O": "#ffa3a3", // Light Red
+                "REALMENTE TRABALHOSO": "#ff6666", // Red
+                "SEKIRO": "#cc0000" // Dark Red
+            };
+            return levelColors[label] || "#1f3849";
+        });
 
-              const levelColors = {
-                  "BASTA TER CÉREBRO": "#a3d1ff",
-                  "MAMÃO COM AÇÚCAR": "#82b4ff",
-                  "MÉDIO": "#6699ff",
-                  "PRECISA DE UM ESFORÇO": "#ffa3a3",
-                  "REALMENTE TRABALHOSO": "#ff6666",
-                  "SEKIRO": "#cc0000"
-              };
-
-              const colorsArr = [];
-              sortedHoras.forEach(item => {
-                  const hours = parseFloat((item[1] / 3600).toFixed(1));
-                  dataTable.addRow([item[0], hours]);
-                  colorsArr.push(levelColors[item[0]] || "#1f3849");
-              });
-
-              const options = {
-                  title: "HORAS POR DIFICULDADE",
-                  is3D: true,
-                  backgroundColor: "transparent",
-                  colors: colorsArr,
-                  titleTextStyle: { color: "#a8c5d5", fontSize: 16, bold: true },
-                  legend: { position: "right", textStyle: { color: "#a8c5d5" } },
-                  chartArea: { width: "100%", height: "80%" }
-              };
-
-              const chart = new google.visualization.PieChart(divDifHoras);
-              chart.draw(dataTable, options);
-          };
-          google.charts.setOnLoadCallback(drawChart);
-      }
+        if (state.charts.dificuldadeHoras) state.charts.dificuldadeHoras.destroy();
+        state.charts.dificuldadeHoras = new Chart(ctxDifHoras, {
+            type: "pie",
+            data: {
+                labels: labelsDifsHoras,
+                datasets: [{
+                    data: dataDifsHoras,
+                    backgroundColor: bgColorsHoras,
+                    borderColor: "var(--bg-2)",
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: "right", labels: { color: "#a8c5d5" } },
+                    title: { display: true, text: "HORAS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } }
+                }
+            }
+        });
+    }
 
     Object.entries(dificCount).sort((a, b) => b[1] - a[1]).forEach(([dif, count]) => {
         const secs = dificHoras[dif] || 0;
@@ -1315,4 +1314,3 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
-

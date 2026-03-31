@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+Ôªø<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="style.css?v=20260331-05">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 </head>
 <body>
     <header>
@@ -22,22 +21,22 @@
 
     <main>
         <nav class="tabs-nav">
-            <button class="tab-btn active" data-tab="visao-geral">Vis„o Geral</button>
+            <button class="tab-btn active" data-tab="visao-geral">Vis√£o Geral</button>
             <button class="tab-btn" data-tab="tempo-jogo">Tempo de Jogo</button>
             <button class="tab-btn" data-tab="dificuldade">Dificuldade</button>
             <button class="tab-btn" data-tab="plataforma">Plataforma</button>
-            <button class="tab-btn" data-tab="avaliacao">AvaliaÁ„o Pessoal</button>
+            <button class="tab-btn" data-tab="avaliacao">Avalia√ß√£o Pessoal</button>
             <button class="tab-btn" data-tab="tabela">Tabela Completa</button>
         </nav>
 
         <div class="filters-container" id="filters-top">
             <label>Plataforma:<select id="filter-plataforma"></select></label>
             <label>Multiplayer:<select id="filter-multiplayer"></select></label>
-            <label>Ano de Conclus„o:<select id="filter-ano-conclusao"></select></label>
+            <label>Ano de Conclus√£o:<select id="filter-ano-conclusao"></select></label>
         </div>
 
         <div class="tabs-container">
-            <!-- Vis„o Geral -->
+            <!-- Vis√£o Geral -->
             <section class="tab-content active" id="visao-geral">
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -45,7 +44,7 @@
                         <span class="stat-value" id="total-jogos">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">ConcluÌdos</span>
+                        <span class="stat-label">Conclu√≠dos</span>
                         <span class="stat-value" id="total-concluidos">-</span>
                     </div>
                     <div class="stat-card">
@@ -79,11 +78,11 @@
                         <span class="stat-value" id="total-horas-pendentes">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">MÈdia de Tempo de Gameplay</span>
+                        <span class="stat-label">M√©dia de Tempo de Gameplay</span>
                         <span class="stat-value" id="media-gameplay">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">MÈdia dos Jogos Zerados</span>
+                        <span class="stat-label">M√©dia dos Jogos Zerados</span>
                         <span class="stat-value" id="media-zerados">-</span>
                     </div>
                     <div class="stat-card">
@@ -124,13 +123,13 @@
                         <canvas id="chart-dificuldade-bar"></canvas>
                     </div>
                     <div class="chart-container">
-                        <div id="chart-dificuldade-horas" style="width: 100%; height: 100%; min-height: 300px;"></div>
+                        <canvas id="chart-dificuldade-horas"></canvas>
                     </div>
                 </div>
 
                 <div class="hardcore-showcase">
                     <div class="hardcore-banner" id="banner-sekiro">
-                        <div class="hardcore-title">NÌvel<br>Sekiro</div>
+                        <div class="hardcore-title">N√≠vel<br>Sekiro</div>
                         <div class="hardcore-games" id="list-sekiro"></div>
                     </div>
                     <div class="hardcore-banner" id="banner-trabalhoso">
@@ -139,7 +138,7 @@
                     </div>
                 </div>
 
-                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Todos os NÌveis de Dificuldade</h3>
+                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Todos os N√≠veis de Dificuldade</h3>
                 <div class="grid-container" id="grid-dificuldade" style="margin-top: 1rem;"></div>
             </section>
 
@@ -148,7 +147,7 @@
                 <div class="grid-container" id="grid-plataforma"></div>
             </section>
 
-            <!-- AvaliaÁ„o Pessoal -->
+            <!-- Avalia√ß√£o Pessoal -->
             <section class="tab-content" id="avaliacao">
                 <div class="list-container" id="lista-avaliacao"></div>
             </section>
@@ -165,7 +164,6 @@
         </div>
     </main>
 
-    <script src="script.js?v=20260331-10"></script>
+    <script src="script.js?v=20260331-09"></script>
 </body>
 </html>
-
