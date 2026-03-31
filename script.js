@@ -780,75 +780,70 @@ function renderCharts(rows, statusCount) {
 function renderTempoJogo() {
     const tempoHeader = state.resolvedHeaders.tempo;
     const jogoHeader = state.resolvedHeaders.jogo;
+    const statusHeader = state.resolvedHeaders.status;
 
-    const lista = document.getElementById("lista-tempo");
-    const totalHorasEl = document.getElementById("total-horas");
-    const mediaHorasEl = document.getElementById("media-horas");
-    const maiorTempoEl = document.getElementById("maior-tempo");
-    const ctxTempo = document.getElementById("chart-top-tempo");
+    if (!tempoHeader || !jogoHeader || !statusHeader) return;
 
-    if (!tempoHeader || !jogoHeader) return;
-
-    let totalSeconds = 0;
-    let validGamesCount = 0;
+    let segundosJogados = 0;
 
     const parsedRows = state.rows.map(row => {
         const tempoRaw = String(row[tempoHeader] || "");
         const seconds = parseTimeToSeconds(tempoRaw) || 0;
-        if (seconds > 0) {
-            totalSeconds += seconds;
-            validGamesCount++;
-        }
         
         let formattedTempo = tempoRaw;
-        // If the user typed only numbers (e.g. "12", "19", "9,5"), append an "h" to display nicely
         if (/^[\d,.-]+$/.test(tempoRaw.trim())) {
             formattedTempo += "h";
         }
 
+        const jogoNome = String(row[jogoHeader] || "Desconhecido");
+        const jogoNomeLower = normalizeText(jogoNome);
+        const statusReal = String(row[statusHeader] || "");
+        const st = normalizeText(statusReal);
+        const isCS2 = jogoNomeLower.includes("counter strike 2") || jogoNomeLower.includes("counter-strike 2");
+        const multiType = normalizeText(getRowMultiplayerType(row));
+
+        const isJogado = st === "concluido" || st === "dropado" || st === "jogando";
+
+        if (seconds > 0) {
+            if (isJogado) {
+                segundosJogados += seconds;
+            }
+        }
+
         return {
-            jogo: String(row[jogoHeader] || "Desconhecido"),
+            row: row,
+            jogo: jogoNome,
+            isCS2: isCS2,
+            st: st,
+            isJogado: isJogado,
+            isSolo: multiType === "solo",
             tempoRaw: formattedTempo,
             seconds: seconds
         };
     }).filter(item => item.seconds > 0);
 
-    const sorted = parsedRows.sort((a, b) => b.seconds - a.seconds);
-
-    if (totalHorasEl) {
-        const hours = Math.floor(totalSeconds / 3600);
-        totalHorasEl.textContent = `${hours}h`;
+    const totalHorasJogadasEl = document.getElementById("total-horas-jogadas");
+    if (totalHorasJogadasEl) {
+        totalHorasJogadasEl.textContent = Math.floor(segundosJogados / 3600) + "h";
     }
 
-    if (mediaHorasEl) {
-        const media = validGamesCount > 0 ? (totalSeconds / 3600) / validGamesCount : 0;
-        mediaHorasEl.textContent = `${media.toFixed(1)}h`;
-    }
+    // Removido outros calculos para focar exclusivamente no total de horas jogadas como pedido
 
-    if (maiorTempoEl) {
-        const topGame = sorted[0];
-        if (topGame && topGame.seconds > 0) {
-            maiorTempoEl.textContent = `${topGame.jogo} (${topGame.tempoRaw})`;
-            maiorTempoEl.title = `${topGame.jogo} (${topGame.tempoRaw})`;
-        } else {
-            maiorTempoEl.textContent = "-";
-            maiorTempoEl.title = "";
-        }
-    }
+    const jogadosSemCS = parsedRows.filter(item => item.isJogado && !item.isCS2).sort((a, b) => b.seconds - a.seconds);
 
-    if (ctxTempo && typeof Chart !== "undefined") {
-        const top10 = sorted.slice(0, 10);
-        const labels = top10.map(item => item.jogo.length > 20 ? item.jogo.substring(0, 17) + "..." : item.jogo);
-        const data = top10.map(item => (item.seconds / 3600).toFixed(1));
+    if (ctxTopTempo && typeof Chart !== "undefined") {
+        const top10Jogados = jogadosSemCS.slice(0, 10);
+        const labels10 = top10Jogados.map(item => item.jogo.length > 20 ? item.jogo.substring(0, 17) + "..." : item.jogo);
+        const data10 = top10Jogados.map(item => (item.seconds / 3600).toFixed(1));
 
-        if (state.charts.tempo) state.charts.tempo.destroy();
-        state.charts.tempo = new Chart(ctxTempo, {
+        if (state.charts.tempoTop) state.charts.tempoTop.destroy();
+        state.charts.tempoTop = new Chart(ctxTopTempo, {
             type: "bar",
             data: {
-                labels: labels,
+                labels: labels10,
                 datasets: [{
                     label: "Horas Jogadas",
-                    data: data,
+                    data: data10,
                     backgroundColor: "#d4896e",
                     borderColor: "#b66f56",
                     borderWidth: 1
@@ -860,7 +855,42 @@ function renderTempoJogo() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "TOP 10 JOGOS MAIS LONGOS", color: "#a8c5d5", font: { size: 16 } }
+                    title: { display: true, text: "TOP 10 JOGOS MAIS JOGADOS", color: "#a8c5d5", font: { size: 16 } }
+                },
+                scales: {
+                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
+                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                }
+            }
+        });
+    }
+
+    if (ctxCurtosZerados && typeof Chart !== "undefined") {
+        const concluidosAsc = parsedRows.filter(item => item.st === "concluido").sort((a, b) => a.seconds - b.seconds);
+        const top10Curtos = concluidosAsc.slice(0, 10);
+        const labelsCurtos = top10Curtos.map(item => item.jogo.length > 20 ? item.jogo.substring(0, 17) + "..." : item.jogo);
+        const dataCurtos = top10Curtos.map(item => (item.seconds / 3600).toFixed(1));
+
+        if (state.charts.tempoCurtos) state.charts.tempoCurtos.destroy();
+        state.charts.tempoCurtos = new Chart(ctxCurtosZerados, {
+            type: "bar",
+            data: {
+                labels: labelsCurtos,
+                datasets: [{
+                    label: "Horas Jogadas",
+                    data: dataCurtos,
+                    backgroundColor: "#56b6c2",
+                    borderColor: "#3b8d99",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: "TOP 10 JOGOS MAIS CURTOS ZERADOS", color: "#a8c5d5", font: { size: 16 } }
                 },
                 scales: {
                     y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
@@ -872,17 +902,16 @@ function renderTempoJogo() {
 
     if (lista) {
         lista.innerHTML = "";
-        sorted.slice(0, 30).forEach(item => {
+        const top30 = jogadosSemCS.slice(0, 30);
+        top30.forEach(item => {
             const div = document.createElement("div");
             div.className = "list-item";
-            div.innerHTML = `
-                <div class="list-item-title">${item.jogo}<\/div>
-                <div class="list-item-value">${item.tempoRaw}<\/div>
-            `;
+            div.innerHTML = `<div class="list-item-title">${item.jogo}</div><div class="list-item-value">${item.tempoRaw}</div>`;
             lista.appendChild(div);
         });
     }
 }
+
 
 function renderDificuldade() {
     const dificuldadeHeader = findHeader([/dificuldade/, /difficulty/]);
