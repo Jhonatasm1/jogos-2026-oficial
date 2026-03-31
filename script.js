@@ -790,7 +790,7 @@ function renderTempoJogo() {
     let segundosJogados = 0;
     let segundosPendentes = 0;
 
-    const parsedRows = state.rows.map(row => {
+    const parsedRows = getOverviewFilteredRows().map(row => {
         const tempoRaw = String(row[tempoHeader] || "");
         const seconds = parseTimeToSeconds(tempoRaw) || 0;
         
@@ -953,7 +953,7 @@ function renderDificuldade() {
     grid.innerHTML = "";
 
     const dificCount = {};
-    state.rows.forEach(row => {
+    getOverviewFilteredRows().forEach(row => {
         const dif = String(row[dificuldadeHeader] || "").trim();
         if (dif) dificCount[dif] = (dificCount[dif] || 0) + 1;
     });
@@ -973,7 +973,7 @@ function renderPlataforma() {
     grid.innerHTML = "";
 
     const platCount = {};
-    state.rows.forEach(row => {
+    getOverviewFilteredRows().forEach(row => {
         const plat = String(row[platHeader] || "").trim();
         if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
     });
@@ -994,7 +994,7 @@ function renderAvaliacao() {
     if (!lista) return;
     lista.innerHTML = "";
 
-    const sorted = [...state.rows].sort((a, b) => {
+    const sorted = [...getOverviewFilteredRows()].sort((a, b) => {
         const avaA = parseNumber(a[avaliacaoHeader] || "") || 0;
         const avaB = parseNumber(b[avaliacaoHeader] || "") || 0;
         return avaB - avaA;
@@ -1025,7 +1025,7 @@ function switchTab(tabId) {
     targetContent.classList.add("active");
 
     if (dom.filtersTop) {
-        dom.filtersTop.hidden = tabId !== "visao-geral";
+        dom.filtersTop.hidden = tabId === "tabela";
     }
 
     if (tabId === "visao-geral") {
@@ -1100,21 +1100,24 @@ function bindEvents() {
     if (dom.filterPlataforma) {
         dom.filterPlataforma.addEventListener("change", (event) => {
             state.overviewFilters.plataforma = event.target.value;
-            renderVisaoGeral();
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+            switchTab(activeTab);
         });
     }
 
     if (dom.filterMultiplayer) {
         dom.filterMultiplayer.addEventListener("change", (event) => {
             state.overviewFilters.multiplayer = event.target.value;
-            renderVisaoGeral();
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+            switchTab(activeTab);
         });
     }
 
     if (dom.filterAnoConclusao) {
         dom.filterAnoConclusao.addEventListener("change", (event) => {
             state.overviewFilters.anoConclusao = event.target.value;
-            renderVisaoGeral();
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+            switchTab(activeTab);
         });
     }
 
