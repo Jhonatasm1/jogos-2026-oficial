@@ -1048,9 +1048,11 @@ function renderDificuldade() {
     }
 
     Object.entries(dificCount).sort((a, b) => b[1] - a[1]).forEach(([dif, count]) => {
+        const secs = dificHoras[dif] || 0;
+        const stringHoras = formatSecondsToTime(secs);
         const card = document.createElement("div");
         card.className = "dificuldade-card";
-        card.innerHTML = `<strong>${dif}</strong><span>${count} jogos</span>`;
+        card.innerHTML = `<strong>${dif}</strong><span>${stringHoras} horas</span>`;
         grid.appendChild(card);
     });
 
