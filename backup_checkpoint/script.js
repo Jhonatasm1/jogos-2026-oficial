@@ -233,9 +233,9 @@ function normalizeYesNo(value) {
     if (!text) return "";
 
     if (["sim", "yes", "y", "true", "verdadeiro", "1"].includes(text)) return "Sim";
-    if (["nao", "no", "n", "false", "falso", "0"].includes(text)) return "Nao";
+    if (["nao", "no", "n", "false", "falso", "0"].includes(text)) return "N\u00e3o";
 
-    if (text.includes("solo") || text.includes("single")) return "Nao";
+    if (text.includes("solo") || text.includes("single")) return "N\u00e3o";
     if (text.includes("coop") || text.includes("co-op") || text.includes("online") || text.includes("multijogador") || text.includes("multiplayer")) return "Sim";
 
     return value;
@@ -664,7 +664,7 @@ function renderCharts(rows, statusCount) {
 
     const doughnutConfig = [
         { key: "pendente", label: "Pendente", color: "#ffcc00" }, // Amarelo
-        { key: "concluido", label: "Concluido", color: "#4a90e2" }, // Azul
+        { key: "concluido", label: "Conclu\u00eddo", color: "#4a90e2" }, // Azul
         { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
         { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
         { key: "jogando", label: "Jogando", color: "#5a9d6a" }, // Verde
@@ -711,7 +711,7 @@ function renderCharts(rows, statusCount) {
 
     const barConfigMap = {
         pendente: { label: "Pendente", color: "#ffcc00" },
-        concluido: { label: "Concluido", color: "#4a90e2" },
+        concluido: { label: "Conclu\u00eddo", color: "#4a90e2" },
         pausado: { label: "Pausado", color: "#ff9800" },
         dropado: { label: "Dropado", color: "#e06c75" },
         jogando: { label: "Jogando", color: "#5a9d6a" },
@@ -767,7 +767,7 @@ function renderCharts(rows, statusCount) {
             maintainAspectRatio: true,
             plugins: { 
                 legend: { labels: { color: "#a8c5d5" } },
-                title: { display: true, text: "LANCAMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
+                title: { display: true, text: "LAN\u00c7AMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
             },
             scales: {
                 y: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
