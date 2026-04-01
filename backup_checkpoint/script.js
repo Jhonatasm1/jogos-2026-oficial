@@ -1222,11 +1222,74 @@ function renderTierList() {
     });
 }
 
+async function exportTierListToPdf() {
+    const tierBlock = document.getElementById("bi-tier-block");
+    const exportBtn = document.getElementById("bi-tier-export-pdf");
+
+    if (!tierBlock || !exportBtn) return;
+
+    if (typeof window.html2canvas !== "function" || !window.jspdf?.jsPDF) {
+        alert("Exportacao de PDF indisponivel no momento.");
+        return;
+    }
+
+    const originalLabel = exportBtn.textContent;
+    exportBtn.disabled = true;
+    exportBtn.textContent = "Exportando...";
+
+    try {
+        const canvas = await window.html2canvas(tierBlock, {
+            backgroundColor: "#0b1110",
+            useCORS: true,
+            scale: 2,
+            logging: false
+        });
+
+        const imageData = canvas.toDataURL("image/png");
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
+            unit: "mm",
+            format: "a4"
+        });
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 8;
+        const availableWidth = pageWidth - margin * 2;
+        const availableHeight = pageHeight - margin * 2;
+
+        const imgRatio = canvas.width / canvas.height;
+        let renderWidth = availableWidth;
+        let renderHeight = renderWidth / imgRatio;
+
+        if (renderHeight > availableHeight) {
+            renderHeight = availableHeight;
+            renderWidth = renderHeight * imgRatio;
+        }
+
+        const x = (pageWidth - renderWidth) / 2;
+        const y = (pageHeight - renderHeight) / 2;
+        pdf.addImage(imageData, "PNG", x, y, renderWidth, renderHeight, undefined, "FAST");
+
+        const now = new Date();
+        const fileName = `tier-list-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.pdf`;
+        pdf.save(fileName);
+    } catch (error) {
+        console.error("Erro ao exportar PDF:", error);
+        alert("Nao foi possivel exportar o PDF agora.");
+    } finally {
+        exportBtn.disabled = false;
+        exportBtn.textContent = originalLabel;
+    }
+}
+
 function bindTierListEvents() {
     if (state.tierList.initialized) return;
 
     const section = document.getElementById("bi-tier-block") || document;
     const uploadInput = document.getElementById("bi-tier-upload");
+    const exportPdfBtn = document.getElementById("bi-tier-export-pdf");
     const titleInput = document.getElementById("bi-tier-title-input");
     const widthInput = document.getElementById("bi-tier-label-width");
     const widthValue = document.getElementById("bi-tier-label-width-value");
@@ -1234,7 +1297,7 @@ function bindTierListEvents() {
     const pool = document.getElementById("bi-tier-pool");
     const trash = document.getElementById("bi-tier-trash");
 
-    if (!uploadInput || !titleInput || !widthInput || !board || !pool || !trash) return;
+    if (!uploadInput || !exportPdfBtn || !titleInput || !widthInput || !board || !pool || !trash) return;
 
     const activateOver = (element) => element?.classList.add("is-over");
     const deactivateOver = (element) => element?.classList.remove("is-over");
@@ -1335,6 +1398,7 @@ function bindTierListEvents() {
     section.addEventListener("change", handleTierLabelEdit);
     section.addEventListener("input", handleTierLabelEdit);
     uploadInput.addEventListener("change", handleUpload);
+    exportPdfBtn.addEventListener("click", exportTierListToPdf);
     titleInput.addEventListener("change", handleTitleEdit);
     titleInput.addEventListener("input", handleTitleEdit);
     widthInput.addEventListener("input", handleWidthEdit);
