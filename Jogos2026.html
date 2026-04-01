@@ -152,12 +152,25 @@
                             </div>
                         </div>
 
-                        <div class="bi-covers-block">
-                            <div class="bi-covers-header">
-                                <h4>Galeria de capas</h4>
-                                <p>Espa&ccedil;o pronto para imagens dos jogos (auto + placeholders).</p>
+                        <div class="bi-tier-block" id="bi-tier-block">
+                            <div class="bi-tier-header">
+                                <div>
+                                    <h4>Tier List de Jogos</h4>
+                                    <p>Arraste imagens entre os tiers, use upload para novas capas e solte na lixeira para excluir.</p>
+                                </div>
+                                <label class="bi-upload-btn" for="bi-tier-upload">Upload de Imagens</label>
+                                <input id="bi-tier-upload" type="file" accept="image/*" multiple hidden>
                             </div>
-                            <div id="bi-covers-grid" class="bi-covers-grid"></div>
+
+                            <div class="bi-tier-board" id="bi-tier-board"></div>
+
+                            <div class="bi-tier-footer">
+                                <div class="bi-tier-trash" id="bi-tier-trash">Lixeira (solte aqui para excluir)</div>
+                                <div class="bi-tier-pool-wrap">
+                                    <h5>Imagens Disponiveis</h5>
+                                    <div class="bi-tier-pool" id="bi-tier-pool"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

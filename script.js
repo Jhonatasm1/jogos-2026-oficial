@@ -19,6 +19,22 @@ const state = {
     customSortDirection: "asc",
     lastPayload: "",
     charts: {},
+    tierList: {
+        initialized: false,
+        nextId: 1,
+        tiers: {
+            S: [],
+            A: [],
+            B: [],
+            C: [],
+            D: [],
+            E: [],
+            F: [],
+            "Don\u0027t know": [],
+            "Doesn\u0027t count": []
+        },
+        pool: []
+    },
     resolvedHeaders: {
         jogo: null,
         status: null,
@@ -798,6 +814,210 @@ function getCoverFromRow(row, title) {
     return "";
 }
 
+function createTierItem(title, src, isUploaded) {
+    const item = {
+        id: `tier-item-${state.tierList.nextId}`,
+        title: title || "Sem titulo",
+        src,
+        isUploaded: Boolean(isUploaded)
+    };
+    state.tierList.nextId += 1;
+    return item;
+}
+
+function getTierColor(label) {
+    const colors = {
+        S: "#ff7a7a",
+        A: "#f2b976",
+        B: "#f3d97b",
+        C: "#ecf07b",
+        D: "#adea73",
+        E: "#78e976",
+        F: "#76dfdb",
+        "Don't know": "#76a9df",
+        "Doesn't count": "#7f7ae2"
+    };
+    return colors[label] || "#a8c5d5";
+}
+
+function getTierContainerByName(name) {
+    if (name === "pool") return state.tierList.pool;
+    return state.tierList.tiers[name] || null;
+}
+
+function removeTierItemById(itemId) {
+    const fromPoolIndex = state.tierList.pool.findIndex((item) => item.id === itemId);
+    if (fromPoolIndex >= 0) {
+        const [removed] = state.tierList.pool.splice(fromPoolIndex, 1);
+        return removed;
+    }
+
+    const tierNames = Object.keys(state.tierList.tiers);
+    for (let i = 0; i < tierNames.length; i += 1) {
+        const tierName = tierNames[i];
+        const tierArr = state.tierList.tiers[tierName];
+        const itemIndex = tierArr.findIndex((item) => item.id === itemId);
+        if (itemIndex >= 0) {
+            const [removed] = tierArr.splice(itemIndex, 1);
+            return removed;
+        }
+    }
+
+    return null;
+}
+
+function renderTierList() {
+    const board = document.getElementById("bi-tier-board");
+    const pool = document.getElementById("bi-tier-pool");
+    if (!board || !pool) return;
+
+    board.innerHTML = "";
+
+    Object.keys(state.tierList.tiers).forEach((tierName) => {
+        const row = document.createElement("div");
+        row.className = "bi-tier-row";
+
+        const label = document.createElement("div");
+        label.className = "bi-tier-label";
+        label.textContent = tierName;
+        label.style.background = getTierColor(tierName);
+
+        const dropzone = document.createElement("div");
+        dropzone.className = "bi-tier-dropzone";
+        dropzone.dataset.target = tierName;
+
+        state.tierList.tiers[tierName].forEach((item) => {
+            const itemEl = document.createElement("div");
+            itemEl.className = "bi-tier-item";
+            itemEl.draggable = true;
+            itemEl.dataset.itemId = item.id;
+            itemEl.title = item.title;
+            itemEl.innerHTML = `<img src="${item.src}" alt="${item.title}">`;
+            dropzone.appendChild(itemEl);
+        });
+
+        row.appendChild(label);
+        row.appendChild(dropzone);
+        board.appendChild(row);
+    });
+
+    pool.innerHTML = "";
+    pool.dataset.target = "pool";
+    state.tierList.pool.forEach((item) => {
+        const itemEl = document.createElement("div");
+        itemEl.className = "bi-tier-item";
+        itemEl.draggable = true;
+        itemEl.dataset.itemId = item.id;
+        itemEl.title = item.title;
+        itemEl.innerHTML = `<img src="${item.src}" alt="${item.title}">`;
+        pool.appendChild(itemEl);
+    });
+}
+
+function bindTierListEvents() {
+    if (state.tierList.initialized) return;
+
+    const section = document.getElementById("bi-tier-block") || document;
+    const uploadInput = document.getElementById("bi-tier-upload");
+    const board = document.getElementById("bi-tier-board");
+    const pool = document.getElementById("bi-tier-pool");
+    const trash = document.getElementById("bi-tier-trash");
+
+    if (!uploadInput || !board || !pool || !trash) return;
+
+    const activateOver = (element) => element?.classList.add("is-over");
+    const deactivateOver = (element) => element?.classList.remove("is-over");
+
+    const handleDragStart = (event) => {
+        const target = event.target.closest(".bi-tier-item");
+        if (!target) return;
+        event.dataTransfer.setData("text/plain", target.dataset.itemId || "");
+        event.dataTransfer.effectAllowed = "move";
+    };
+
+    const handleDragOver = (event) => {
+        const target = event.target.closest(".bi-tier-dropzone, .bi-tier-pool, .bi-tier-trash");
+        if (!target) return;
+        event.preventDefault();
+        activateOver(target);
+    };
+
+    const handleDragLeave = (event) => {
+        const target = event.target.closest(".bi-tier-dropzone, .bi-tier-pool, .bi-tier-trash");
+        if (!target) return;
+        deactivateOver(target);
+    };
+
+    const handleDrop = (event) => {
+        const target = event.target.closest(".bi-tier-dropzone, .bi-tier-pool, .bi-tier-trash");
+        if (!target) return;
+        event.preventDefault();
+        deactivateOver(target);
+
+        const itemId = event.dataTransfer.getData("text/plain");
+        if (!itemId) return;
+
+        const movedItem = removeTierItemById(itemId);
+        if (!movedItem) return;
+
+        if (target.classList.contains("bi-tier-trash")) {
+            if (movedItem.isUploaded && movedItem.src.startsWith("blob:")) {
+                URL.revokeObjectURL(movedItem.src);
+            }
+            renderTierList();
+            return;
+        }
+
+        const targetName = target.dataset.target;
+        const targetContainer = getTierContainerByName(targetName);
+        if (!targetContainer) return;
+
+        targetContainer.push(movedItem);
+        renderTierList();
+    };
+
+    const handleUpload = (event) => {
+        const files = Array.from(event.target.files || []);
+        files.forEach((file) => {
+            if (!file.type.startsWith("image/")) return;
+            const imageUrl = URL.createObjectURL(file);
+            state.tierList.pool.push(createTierItem(file.name.replace(/\.[^/.]+$/, ""), imageUrl, true));
+        });
+
+        renderTierList();
+        uploadInput.value = "";
+    };
+
+    section.addEventListener("dragstart", handleDragStart);
+    section.addEventListener("dragover", handleDragOver);
+    section.addEventListener("dragleave", handleDragLeave);
+    section.addEventListener("drop", handleDrop);
+    uploadInput.addEventListener("change", handleUpload);
+
+    state.tierList.initialized = true;
+}
+
+function seedTierPool(topByTime) {
+    const seen = new Set();
+    state.tierList.pool.forEach((item) => seen.add(item.title.toLowerCase()));
+    Object.keys(state.tierList.tiers).forEach((tierName) => {
+        state.tierList.tiers[tierName].forEach((item) => seen.add(item.title.toLowerCase()));
+    });
+
+    topByTime.slice(0, 20).forEach((item) => {
+        if (!item) return;
+        const title = String(item.jogo || "Sem titulo").trim();
+        const key = title.toLowerCase();
+        if (!title || seen.has(key)) return;
+
+        const src = getCoverFromRow(item.row, title);
+        if (!src) return;
+
+        seen.add(key);
+        state.tierList.pool.push(createTierItem(title, src, false));
+    });
+}
+
 function renderBiGamer() {
     const rows = getOverviewFilteredRows();
     const headers = state.resolvedHeaders;
@@ -819,10 +1039,9 @@ function renderBiGamer() {
     const topPlataformaEl = document.getElementById("bi-top-plataforma");
     const topMultiEl = document.getElementById("bi-top-multi");
     const topJogosEl = document.getElementById("bi-top-jogos");
-    const coversGridEl = document.getElementById("bi-covers-grid");
     const chartEl = document.getElementById("chart-bi-plataforma");
 
-    if (!totalEl || !concluidosEl || !jogandoEl || !pendentesEl || !horasJogadasEl || !horasPendentesEl || !mediaGameplayEl || !mediaZeradosEl || !soloMaisJogadoEl || !difComumEl || !difHorasEl || !taxaEl || !notaMediaEl || !topPlataformaEl || !topMultiEl || !topJogosEl || !coversGridEl) {
+    if (!totalEl || !concluidosEl || !jogandoEl || !pendentesEl || !horasJogadasEl || !horasPendentesEl || !mediaGameplayEl || !mediaZeradosEl || !soloMaisJogadoEl || !difComumEl || !difHorasEl || !taxaEl || !notaMediaEl || !topPlataformaEl || !topMultiEl || !topJogosEl) {
         return;
     }
 
@@ -943,33 +1162,9 @@ function renderBiGamer() {
         topJogosEl.appendChild(row);
     });
 
-    coversGridEl.innerHTML = "";
-    const coverItems = topByTime.slice(0, 6);
-
-    coverItems.forEach((item) => {
-        const coverSrc = getCoverFromRow(item.row, item.jogo);
-        if (coverSrc) {
-            const card = document.createElement("article");
-            card.className = "bi-cover-card";
-            card.innerHTML = `
-                <img src="${coverSrc}" alt="Capa de ${item.jogo}">
-                <div class="bi-cover-caption">${item.jogo}</div>
-            `;
-            coversGridEl.appendChild(card);
-        } else {
-            const slot = document.createElement("article");
-            slot.className = "bi-cover-slot";
-            slot.innerHTML = `<div><strong>${item.jogo}</strong><br>Adicione uma capa/imagem para este jogo.</div>`;
-            coversGridEl.appendChild(slot);
-        }
-    });
-
-    while (coversGridEl.children.length < 8) {
-        const slot = document.createElement("article");
-        slot.className = "bi-cover-slot";
-        slot.textContent = "Slot livre para nova capa";
-        coversGridEl.appendChild(slot);
-    }
+    bindTierListEvents();
+    seedTierPool(topByTime);
+    renderTierList();
 
     if (chartEl && typeof Chart !== "undefined") {
         const platEntries = Object.entries(plataformaCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
