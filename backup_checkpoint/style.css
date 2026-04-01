@@ -852,13 +852,19 @@ td {
 }
 
 .bi-export-btn {
-    background: linear-gradient(135deg, rgba(212, 137, 110, 0.95), rgba(182, 111, 86, 0.95));
-    color: #120904;
-    border: none;
-    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(90, 157, 106, 0.16), rgba(212, 137, 110, 0.12));
+    color: var(--text-light);
+    border: 1px solid rgba(90, 157, 106, 0.42);
+    border-radius: 10px;
     padding: 0.5rem 0.85rem;
     font-weight: 700;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.bi-export-btn:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(90, 157, 106, 0.18);
 }
 
 .bi-export-btn[disabled] {
