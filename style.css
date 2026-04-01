@@ -793,26 +793,6 @@ td {
     margin-bottom: 0.85rem;
 }
 
-.bi-tier-width-control {
-    display: grid;
-    gap: 0.25rem;
-    min-width: 210px;
-}
-
-.bi-tier-width-control label {
-    color: var(--fg-muted);
-    font-size: 0.78rem;
-}
-
-.bi-tier-width-control input[type="range"] {
-    width: 100%;
-}
-
-.bi-tier-width-control span {
-    color: var(--text-light);
-    font-size: 0.78rem;
-}
-
 .bi-tier-header h4 {
     color: var(--text-light);
     margin-bottom: 0.2rem;
@@ -877,6 +857,42 @@ td {
     border-radius: 10px;
     overflow: hidden;
     --bi-tier-label-width: 72px;
+}
+
+.bi-tier-board-wrap {
+    position: relative;
+    --bi-tier-label-width: 72px;
+}
+
+.bi-tier-board-wrap .bi-tier-board {
+    --bi-tier-label-width: var(--bi-tier-label-width);
+}
+
+.bi-tier-resizer {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    left: var(--bi-tier-label-width);
+    transform: translateX(-50%);
+    width: 12px;
+    cursor: col-resize;
+    z-index: 4;
+}
+
+.bi-tier-resizer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    background: rgba(90, 157, 106, 0.6);
+    border-radius: 2px;
+}
+
+.bi-tier-resizer:hover::before {
+    background: rgba(122, 184, 143, 0.95);
 }
 
 .bi-tier-row {

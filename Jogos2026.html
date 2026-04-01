@@ -157,19 +157,16 @@
                             <div class="bi-tier-header">
                                 <div>
                                     <input id="bi-tier-title-input" class="bi-tier-title-input" type="text" value="Tier List de Jogos" aria-label="Titulo da Tier List">
-                                    <p>Arraste imagens entre os tiers, use upload para novas capas e solte na lixeira para excluir.</p>
-                                </div>
-                                <div class="bi-tier-width-control">
-                                    <label for="bi-tier-label-width">Largura da coluna dos tiers</label>
-                                    <input id="bi-tier-label-width" type="range" min="72" max="220" step="2" value="72" aria-label="Largura da coluna dos tiers">
-                                    <span id="bi-tier-label-width-value">72px</span>
                                 </div>
                                 <button id="bi-tier-export-png" class="bi-export-btn" type="button">Exportar PNG</button>
                                 <label class="bi-upload-btn" for="bi-tier-upload">Upload de Imagens</label>
                                 <input id="bi-tier-upload" type="file" accept="image/*" multiple hidden>
                             </div>
 
-                            <div class="bi-tier-board" id="bi-tier-board"></div>
+                            <div class="bi-tier-board-wrap" id="bi-tier-board-wrap">
+                                <div class="bi-tier-board" id="bi-tier-board"></div>
+                                <div class="bi-tier-resizer" id="bi-tier-resizer" title="Arraste para redimensionar a coluna dos tiers" aria-label="Redimensionar coluna dos tiers" role="slider"></div>
+                            </div>
 
                             <div class="bi-tier-footer">
                                 <div class="bi-tier-trash" id="bi-tier-trash">Lixeira (solte aqui para excluir)</div>

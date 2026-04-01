@@ -1152,24 +1152,16 @@ function removeTierItemById(itemId) {
 
 function renderTierList() {
     const board = document.getElementById("bi-tier-board");
+    const boardWrap = document.getElementById("bi-tier-board-wrap");
     const pool = document.getElementById("bi-tier-pool");
     const titleInput = document.getElementById("bi-tier-title-input");
-    const widthInput = document.getElementById("bi-tier-label-width");
-    const widthValue = document.getElementById("bi-tier-label-width-value");
-    if (!board || !pool) return;
+    if (!board || !boardWrap || !pool) return;
 
+    boardWrap.style.setProperty("--bi-tier-label-width", `${state.tierList.labelWidth}px`);
     board.style.setProperty("--bi-tier-label-width", `${state.tierList.labelWidth}px`);
 
     if (titleInput && titleInput.value !== state.tierList.title) {
         titleInput.value = state.tierList.title;
-    }
-
-    if (widthInput && Number(widthInput.value) !== state.tierList.labelWidth) {
-        widthInput.value = String(state.tierList.labelWidth);
-    }
-
-    if (widthValue) {
-        widthValue.textContent = `${state.tierList.labelWidth}px`;
     }
 
     board.innerHTML = "";
@@ -1272,13 +1264,13 @@ function bindTierListEvents() {
     const uploadInput = document.getElementById("bi-tier-upload");
     const exportPngBtn = document.getElementById("bi-tier-export-png");
     const titleInput = document.getElementById("bi-tier-title-input");
-    const widthInput = document.getElementById("bi-tier-label-width");
-    const widthValue = document.getElementById("bi-tier-label-width-value");
+    const boardWrap = document.getElementById("bi-tier-board-wrap");
+    const resizer = document.getElementById("bi-tier-resizer");
     const board = document.getElementById("bi-tier-board");
     const pool = document.getElementById("bi-tier-pool");
     const trash = document.getElementById("bi-tier-trash");
 
-    if (!uploadInput || !exportPngBtn || !titleInput || !widthInput || !board || !pool || !trash) return;
+    if (!uploadInput || !exportPngBtn || !titleInput || !boardWrap || !resizer || !board || !pool || !trash) return;
 
     const activateOver = (element) => element?.classList.add("is-over");
     const deactivateOver = (element) => element?.classList.remove("is-over");
@@ -1364,12 +1356,33 @@ function bindTierListEvents() {
         scheduleTierListSave();
     };
 
-    const handleWidthEdit = (event) => {
-        const value = Number(event.target.value || "72");
-        state.tierList.labelWidth = Math.min(220, Math.max(72, value));
-        board.style.setProperty("--bi-tier-label-width", `${state.tierList.labelWidth}px`);
-        if (widthValue) widthValue.textContent = `${state.tierList.labelWidth}px`;
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = state.tierList.labelWidth;
+
+    const beginResize = (clientX) => {
+        isResizing = true;
+        startX = clientX;
+        startWidth = state.tierList.labelWidth;
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+    };
+
+    const applyResize = (clientX) => {
+        if (!isResizing) return;
+        const delta = clientX - startX;
+        const next = Math.min(220, Math.max(72, startWidth + delta));
+        state.tierList.labelWidth = next;
+        boardWrap.style.setProperty("--bi-tier-label-width", `${next}px`);
+        board.style.setProperty("--bi-tier-label-width", `${next}px`);
         scheduleTierListSave();
+    };
+
+    const endResize = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
     };
 
     section.addEventListener("dragstart", handleDragStart);
@@ -1382,9 +1395,19 @@ function bindTierListEvents() {
     exportPngBtn.addEventListener("click", exportTierListToPng);
     titleInput.addEventListener("change", handleTitleEdit);
     titleInput.addEventListener("input", handleTitleEdit);
-    widthInput.addEventListener("input", handleWidthEdit);
 
-    if (widthValue) widthValue.textContent = `${state.tierList.labelWidth}px`;
+    resizer.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        beginResize(event.clientX);
+    });
+
+    window.addEventListener("pointermove", (event) => {
+        applyResize(event.clientX);
+    });
+
+    window.addEventListener("pointerup", () => {
+        endResize();
+    });
 
     state.tierList.initialized = true;
 }
