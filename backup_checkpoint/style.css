@@ -639,3 +639,231 @@ td {
         width: 100%;
     }
 }
+
+/* BI Gamer */
+.bi-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 1.25rem;
+}
+
+.bi-sidepanel {
+    background: linear-gradient(180deg, rgba(8, 25, 58, 0.9), rgba(9, 18, 33, 0.86));
+    border: 1px solid rgba(127, 191, 255, 0.22);
+    border-radius: 14px;
+    padding: 1.1rem;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.bi-title {
+    font-size: 1.25rem;
+    color: #e9f4ff;
+}
+
+.bi-subtitle {
+    color: #9fc0df;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.bi-side-metrics {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.bi-mini-card {
+    background: rgba(12, 45, 94, 0.45);
+    border: 1px solid rgba(116, 183, 255, 0.2);
+    border-radius: 12px;
+    padding: 0.75rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.bi-mini-card span {
+    color: #accbe7;
+    font-size: 0.82rem;
+}
+
+.bi-mini-card strong {
+    color: #ffffff;
+    font-family: "Syne", sans-serif;
+    font-size: 1.15rem;
+}
+
+.bi-mainboard {
+    display: grid;
+    gap: 1rem;
+}
+
+.bi-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 0.85rem;
+}
+
+.bi-kpi {
+    background: linear-gradient(135deg, rgba(12, 39, 74, 0.88), rgba(15, 61, 117, 0.66));
+    border: 1px solid rgba(143, 197, 255, 0.28);
+    border-radius: 12px;
+    padding: 0.9rem;
+    min-height: 96px;
+}
+
+.bi-kpi p {
+    color: #a4c2dc;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bi-kpi h4 {
+    margin-top: 0.45rem;
+    color: #f2f8ff;
+    font-size: 1.4rem;
+}
+
+.bi-charts-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1rem;
+}
+
+.bi-chart {
+    min-height: 340px;
+    background: rgba(8, 24, 48, 0.8);
+    border-color: rgba(122, 188, 255, 0.24);
+}
+
+.bi-list-card {
+    background: rgba(8, 24, 48, 0.8);
+    border: 1px solid rgba(122, 188, 255, 0.24);
+    border-radius: 12px;
+    padding: 0.9rem;
+}
+
+.bi-list-card h4 {
+    color: #eaf4ff;
+    margin-bottom: 0.8rem;
+}
+
+.bi-top-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.bi-top-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    border-bottom: 1px solid rgba(145, 191, 235, 0.2);
+    padding-bottom: 0.4rem;
+}
+
+.bi-top-item:last-child {
+    border-bottom: none;
+}
+
+.bi-top-item span {
+    color: #cde3f7;
+}
+
+.bi-top-item strong {
+    color: #ffffff;
+}
+
+.bi-covers-block {
+    background: rgba(9, 26, 51, 0.78);
+    border: 1px solid rgba(122, 188, 255, 0.24);
+    border-radius: 12px;
+    padding: 0.9rem;
+}
+
+.bi-covers-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+}
+
+.bi-covers-header h4 {
+    color: #eaf4ff;
+}
+
+.bi-covers-header p {
+    color: #aac9e4;
+    font-size: 0.82rem;
+}
+
+.bi-covers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.85rem;
+}
+
+.bi-cover-card {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(145, 196, 245, 0.3);
+    min-height: 220px;
+    background: linear-gradient(170deg, rgba(20, 48, 84, 0.85), rgba(8, 20, 37, 0.92));
+}
+
+.bi-cover-card img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    display: block;
+}
+
+.bi-cover-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(4, 13, 24, 0), rgba(4, 13, 24, 0.9));
+    color: #f1f8ff;
+    font-size: 0.78rem;
+    padding: 0.75rem 0.6rem 0.55rem;
+}
+
+.bi-cover-slot {
+    min-height: 220px;
+    border-radius: 10px;
+    border: 1px dashed rgba(145, 196, 245, 0.45);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: #a5c5e0;
+    padding: 0.8rem;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 1100px) {
+    .bi-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .bi-kpi-grid {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+    }
+
+    .bi-charts-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .bi-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bi-covers-grid {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+}

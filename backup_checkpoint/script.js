@@ -1,4 +1,4 @@
-﻿const CSV_URLS = [
+const CSV_URLS = [
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQZcOOu3eivDQ7v0b6bxVCvxtNjhYFkbSq2I-tBevYwQ07jEaHCWff0j14eHE8BOR7EA7L1ko4RFIMu/pub?gid=268101817&single=true&output=csv",
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQZcOOu3eivDQ7v0b6bxVCvxtNjhYFkbSq2I-tBevYwQ07jEaHCWff0j14eHE8BOR7EA7L1ko4RFIMu/gviz/tq?tqx=out:csv&gid=268101817"
 ];
@@ -110,7 +110,7 @@ function normalizeText(value) {
 
 function fixEncoding(value) {
     const text = String(value || "");
-    if (!/[ÃÂâ€]/.test(text)) {
+    if (!/[���]/.test(text)) {
         return text;
     }
     try {
@@ -233,9 +233,9 @@ function normalizeYesNo(value) {
     if (!text) return "";
 
     if (["sim", "yes", "y", "true", "verdadeiro", "1"].includes(text)) return "Sim";
-    if (["nao", "não", "no", "n", "false", "falso", "0"].includes(text)) return "Não";
+    if (["nao", "n�o", "no", "n", "false", "falso", "0"].includes(text)) return "N�o";
 
-    if (text.includes("solo") || text.includes("single")) return "Não";
+    if (text.includes("solo") || text.includes("single")) return "N�o";
     if (text.includes("coop") || text.includes("co-op") || text.includes("online") || text.includes("multijogador") || text.includes("multiplayer")) return "Sim";
 
     return value;
@@ -254,7 +254,7 @@ function getRowMultiplayerType(row) {
 
     const pvpTokens = ["pvp", "versus", "x1", "1v1", "competitivo", "ranked", "ranqueada", "arena"];
     const coopTokens = ["coop", "co-op", "co op", "cooperativo", "multiplayer", "multijogador", "online coop", "online cooperativo"];
-    const soloTokens = ["solo", "single player", "singleplayer", "campanha", "historia", "história", "offline", "nao", "não", "false", "0"];
+    const soloTokens = ["solo", "single player", "singleplayer", "campanha", "historia", "hist�ria", "offline", "nao", "n�o", "false", "0"];
 
     if (pvpTokens.some((token) => text.includes(token))) return "PVP";
     if (coopTokens.some((token) => text.includes(token))) return "COOP";
@@ -664,7 +664,7 @@ function renderCharts(rows, statusCount) {
 
     const doughnutConfig = [
         { key: "pendente", label: "Pendente", color: "#ffcc00" }, // Amarelo
-        { key: "concluido", label: "Concluído", color: "#4a90e2" }, // Azul
+        { key: "concluido", label: "Conclu�do", color: "#4a90e2" }, // Azul
         { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
         { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
         { key: "jogando", label: "Jogando", color: "#5a9d6a" }, // Verde
@@ -711,7 +711,7 @@ function renderCharts(rows, statusCount) {
 
     const barConfigMap = {
         pendente: { label: "Pendente", color: "#ffcc00" },
-        concluido: { label: "Concluído", color: "#4a90e2" },
+        concluido: { label: "Conclu�do", color: "#4a90e2" },
         pausado: { label: "Pausado", color: "#ff9800" },
         dropado: { label: "Dropado", color: "#e06c75" },
         jogando: { label: "Jogando", color: "#5a9d6a" },
@@ -767,7 +767,7 @@ function renderCharts(rows, statusCount) {
             maintainAspectRatio: true,
             plugins: { 
                 legend: { labels: { color: "#a8c5d5" } },
-                title: { display: true, text: "LANÇAMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
+                title: { display: true, text: "LAN�AMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
             },
             scales: {
                 y: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
@@ -775,6 +775,172 @@ function renderCharts(rows, statusCount) {
             }
         }
     });
+}
+
+function formatHoursCompact(totalSeconds) {
+    const hours = Math.round((Number(totalSeconds) || 0) / 3600);
+    return `${hours}h`;
+}
+
+function getCoverFromRow(row, title) {
+    const coverHeader = findHeader([/capa/, /imagem/, /image/, /cover/, /thumb/]);
+    const rawCover = coverHeader ? String(row[coverHeader] || "").trim() : "";
+
+    if (/^https?:\/\//i.test(rawCover)) {
+        return rawCover;
+    }
+
+    const normalizedTitle = normalizeText(title);
+    if (normalizedTitle.includes("sekiro")) return "sekiro.png";
+    if (normalizedTitle.includes("cuphead")) return "cuphead.png";
+    if (normalizedTitle.includes("last of us") || normalizedTitle.includes("tlou")) return "tlou.png";
+
+    return "";
+}
+
+function renderBiGamer() {
+    const rows = getOverviewFilteredRows();
+    const headers = state.resolvedHeaders;
+
+    const totalEl = document.getElementById("bi-total");
+    const concluidosEl = document.getElementById("bi-concluidos");
+    const horasEl = document.getElementById("bi-horas");
+    const taxaEl = document.getElementById("bi-taxa-conclusao");
+    const notaMediaEl = document.getElementById("bi-nota-media");
+    const topPlataformaEl = document.getElementById("bi-top-plataforma");
+    const topMultiEl = document.getElementById("bi-top-multi");
+    const topJogosEl = document.getElementById("bi-top-jogos");
+    const coversGridEl = document.getElementById("bi-covers-grid");
+    const chartEl = document.getElementById("chart-bi-plataforma");
+
+    if (!totalEl || !concluidosEl || !horasEl || !taxaEl || !notaMediaEl || !topPlataformaEl || !topMultiEl || !topJogosEl || !coversGridEl) {
+        return;
+    }
+
+    const statusStats = { concluidos: 0 };
+    const plataformaCount = {};
+    const multiplayerCount = {};
+    let totalSeconds = 0;
+    let notaSum = 0;
+    let notaCount = 0;
+
+    rows.forEach((row) => {
+        const status = normalizeText(getRowValue(row, headers.status));
+        const tempo = parseTimeToSeconds(getRowValue(row, headers.tempo)) || 0;
+        const plataforma = getRowValue(row, headers.plataforma) || "N/A";
+        const multiType = getRowMultiplayerType(row) || "N/A";
+        const nota = parseNumber(getRowValue(row, headers.avaliacao));
+
+        if (status === "concluido") statusStats.concluidos += 1;
+
+        totalSeconds += tempo;
+        plataformaCount[plataforma] = (plataformaCount[plataforma] || 0) + 1;
+        multiplayerCount[multiType] = (multiplayerCount[multiType] || 0) + 1;
+
+        if (nota !== null) {
+            notaSum += nota;
+            notaCount += 1;
+        }
+    });
+
+    const total = rows.length;
+    const taxa = total ? ((statusStats.concluidos / total) * 100) : 0;
+    const notaMedia = notaCount ? (notaSum / notaCount) : 0;
+
+    const topPlataforma = Object.entries(plataformaCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+    const topMulti = Object.entries(multiplayerCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+
+    totalEl.textContent = String(total);
+    concluidosEl.textContent = String(statusStats.concluidos);
+    horasEl.textContent = formatHoursCompact(totalSeconds);
+    taxaEl.textContent = `${taxa.toFixed(1)}%`;
+    notaMediaEl.textContent = notaCount ? notaMedia.toFixed(1) : "-";
+    topPlataformaEl.textContent = topPlataforma;
+    topMultiEl.textContent = topMulti;
+
+    const topByTime = rows
+        .map((row) => {
+            const jogo = getRowValue(row, headers.jogo) || "Sem titulo";
+            const seconds = parseTimeToSeconds(getRowValue(row, headers.tempo)) || 0;
+            return { row, jogo, seconds };
+        })
+        .filter((item) => item.seconds > 0)
+        .sort((a, b) => b.seconds - a.seconds)
+        .slice(0, 8);
+
+    topJogosEl.innerHTML = "";
+    topByTime.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "bi-top-item";
+        row.innerHTML = `<span>${item.jogo}</span><strong>${formatHoursCompact(item.seconds)}</strong>`;
+        topJogosEl.appendChild(row);
+    });
+
+    coversGridEl.innerHTML = "";
+    const coverItems = topByTime.slice(0, 6);
+
+    coverItems.forEach((item) => {
+        const coverSrc = getCoverFromRow(item.row, item.jogo);
+        if (coverSrc) {
+            const card = document.createElement("article");
+            card.className = "bi-cover-card";
+            card.innerHTML = `
+                <img src="${coverSrc}" alt="Capa de ${item.jogo}">
+                <div class="bi-cover-caption">${item.jogo}</div>
+            `;
+            coversGridEl.appendChild(card);
+        } else {
+            const slot = document.createElement("article");
+            slot.className = "bi-cover-slot";
+            slot.innerHTML = `<div><strong>${item.jogo}</strong><br>Adicione uma capa/imagem para este jogo.</div>`;
+            coversGridEl.appendChild(slot);
+        }
+    });
+
+    while (coversGridEl.children.length < 8) {
+        const slot = document.createElement("article");
+        slot.className = "bi-cover-slot";
+        slot.textContent = "Slot livre para nova capa";
+        coversGridEl.appendChild(slot);
+    }
+
+    if (chartEl && typeof Chart !== "undefined") {
+        const platEntries = Object.entries(plataformaCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        const labels = platEntries.map(([label]) => label);
+        const values = platEntries.map(([, value]) => value);
+
+        if (state.charts.biPlataforma) state.charts.biPlataforma.destroy();
+        state.charts.biPlataforma = new Chart(chartEl, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Jogos",
+                    data: values,
+                    backgroundColor: ["#1f77b4", "#3e95d1", "#79b8ea", "#0f5d95", "#195b8b", "#4f89b8"],
+                    borderWidth: 0,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: "Distribuicao por plataforma",
+                        color: "#cfe6fa",
+                        font: { size: 15 }
+                    }
+                },
+                scales: {
+                    y: { ticks: { color: "#accbe7" }, grid: { color: "rgba(166, 203, 237, 0.16)" } },
+                    x: { ticks: { color: "#accbe7" }, grid: { display: false } }
+                }
+            }
+        });
+    }
 }
 
 function renderTempoJogo() {
@@ -952,7 +1118,7 @@ function renderDificuldade() {
     
     const grid = document.getElementById("grid-dificuldade");
     const ctxDifBar = document.getElementById("chart-dificuldade-bar");
-    const ctxDifHoras = document.getElementById("chart-dificuldade-horas");
+    const divDifHoras = document.getElementById("chart-dificuldade-horas");
 
     if (!grid) return;
     grid.innerHTML = "";
@@ -1013,10 +1179,10 @@ function renderDificuldade() {
                     },
                     backgroundColor: (ctx) => {
                         const levelColors = {
-                            "BASTA TER CÉREBRO": "#a3d1ff", // Light Blue
-                            "MAMÃO COM AÇÚCAR": "#82b4ff", // Slightly darker blue
-                            "MÉDIO": "#6699ff", // Medium blue
-                            "PRECISA DE UM ESFORÇO": "#ffa3a3", // Light Red
+                            "BASTA TER C�REBRO": "#a3d1ff", // Light Blue
+                            "MAM�O COM A��CAR": "#82b4ff", // Slightly darker blue
+                            "M�DIO": "#6699ff", // Medium blue
+                            "PRECISA DE UM ESFOR�O": "#ffa3a3", // Light Red
                             "REALMENTE TRABALHOSO": "#ff6666", // Red
                             "SEKIRO": "#cc0000" // Dark Red
                         };
@@ -1048,43 +1214,44 @@ function renderDificuldade() {
         });
     }
 
-    if (ctxDifHoras && typeof Chart !== "undefined") {
-        const labelsDifsHoras = sortedHoras.map(item => item[0]);
-        const dataDifsHoras = sortedHoras.map(item => (item[1] / 3600).toFixed(1));
-        const bgColorsHoras = labelsDifsHoras.map(label => {
-            const levelColors = {
-                "BASTA TER CÉREBRO": "#a3d1ff", // Light Blue
-                "MAMÃO COM AÇÚCAR": "#82b4ff", // Slightly darker blue
-                "MÉDIO": "#6699ff", // Medium blue
-                "PRECISA DE UM ESFORÇO": "#ffa3a3", // Light Red
-                "REALMENTE TRABALHOSO": "#ff6666", // Red
-                "SEKIRO": "#cc0000" // Dark Red
-            };
-            return levelColors[label] || "#1f3849";
-        });
+    if (divDifHoras && typeof google !== "undefined") {
+          google.charts.load("current", {packages:["corechart"]});
+          const drawChart = () => {
+              const dataTable = new google.visualization.DataTable();
+              dataTable.addColumn("string", "Dificuldade");
+              dataTable.addColumn("number", "Horas");
 
-        if (state.charts.dificuldadeHoras) state.charts.dificuldadeHoras.destroy();
-        state.charts.dificuldadeHoras = new Chart(ctxDifHoras, {
-            type: "pie",
-            data: {
-                labels: labelsDifsHoras,
-                datasets: [{
-                    data: dataDifsHoras,
-                    backgroundColor: bgColorsHoras,
-                    borderColor: "var(--bg-2)",
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { position: "right", labels: { color: "#a8c5d5" } },
-                    title: { display: true, text: "HORAS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } }
-                }
-            }
-        });
-    }
+              const levelColors = {
+                  "BASTA TER C�REBRO": "#a3d1ff",
+                  "MAM�O COM A��CAR": "#82b4ff",
+                  "M�DIO": "#6699ff",
+                  "PRECISA DE UM ESFOR�O": "#ffa3a3",
+                  "REALMENTE TRABALHOSO": "#ff6666",
+                  "SEKIRO": "#cc0000"
+              };
+
+              const colorsArr = [];
+              sortedHoras.forEach(item => {
+                  const hours = parseFloat((item[1] / 3600).toFixed(1));
+                  dataTable.addRow([item[0], hours]);
+                  colorsArr.push(levelColors[item[0]] || "#1f3849");
+              });
+
+              const options = {
+                  title: "HORAS POR DIFICULDADE",
+                  is3D: true,
+                  backgroundColor: "transparent",
+                  colors: colorsArr,
+                  titleTextStyle: { color: "#a8c5d5", fontSize: 16, bold: true },
+                  legend: { position: "right", textStyle: { color: "#a8c5d5" } },
+                  chartArea: { width: "100%", height: "80%" }
+              };
+
+              const chart = new google.visualization.PieChart(divDifHoras);
+              chart.draw(dataTable, options);
+          };
+          google.charts.setOnLoadCallback(drawChart);
+      }
 
     Object.entries(dificCount).sort((a, b) => b[1] - a[1]).forEach(([dif, count]) => {
         const secs = dificHoras[dif] || 0;
@@ -1197,6 +1364,8 @@ function switchTab(tabId) {
 
     if (tabId === "visao-geral") {
         renderVisaoGeral();
+    } else if (tabId === "bi-gamer") {
+        renderBiGamer();
     } else if (tabId === "tempo-jogo") {
         renderTempoJogo();
     } else if (tabId === "dificuldade") {
@@ -1231,6 +1400,11 @@ async function fetchRankingData() {
         updateOverviewFilterSelects();
         renderTable();
         renderVisaoGeral();
+
+        const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+        if (activeTab === "bi-gamer") {
+            renderBiGamer();
+        }
 
         state.lastPayload = payload;
         updateStatus("Dados sincronizados com sucesso.", false);
@@ -1314,3 +1488,4 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+

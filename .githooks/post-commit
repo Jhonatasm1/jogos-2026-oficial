@@ -1,0 +1,9 @@
+#!/bin/sh
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+# Auto-push only on main to keep GitHub Pages updated.
+if [ "$branch" = "main" ]; then
+  echo "[auto-publish] pushing main to origin..."
+  git push origin main
+fi

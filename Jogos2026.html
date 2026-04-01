@@ -22,22 +22,23 @@
 
     <main>
         <nav class="tabs-nav">
-            <button class="tab-btn active" data-tab="visao-geral">Visão Geral</button>
+            <button class="tab-btn active" data-tab="visao-geral">Visï¿½o Geral</button>
+            <button class="tab-btn" data-tab="bi-gamer">BI Gamer</button>
             <button class="tab-btn" data-tab="tempo-jogo">Tempo de Jogo</button>
             <button class="tab-btn" data-tab="dificuldade">Dificuldade</button>
             <button class="tab-btn" data-tab="plataforma">Plataforma</button>
-            <button class="tab-btn" data-tab="avaliacao">Avaliação Pessoal</button>
+            <button class="tab-btn" data-tab="avaliacao">Avaliaï¿½ï¿½o Pessoal</button>
             <button class="tab-btn" data-tab="tabela">Tabela Completa</button>
         </nav>
 
         <div class="filters-container" id="filters-top">
             <label>Plataforma:<select id="filter-plataforma"></select></label>
             <label>Multiplayer:<select id="filter-multiplayer"></select></label>
-            <label>Ano de Conclusão:<select id="filter-ano-conclusao"></select></label>
+            <label>Ano de Conclusï¿½o:<select id="filter-ano-conclusao"></select></label>
         </div>
 
         <div class="tabs-container">
-            <!-- Visão Geral -->
+            <!-- Visï¿½o Geral -->
             <section class="tab-content active" id="visao-geral">
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -45,7 +46,7 @@
                         <span class="stat-value" id="total-jogos">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Concluídos</span>
+                        <span class="stat-label">Concluï¿½dos</span>
                         <span class="stat-value" id="total-concluidos">-</span>
                     </div>
                     <div class="stat-card">
@@ -67,6 +68,69 @@
                 </div>
             </section>
 
+            <!-- BI Gamer -->
+            <section class="tab-content" id="bi-gamer">
+                <div class="bi-layout">
+                    <aside class="bi-sidepanel">
+                        <h3 class="bi-title">BI Gamer</h3>
+                        <p class="bi-subtitle">Visao executiva do backlog e progresso.</p>
+                        <div class="bi-side-metrics">
+                            <div class="bi-mini-card">
+                                <span>Total</span>
+                                <strong id="bi-total">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Concluidos</span>
+                                <strong id="bi-concluidos">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Horas</span>
+                                <strong id="bi-horas">-</strong>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="bi-mainboard">
+                        <div class="bi-kpi-grid">
+                            <article class="bi-kpi">
+                                <p>Taxa de conclusao</p>
+                                <h4 id="bi-taxa-conclusao">-</h4>
+                            </article>
+                            <article class="bi-kpi">
+                                <p>Nota media pessoal</p>
+                                <h4 id="bi-nota-media">-</h4>
+                            </article>
+                            <article class="bi-kpi">
+                                <p>Top plataforma</p>
+                                <h4 id="bi-top-plataforma">-</h4>
+                            </article>
+                            <article class="bi-kpi">
+                                <p>Modo dominante</p>
+                                <h4 id="bi-top-multi">-</h4>
+                            </article>
+                        </div>
+
+                        <div class="bi-charts-row">
+                            <div class="chart-container bi-chart">
+                                <canvas id="chart-bi-plataforma"></canvas>
+                            </div>
+                            <div class="bi-list-card">
+                                <h4>Top 8 por tempo</h4>
+                                <div id="bi-top-jogos" class="bi-top-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="bi-covers-block">
+                            <div class="bi-covers-header">
+                                <h4>Galeria de capas</h4>
+                                <p>Espaco pronto para imagens dos jogos (auto + placeholders).</p>
+                            </div>
+                            <div id="bi-covers-grid" class="bi-covers-grid"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Tempo de Jogo -->
             <section class="tab-content" id="tempo-jogo">
                 <div class="stats-grid">
@@ -79,11 +143,11 @@
                         <span class="stat-value" id="total-horas-pendentes">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Média de Tempo de Gameplay</span>
+                        <span class="stat-label">Mï¿½dia de Tempo de Gameplay</span>
                         <span class="stat-value" id="media-gameplay">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Média dos Jogos Zerados</span>
+                        <span class="stat-label">Mï¿½dia dos Jogos Zerados</span>
                         <span class="stat-value" id="media-zerados">-</span>
                     </div>
                     <div class="stat-card">
@@ -130,7 +194,7 @@
 
                 <div class="hardcore-showcase">
                     <div class="hardcore-banner" id="banner-sekiro">
-                        <div class="hardcore-title">Nível<br>Sekiro</div>
+                        <div class="hardcore-title">Nï¿½vel<br>Sekiro</div>
                         <div class="hardcore-games" id="list-sekiro"></div>
                     </div>
                     <div class="hardcore-banner" id="banner-trabalhoso">
@@ -139,7 +203,7 @@
                     </div>
                 </div>
 
-                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Todos os Níveis de Dificuldade</h3>
+                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Todos os Nï¿½veis de Dificuldade</h3>
                 <div class="grid-container" id="grid-dificuldade" style="margin-top: 1rem;"></div>
             </section>
 
@@ -148,7 +212,7 @@
                 <div class="grid-container" id="grid-plataforma"></div>
             </section>
 
-            <!-- Avaliação Pessoal -->
+            <!-- Avaliaï¿½ï¿½o Pessoal -->
             <section class="tab-content" id="avaliacao">
                 <div class="list-container" id="lista-avaliacao"></div>
             </section>
