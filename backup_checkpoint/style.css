@@ -798,6 +798,25 @@ td {
     margin-bottom: 0.2rem;
 }
 
+.bi-tier-title-input {
+    width: min(100%, 360px);
+    background: rgba(16, 23, 20, 0.85);
+    border: 1px solid rgba(90, 157, 106, 0.35);
+    border-radius: 6px;
+    color: var(--text-light);
+    font-family: "Syne", sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.3rem;
+}
+
+.bi-tier-title-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(90, 157, 106, 0.2);
+}
+
 .bi-tier-header p {
     color: var(--fg-muted);
     font-size: 0.82rem;
@@ -836,6 +855,24 @@ td {
     color: #09120a;
     font-size: 0.95rem;
     border-right: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.bi-tier-label-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #09120a;
+    font-family: "Syne", sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 0 0.2rem;
+}
+
+.bi-tier-label-input:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 1px rgba(9, 18, 10, 0.35);
+    border-radius: 4px;
 }
 
 .bi-tier-dropzone {

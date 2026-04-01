@@ -22,6 +22,18 @@ const state = {
     tierList: {
         initialized: false,
         nextId: 1,
+        title: "Tier List de Jogos",
+        labels: {
+            S: "S",
+            A: "A",
+            B: "B",
+            C: "C",
+            D: "D",
+            E: "E",
+            F: "F",
+            "Don\u0027t know": "Don\u0027t know",
+            "Doesn\u0027t count": "Doesn\u0027t count"
+        },
         tiers: {
             S: [],
             A: [],
@@ -825,7 +837,7 @@ function createTierItem(title, src, isUploaded) {
     return item;
 }
 
-function getTierColor(label) {
+function getTierColor(tierKey) {
     const colors = {
         S: "#ff7a7a",
         A: "#f2b976",
@@ -837,7 +849,7 @@ function getTierColor(label) {
         "Don't know": "#76a9df",
         "Doesn't count": "#7f7ae2"
     };
-    return colors[label] || "#a8c5d5";
+    return colors[tierKey] || "#a8c5d5";
 }
 
 function getTierContainerByName(name) {
@@ -869,24 +881,36 @@ function removeTierItemById(itemId) {
 function renderTierList() {
     const board = document.getElementById("bi-tier-board");
     const pool = document.getElementById("bi-tier-pool");
+    const titleInput = document.getElementById("bi-tier-title-input");
     if (!board || !pool) return;
+
+    if (titleInput && titleInput.value !== state.tierList.title) {
+        titleInput.value = state.tierList.title;
+    }
 
     board.innerHTML = "";
 
-    Object.keys(state.tierList.tiers).forEach((tierName) => {
+    Object.keys(state.tierList.tiers).forEach((tierKey) => {
         const row = document.createElement("div");
         row.className = "bi-tier-row";
 
         const label = document.createElement("div");
         label.className = "bi-tier-label";
-        label.textContent = tierName;
-        label.style.background = getTierColor(tierName);
+        label.style.background = getTierColor(tierKey);
+
+        const labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.className = "bi-tier-label-input";
+        labelInput.dataset.tierKey = tierKey;
+        labelInput.value = state.tierList.labels[tierKey] || tierKey;
+        labelInput.setAttribute("aria-label", `Nome do tier ${tierKey}`);
+        label.appendChild(labelInput);
 
         const dropzone = document.createElement("div");
         dropzone.className = "bi-tier-dropzone";
-        dropzone.dataset.target = tierName;
+        dropzone.dataset.target = tierKey;
 
-        state.tierList.tiers[tierName].forEach((item) => {
+        state.tierList.tiers[tierKey].forEach((item) => {
             const itemEl = document.createElement("div");
             itemEl.className = "bi-tier-item";
             itemEl.draggable = true;
@@ -919,11 +943,12 @@ function bindTierListEvents() {
 
     const section = document.getElementById("bi-tier-block") || document;
     const uploadInput = document.getElementById("bi-tier-upload");
+    const titleInput = document.getElementById("bi-tier-title-input");
     const board = document.getElementById("bi-tier-board");
     const pool = document.getElementById("bi-tier-pool");
     const trash = document.getElementById("bi-tier-trash");
 
-    if (!uploadInput || !board || !pool || !trash) return;
+    if (!uploadInput || !titleInput || !board || !pool || !trash) return;
 
     const activateOver = (element) => element?.classList.add("is-over");
     const deactivateOver = (element) => element?.classList.remove("is-over");
@@ -988,11 +1013,30 @@ function bindTierListEvents() {
         uploadInput.value = "";
     };
 
+    const handleTitleEdit = (event) => {
+        const value = String(event.target.value || "").trim();
+        state.tierList.title = value || "Tier List de Jogos";
+        if (!value) event.target.value = state.tierList.title;
+    };
+
+    const handleTierLabelEdit = (event) => {
+        const target = event.target;
+        if (!target.classList.contains("bi-tier-label-input")) return;
+        const tierKey = target.dataset.tierKey;
+        if (!tierKey) return;
+
+        const value = String(target.value || "").trim();
+        state.tierList.labels[tierKey] = value || tierKey;
+        if (!value) target.value = tierKey;
+    };
+
     section.addEventListener("dragstart", handleDragStart);
     section.addEventListener("dragover", handleDragOver);
     section.addEventListener("dragleave", handleDragLeave);
     section.addEventListener("drop", handleDrop);
+    section.addEventListener("change", handleTierLabelEdit);
     uploadInput.addEventListener("change", handleUpload);
+    titleInput.addEventListener("change", handleTitleEdit);
 
     state.tierList.initialized = true;
 }
