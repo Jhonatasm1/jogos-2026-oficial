@@ -801,10 +801,19 @@ function getCoverFromRow(row, title) {
 function renderBiGamer() {
     const rows = getOverviewFilteredRows();
     const headers = state.resolvedHeaders;
+    const dificuldadeHeader = findHeader([/dificuldade/, /difficulty/]);
 
     const totalEl = document.getElementById("bi-total");
     const concluidosEl = document.getElementById("bi-concluidos");
-    const horasEl = document.getElementById("bi-horas");
+    const jogandoEl = document.getElementById("bi-jogando");
+    const pendentesEl = document.getElementById("bi-pendentes");
+    const horasJogadasEl = document.getElementById("bi-horas-jogadas");
+    const horasPendentesEl = document.getElementById("bi-horas-pendentes");
+    const mediaGameplayEl = document.getElementById("bi-media-gameplay");
+    const mediaZeradosEl = document.getElementById("bi-media-zerados");
+    const soloMaisJogadoEl = document.getElementById("bi-solo-mais-jogado");
+    const difComumEl = document.getElementById("bi-dif-comum");
+    const difHorasEl = document.getElementById("bi-dif-horas");
     const taxaEl = document.getElementById("bi-taxa-conclusao");
     const notaMediaEl = document.getElementById("bi-nota-media");
     const topPlataformaEl = document.getElementById("bi-top-plataforma");
@@ -813,16 +822,48 @@ function renderBiGamer() {
     const coversGridEl = document.getElementById("bi-covers-grid");
     const chartEl = document.getElementById("chart-bi-plataforma");
 
-    if (!totalEl || !concluidosEl || !horasEl || !taxaEl || !notaMediaEl || !topPlataformaEl || !topMultiEl || !topJogosEl || !coversGridEl) {
+    if (!totalEl || !concluidosEl || !jogandoEl || !pendentesEl || !horasJogadasEl || !horasPendentesEl || !mediaGameplayEl || !mediaZeradosEl || !soloMaisJogadoEl || !difComumEl || !difHorasEl || !taxaEl || !notaMediaEl || !topPlataformaEl || !topMultiEl || !topJogosEl || !coversGridEl) {
         return;
     }
 
-    const statusStats = { concluidos: 0 };
+    const statusStats = { concluidos: 0, jogando: 0, pendentes: 0 };
     const plataformaCount = {};
     const multiplayerCount = {};
-    let totalSeconds = 0;
+    const dificuldadeCount = {};
+    const dificuldadeHoras = {};
+
+    let segundosJogados = 0;
+    let segundosPendentes = 0;
     let notaSum = 0;
     let notaCount = 0;
+
+    const tempoRows = rows.map((row) => {
+        const jogoNome = getRowValue(row, headers.jogo) || "Desconhecido";
+        const seconds = parseTimeToSeconds(getRowValue(row, headers.tempo)) || 0;
+        const st = normalizeText(getRowValue(row, headers.status));
+        const jogoNomeLower = normalizeText(jogoNome);
+        const isCS2 = jogoNomeLower.includes("counter strike 2") || jogoNomeLower.includes("counter-strike 2");
+        const multiType = normalizeText(getRowMultiplayerType(row));
+
+        const isJogado = st === "concluido" || st === "dropado" || st === "jogando";
+        const isPendente = st === "iniciado" || st === "logo jogo" || st === "logo" || st === "pausado" || st === "pendente";
+
+        if (seconds > 0) {
+            if (isJogado) segundosJogados += seconds;
+            if (isPendente) segundosPendentes += seconds;
+        }
+
+        return {
+            row,
+            jogo: jogoNome,
+            seconds,
+            st,
+            isJogado,
+            isPendente,
+            isSolo: multiType === "solo",
+            isCS2
+        };
+    });
 
     rows.forEach((row) => {
         const status = normalizeText(getRowValue(row, headers.status));
@@ -830,12 +871,19 @@ function renderBiGamer() {
         const plataforma = getRowValue(row, headers.plataforma) || "N/A";
         const multiType = getRowMultiplayerType(row) || "N/A";
         const nota = parseNumber(getRowValue(row, headers.avaliacao));
+        const dificuldade = String(row[dificuldadeHeader] || "").trim();
 
         if (status === "concluido") statusStats.concluidos += 1;
+        if (status === "jogando") statusStats.jogando += 1;
+        if (status === "pendente") statusStats.pendentes += 1;
 
-        totalSeconds += tempo;
         plataformaCount[plataforma] = (plataformaCount[plataforma] || 0) + 1;
         multiplayerCount[multiType] = (multiplayerCount[multiType] || 0) + 1;
+
+        if (dificuldade) {
+            dificuldadeCount[dificuldade] = (dificuldadeCount[dificuldade] || 0) + 1;
+            dificuldadeHoras[dificuldade] = (dificuldadeHoras[dificuldade] || 0) + tempo;
+        }
 
         if (nota !== null) {
             notaSum += nota;
@@ -849,21 +897,40 @@ function renderBiGamer() {
 
     const topPlataforma = Object.entries(plataformaCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
     const topMulti = Object.entries(multiplayerCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+    const topDificuldadeComum = Object.entries(dificuldadeCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+    const topDificuldadeHoras = Object.entries(dificuldadeHoras).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+
+    const jogadosSemCS = tempoRows.filter((item) => item.seconds > 0 && item.isJogado && !item.isCS2);
+    const mediaGameplay = jogadosSemCS.length > 0
+        ? jogadosSemCS.reduce((acc, item) => acc + item.seconds, 0) / jogadosSemCS.length
+        : 0;
+
+    const concluidos = tempoRows.filter((item) => item.seconds > 0 && item.st === "concluido");
+    const mediaZerados = concluidos.length > 0
+        ? concluidos.reduce((acc, item) => acc + item.seconds, 0) / concluidos.length
+        : 0;
+
+    const soloMaisJogado = tempoRows
+        .filter((item) => item.seconds > 0 && item.isJogado && item.isSolo)
+        .sort((a, b) => b.seconds - a.seconds)[0]?.jogo || "-";
 
     totalEl.textContent = String(total);
     concluidosEl.textContent = String(statusStats.concluidos);
-    horasEl.textContent = formatHoursCompact(totalSeconds);
+    jogandoEl.textContent = String(statusStats.jogando);
+    pendentesEl.textContent = String(statusStats.pendentes);
+    horasJogadasEl.textContent = formatHoursCompact(segundosJogados);
+    horasPendentesEl.textContent = formatHoursCompact(segundosPendentes);
+    mediaGameplayEl.textContent = formatHoursCompact(mediaGameplay);
+    mediaZeradosEl.textContent = formatHoursCompact(mediaZerados);
+    soloMaisJogadoEl.textContent = soloMaisJogado;
+    difComumEl.textContent = topDificuldadeComum;
+    difHorasEl.textContent = topDificuldadeHoras;
     taxaEl.textContent = `${taxa.toFixed(1)}%`;
     notaMediaEl.textContent = notaCount ? notaMedia.toFixed(1) : "-";
     topPlataformaEl.textContent = topPlataforma;
     topMultiEl.textContent = topMulti;
 
-    const topByTime = rows
-        .map((row) => {
-            const jogo = getRowValue(row, headers.jogo) || "Sem titulo";
-            const seconds = parseTimeToSeconds(getRowValue(row, headers.tempo)) || 0;
-            return { row, jogo, seconds };
-        })
+    const topByTime = tempoRows
         .filter((item) => item.seconds > 0)
         .sort((a, b) => b.seconds - a.seconds)
         .slice(0, 8);
@@ -917,7 +984,7 @@ function renderBiGamer() {
                 datasets: [{
                     label: "Jogos",
                     data: values,
-                    backgroundColor: ["#1f77b4", "#3e95d1", "#79b8ea", "#0f5d95", "#195b8b", "#4f89b8"],
+                    backgroundColor: ["#5a9d6a", "#7ab88f", "#d4896e", "#b66f56", "#3f7f53", "#a0c9ab"],
                     borderWidth: 0,
                     borderRadius: 8
                 }]
@@ -930,13 +997,13 @@ function renderBiGamer() {
                     title: {
                         display: true,
                         text: "Distribuicao por plataforma",
-                        color: "#cfe6fa",
+                        color: "#d0d5dd",
                         font: { size: 15 }
                     }
                 },
                 scales: {
-                    y: { ticks: { color: "#accbe7" }, grid: { color: "rgba(166, 203, 237, 0.16)" } },
-                    x: { ticks: { color: "#accbe7" }, grid: { display: false } }
+                    y: { ticks: { color: "#a8c5d5" }, grid: { color: "rgba(90, 157, 106, 0.18)" } },
+                    x: { ticks: { color: "#a8c5d5" }, grid: { display: false } }
                 }
             }
         });
