@@ -4,6 +4,12 @@ const CSV_URLS = [
 ];
 const AUTO_REFRESH_MS = 10000;
 const FETCH_TIMEOUT_MS = 15000;
+const TIER_DB_NAME = "theGameOfUsTierDB";
+const TIER_DB_VERSION = 1;
+const TIER_STATE_STORE = "tier_state";
+const TIER_ASSET_STORE = "tier_assets";
+const TIER_STATE_ID = "main";
+const TIER_SAVE_DEBOUNCE_MS = 450;
 
 const state = {
     headers: [],
@@ -21,6 +27,11 @@ const state = {
     charts: {},
     tierList: {
         initialized: false,
+        dbPromise: null,
+        loaded: false,
+        loadAttempted: false,
+        saveTimer: null,
+        objectUrls: [],
         nextId: 1,
         title: "Tier List de Jogos",
         labelWidth: 72,
@@ -838,6 +849,266 @@ function createTierItem(title, src, isUploaded) {
     return item;
 }
 
+function createTierItemFromUpload(file) {
+    const title = String(file.name || "Imagem").replace(/\.[^/.]+$/, "");
+    const src = URL.createObjectURL(file);
+    state.tierList.objectUrls.push(src);
+
+    return {
+        id: `tier-item-${state.tierList.nextId++}`,
+        title,
+        src,
+        isUploaded: true,
+        blob: file
+    };
+}
+
+function revokeTierObjectUrl(url) {
+    if (!url || !String(url).startsWith("blob:")) return;
+    URL.revokeObjectURL(url);
+    state.tierList.objectUrls = state.tierList.objectUrls.filter((entry) => entry !== url);
+}
+
+function revokeAllTierObjectUrls() {
+    state.tierList.objectUrls.forEach((url) => {
+        URL.revokeObjectURL(url);
+    });
+    state.tierList.objectUrls = [];
+}
+
+function idbRequestToPromise(request) {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+function openTierDatabase() {
+    if (state.tierList.dbPromise) return state.tierList.dbPromise;
+
+    state.tierList.dbPromise = new Promise((resolve, reject) => {
+        if (typeof indexedDB === "undefined") {
+            reject(new Error("IndexedDB indisponivel"));
+            return;
+        }
+
+        const request = indexedDB.open(TIER_DB_NAME, TIER_DB_VERSION);
+
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(TIER_STATE_STORE)) {
+                db.createObjectStore(TIER_STATE_STORE, { keyPath: "id" });
+            }
+            if (!db.objectStoreNames.contains(TIER_ASSET_STORE)) {
+                db.createObjectStore(TIER_ASSET_STORE, { keyPath: "id" });
+            }
+        };
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+
+    return state.tierList.dbPromise;
+}
+
+async function ensurePersistableTierBlob(item) {
+    if (!item || !item.isUploaded) return;
+    if (item.blob instanceof Blob) return;
+    if (!String(item.src || "").startsWith("blob:")) return;
+
+    try {
+        const response = await fetch(item.src);
+        item.blob = await response.blob();
+    } catch {
+        // Ignore; item may not be persistable if blob extraction fails.
+    }
+}
+
+async function saveTierListNow() {
+    try {
+        const db = await openTierDatabase();
+
+        const allItems = [];
+        const seen = new Set();
+        const tierKeys = Object.keys(state.tierList.tiers);
+
+        tierKeys.forEach((tierKey) => {
+            state.tierList.tiers[tierKey].forEach((item) => {
+                if (item && !seen.has(item.id)) {
+                    seen.add(item.id);
+                    allItems.push(item);
+                }
+            });
+        });
+
+        state.tierList.pool.forEach((item) => {
+            if (item && !seen.has(item.id)) {
+                seen.add(item.id);
+                allItems.push(item);
+            }
+        });
+
+        await Promise.all(allItems.map((item) => ensurePersistableTierBlob(item)));
+
+        const persistableIds = new Set();
+        const assetRecords = allItems
+            .map((item) => {
+                const sourceType = item.isUploaded ? "blob" : "url";
+
+                if (sourceType === "blob" && !(item.blob instanceof Blob)) {
+                    return null;
+                }
+
+                persistableIds.add(item.id);
+
+                if (sourceType === "blob") {
+                    return {
+                        id: item.id,
+                        title: item.title,
+                        sourceType,
+                        blob: item.blob,
+                        isUploaded: true
+                    };
+                }
+
+                return {
+                    id: item.id,
+                    title: item.title,
+                    sourceType,
+                    src: item.src,
+                    isUploaded: false
+                };
+            })
+            .filter(Boolean);
+
+        const stateRecord = {
+            id: TIER_STATE_ID,
+            title: state.tierList.title,
+            labelWidth: state.tierList.labelWidth,
+            labels: state.tierList.labels,
+            tiers: Object.fromEntries(
+                tierKeys.map((tierKey) => [
+                    tierKey,
+                    state.tierList.tiers[tierKey]
+                        .map((item) => item.id)
+                        .filter((id) => persistableIds.has(id))
+                ])
+            ),
+            pool: state.tierList.pool
+                .map((item) => item.id)
+                .filter((id) => persistableIds.has(id))
+        };
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction([TIER_ASSET_STORE, TIER_STATE_STORE], "readwrite");
+            const assetsStore = tx.objectStore(TIER_ASSET_STORE);
+            const stateStore = tx.objectStore(TIER_STATE_STORE);
+
+            const clearReq = assetsStore.clear();
+            clearReq.onerror = () => reject(clearReq.error);
+            clearReq.onsuccess = () => {
+                assetRecords.forEach((record) => assetsStore.put(record));
+                stateStore.put(stateRecord);
+            };
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    } catch (error) {
+        console.warn("Falha ao salvar tier list:", error);
+    }
+}
+
+function scheduleTierListSave() {
+    if (state.tierList.saveTimer) {
+        clearTimeout(state.tierList.saveTimer);
+    }
+
+    state.tierList.saveTimer = setTimeout(() => {
+        state.tierList.saveTimer = null;
+        saveTierListNow();
+    }, TIER_SAVE_DEBOUNCE_MS);
+}
+
+async function loadTierListFromStorage() {
+    try {
+        const db = await openTierDatabase();
+
+        const [savedState, savedAssets] = await Promise.all([
+            new Promise((resolve, reject) => {
+                const tx = db.transaction(TIER_STATE_STORE, "readonly");
+                const req = tx.objectStore(TIER_STATE_STORE).get(TIER_STATE_ID);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            }),
+            new Promise((resolve, reject) => {
+                const tx = db.transaction(TIER_ASSET_STORE, "readonly");
+                const req = tx.objectStore(TIER_ASSET_STORE).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            })
+        ]);
+
+        if (!savedState) return false;
+
+        revokeAllTierObjectUrls();
+
+        const assetMap = new Map();
+        savedAssets.forEach((record) => {
+            if (!record || !record.id) return;
+
+            if (record.sourceType === "blob" && record.blob instanceof Blob) {
+                const blobUrl = URL.createObjectURL(record.blob);
+                state.tierList.objectUrls.push(blobUrl);
+                assetMap.set(record.id, {
+                    id: record.id,
+                    title: record.title || "Imagem",
+                    src: blobUrl,
+                    isUploaded: true,
+                    blob: record.blob
+                });
+                return;
+            }
+
+            assetMap.set(record.id, {
+                id: record.id,
+                title: record.title || "Imagem",
+                src: record.src || "",
+                isUploaded: false
+            });
+        });
+
+        const tierKeys = Object.keys(state.tierList.tiers);
+        tierKeys.forEach((tierKey) => {
+            const ids = Array.isArray(savedState.tiers?.[tierKey]) ? savedState.tiers[tierKey] : [];
+            state.tierList.tiers[tierKey] = ids.map((id) => assetMap.get(id)).filter(Boolean);
+        });
+
+        const poolIds = Array.isArray(savedState.pool) ? savedState.pool : [];
+        state.tierList.pool = poolIds.map((id) => assetMap.get(id)).filter(Boolean);
+
+        state.tierList.title = String(savedState.title || "Tier List de Jogos");
+        state.tierList.labelWidth = Number(savedState.labelWidth) || 72;
+        state.tierList.labels = {
+            ...state.tierList.labels,
+            ...(savedState.labels || {})
+        };
+
+        const idsFromAssets = savedAssets
+            .map((entry) => String(entry.id || ""))
+            .map((id) => Number(id.replace("tier-item-", "")))
+            .filter((n) => Number.isFinite(n));
+        const maxId = idsFromAssets.length ? Math.max(...idsFromAssets) : 0;
+        state.tierList.nextId = Math.max(state.tierList.nextId, maxId + 1);
+
+        return true;
+    } catch (error) {
+        console.warn("Falha ao carregar tier list:", error);
+        return false;
+    }
+}
+
 function getTierColor(tierKey) {
     const colors = {
         S: "#ff7a7a",
@@ -1002,9 +1273,10 @@ function bindTierListEvents() {
 
         if (target.classList.contains("bi-tier-trash")) {
             if (movedItem.isUploaded && movedItem.src.startsWith("blob:")) {
-                URL.revokeObjectURL(movedItem.src);
+                revokeTierObjectUrl(movedItem.src);
             }
             renderTierList();
+            scheduleTierListSave();
             return;
         }
 
@@ -1014,17 +1286,18 @@ function bindTierListEvents() {
 
         targetContainer.push(movedItem);
         renderTierList();
+        scheduleTierListSave();
     };
 
     const handleUpload = (event) => {
         const files = Array.from(event.target.files || []);
         files.forEach((file) => {
             if (!file.type.startsWith("image/")) return;
-            const imageUrl = URL.createObjectURL(file);
-            state.tierList.pool.push(createTierItem(file.name.replace(/\.[^/.]+$/, ""), imageUrl, true));
+            state.tierList.pool.push(createTierItemFromUpload(file));
         });
 
         renderTierList();
+        scheduleTierListSave();
         uploadInput.value = "";
     };
 
@@ -1032,6 +1305,7 @@ function bindTierListEvents() {
         const value = String(event.target.value || "").trim();
         state.tierList.title = value || "Tier List de Jogos";
         if (!value) event.target.value = state.tierList.title;
+        scheduleTierListSave();
     };
 
     const handleTierLabelEdit = (event) => {
@@ -1043,6 +1317,7 @@ function bindTierListEvents() {
         const value = String(target.value || "").trim();
         state.tierList.labels[tierKey] = value || tierKey;
         if (!value) target.value = tierKey;
+        scheduleTierListSave();
     };
 
     const handleWidthEdit = (event) => {
@@ -1050,6 +1325,7 @@ function bindTierListEvents() {
         state.tierList.labelWidth = Math.min(220, Math.max(72, value));
         board.style.setProperty("--bi-tier-label-width", `${state.tierList.labelWidth}px`);
         if (widthValue) widthValue.textContent = `${state.tierList.labelWidth}px`;
+        scheduleTierListSave();
     };
 
     section.addEventListener("dragstart", handleDragStart);
@@ -1060,6 +1336,7 @@ function bindTierListEvents() {
     section.addEventListener("input", handleTierLabelEdit);
     uploadInput.addEventListener("change", handleUpload);
     titleInput.addEventListener("change", handleTitleEdit);
+    titleInput.addEventListener("input", handleTitleEdit);
     widthInput.addEventListener("input", handleWidthEdit);
 
     if (widthValue) widthValue.textContent = `${state.tierList.labelWidth}px`;
@@ -1074,6 +1351,8 @@ function seedTierPool(topByTime) {
         state.tierList.tiers[tierName].forEach((item) => seen.add(item.title.toLowerCase()));
     });
 
+    let addedCount = 0;
+
     topByTime.slice(0, 20).forEach((item) => {
         if (!item) return;
         const title = String(item.jogo || "Sem titulo").trim();
@@ -1085,7 +1364,10 @@ function seedTierPool(topByTime) {
 
         seen.add(key);
         state.tierList.pool.push(createTierItem(title, src, false));
+        addedCount += 1;
     });
+
+    return addedCount;
 }
 
 function renderBiGamer() {
@@ -1233,8 +1515,26 @@ function renderBiGamer() {
     });
 
     bindTierListEvents();
-    seedTierPool(topByTime);
-    renderTierList();
+
+    if (!state.tierList.loadAttempted) {
+        state.tierList.loadAttempted = true;
+        loadTierListFromStorage().then((loaded) => {
+            state.tierList.loaded = true;
+
+            if (!loaded) {
+                const added = seedTierPool(topByTime);
+                if (added > 0) scheduleTierListSave();
+            }
+
+            renderTierList();
+        });
+    } else {
+        if (state.tierList.loaded) {
+            const added = seedTierPool(topByTime);
+            if (added > 0) scheduleTierListSave();
+        }
+        renderTierList();
+    }
 
     if (chartEl && typeof Chart !== "undefined") {
         const platEntries = Object.entries(plataformaCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
@@ -1818,6 +2118,15 @@ function init() {
 
     setInterval(fetchRankingData, AUTO_REFRESH_MS);
 }
+
+window.addEventListener("beforeunload", () => {
+    if (state.tierList.saveTimer) {
+        clearTimeout(state.tierList.saveTimer);
+        state.tierList.saveTimer = null;
+        saveTierListNow();
+    }
+    revokeAllTierObjectUrls();
+});
 
 document.addEventListener("DOMContentLoaded", init);
 
