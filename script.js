@@ -23,6 +23,7 @@ const state = {
         initialized: false,
         nextId: 1,
         title: "Tier List de Jogos",
+        labelWidth: 72,
         labels: {
             S: "S",
             A: "A",
@@ -882,10 +883,22 @@ function renderTierList() {
     const board = document.getElementById("bi-tier-board");
     const pool = document.getElementById("bi-tier-pool");
     const titleInput = document.getElementById("bi-tier-title-input");
+    const widthInput = document.getElementById("bi-tier-label-width");
+    const widthValue = document.getElementById("bi-tier-label-width-value");
     if (!board || !pool) return;
+
+    board.style.setProperty("--bi-tier-label-width", `${state.tierList.labelWidth}px`);
 
     if (titleInput && titleInput.value !== state.tierList.title) {
         titleInput.value = state.tierList.title;
+    }
+
+    if (widthInput && Number(widthInput.value) !== state.tierList.labelWidth) {
+        widthInput.value = String(state.tierList.labelWidth);
+    }
+
+    if (widthValue) {
+        widthValue.textContent = `${state.tierList.labelWidth}px`;
     }
 
     board.innerHTML = "";
@@ -898,12 +911,12 @@ function renderTierList() {
         label.className = "bi-tier-label";
         label.style.background = getTierColor(tierKey);
 
-        const labelInput = document.createElement("input");
-        labelInput.type = "text";
+        const labelInput = document.createElement("textarea");
         labelInput.className = "bi-tier-label-input";
         labelInput.dataset.tierKey = tierKey;
         labelInput.value = state.tierList.labels[tierKey] || tierKey;
         labelInput.setAttribute("aria-label", `Nome do tier ${tierKey}`);
+        labelInput.rows = 2;
         label.appendChild(labelInput);
 
         const dropzone = document.createElement("div");
@@ -944,11 +957,13 @@ function bindTierListEvents() {
     const section = document.getElementById("bi-tier-block") || document;
     const uploadInput = document.getElementById("bi-tier-upload");
     const titleInput = document.getElementById("bi-tier-title-input");
+    const widthInput = document.getElementById("bi-tier-label-width");
+    const widthValue = document.getElementById("bi-tier-label-width-value");
     const board = document.getElementById("bi-tier-board");
     const pool = document.getElementById("bi-tier-pool");
     const trash = document.getElementById("bi-tier-trash");
 
-    if (!uploadInput || !titleInput || !board || !pool || !trash) return;
+    if (!uploadInput || !titleInput || !widthInput || !board || !pool || !trash) return;
 
     const activateOver = (element) => element?.classList.add("is-over");
     const deactivateOver = (element) => element?.classList.remove("is-over");
@@ -1030,13 +1045,24 @@ function bindTierListEvents() {
         if (!value) target.value = tierKey;
     };
 
+    const handleWidthEdit = (event) => {
+        const value = Number(event.target.value || "72");
+        state.tierList.labelWidth = Math.min(220, Math.max(72, value));
+        board.style.setProperty("--bi-tier-label-width", `${state.tierList.labelWidth}px`);
+        if (widthValue) widthValue.textContent = `${state.tierList.labelWidth}px`;
+    };
+
     section.addEventListener("dragstart", handleDragStart);
     section.addEventListener("dragover", handleDragOver);
     section.addEventListener("dragleave", handleDragLeave);
     section.addEventListener("drop", handleDrop);
     section.addEventListener("change", handleTierLabelEdit);
+    section.addEventListener("input", handleTierLabelEdit);
     uploadInput.addEventListener("change", handleUpload);
     titleInput.addEventListener("change", handleTitleEdit);
+    widthInput.addEventListener("input", handleWidthEdit);
+
+    if (widthValue) widthValue.textContent = `${state.tierList.labelWidth}px`;
 
     state.tierList.initialized = true;
 }

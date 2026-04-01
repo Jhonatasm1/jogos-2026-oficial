@@ -793,6 +793,26 @@ td {
     margin-bottom: 0.85rem;
 }
 
+.bi-tier-width-control {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 210px;
+}
+
+.bi-tier-width-control label {
+    color: var(--fg-muted);
+    font-size: 0.78rem;
+}
+
+.bi-tier-width-control input[type="range"] {
+    width: 100%;
+}
+
+.bi-tier-width-control span {
+    color: var(--text-light);
+    font-size: 0.78rem;
+}
+
 .bi-tier-header h4 {
     color: var(--text-light);
     margin-bottom: 0.2rem;
@@ -835,11 +855,12 @@ td {
     border: 1px solid rgba(90, 157, 106, 0.2);
     border-radius: 10px;
     overflow: hidden;
+    --bi-tier-label-width: 72px;
 }
 
 .bi-tier-row {
     display: grid;
-    grid-template-columns: 72px 1fr;
+    grid-template-columns: var(--bi-tier-label-width) 1fr;
     min-height: 82px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -863,10 +884,15 @@ td {
     background: transparent;
     color: #09120a;
     font-family: "Syne", sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 700;
     text-align: center;
-    padding: 0 0.2rem;
+    padding: 0.15rem 0.2rem;
+    resize: none;
+    min-height: 44px;
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: break-word;
 }
 
 .bi-tier-label-input:focus {
@@ -964,10 +990,6 @@ td {
 @media (max-width: 640px) {
     .bi-kpi-grid {
         grid-template-columns: 1fr;
-    }
-
-    .bi-tier-row {
-        grid-template-columns: 52px 1fr;
     }
 
     .bi-tier-item {
