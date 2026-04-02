@@ -2342,6 +2342,7 @@ function renderPlataforma() {
 function renderAvaliacao() {
     const avaliacaoHeader = findHeader([/avaliacao pessoal/, /avaliacao/, /nota/]);
     const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
+    const tempoHeader = state.resolvedHeaders.tempo || findHeader([/tempo/, /duracao/, /horas/, /time/]);
 
     const lista = document.getElementById("lista-avaliacao");
     const totalJogosEl = document.getElementById("av-total-jogos");
@@ -2365,10 +2366,12 @@ function renderAvaliacao() {
     const avaliados = rows
         .map((row) => {
             const jogo = String(row[jogoHeader] || "").trim() || "Sem titulo";
+            const tempoSegundos = parseTimeToSeconds(getRowValue(row, tempoHeader)) || 0;
             const parsed = parsePersonalRating(row[avaliacaoHeader]);
             if (!parsed) return null;
             return {
                 jogo,
+                tempoSegundos,
                 ...parsed
             };
         })
@@ -2376,6 +2379,7 @@ function renderAvaliacao() {
 
     const sorted = [...avaliados].sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
+        if (b.tempoSegundos !== a.tempoSegundos) return b.tempoSegundos - a.tempoSegundos;
         return a.jogo.localeCompare(b.jogo, "pt-BR", { sensitivity: "base" });
     });
 
