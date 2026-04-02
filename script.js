@@ -1867,15 +1867,42 @@ function renderDificuldade() {
                     key: "value",
                     labels: {
                         display: true,
+                        overflow: "fit",
                         formatter: (ctx) => {
                             const data = ctx.raw._data;
-                            if (data && data.name) {
-                                return [data.name, String(data.value)];
+                            if (!data || !data.name) return "";
+                            const w = ctx.raw.w || 0;
+                            const h = ctx.raw.h || 0;
+                            const name = data.name;
+                            const val = String(data.value);
+                            if (w < 50 || h < 30) return [val];
+                            const words = name.split(" ");
+                            const lines = [];
+                            let cur = "";
+                            const maxChars = Math.max(6, Math.floor(w / 8));
+                            for (const word of words) {
+                                if (cur && (cur.length + 1 + word.length) > maxChars) {
+                                    lines.push(cur);
+                                    cur = word;
+                                } else {
+                                    cur = cur ? cur + " " + word : word;
+                                }
                             }
-                            return "";
+                            if (cur) lines.push(cur);
+                            lines.push(val);
+                            return lines;
                         },
-                        font: [{ size: 14, weight: 'bold', family: "'Syne', sans-serif" }, { size: 13, family: "'Manrope', sans-serif" }],
-                        color: "#f0ebe3"
+                        font: (ctx) => {
+                            const w = ctx.raw ? (ctx.raw.w || 0) : 0;
+                            const h = ctx.raw ? (ctx.raw.h || 0) : 0;
+                            const small = w < 70 || h < 50;
+                            const nameFont = { size: small ? 10 : 13, weight: "bold", family: "'Syne', sans-serif" };
+                            const valFont = { size: small ? 9 : 12, family: "'Manrope', sans-serif" };
+                            return [nameFont, nameFont, nameFont, nameFont, valFont];
+                        },
+                        color: "#f0ebe3",
+                        align: "center",
+                        position: "middle"
                     },
                     backgroundColor: (ctx) => {
                         const levelColors = {
