@@ -325,6 +325,20 @@ main {
     backdrop-filter: blur(8px);
 }
 
+#chart-status {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#chart-status-setores {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#visao-geral .chart-container {
+    min-height: 420px;
+}
+
 /* ── Lists ── */
 .list-container {
     display: flex;
