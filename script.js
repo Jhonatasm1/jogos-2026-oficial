@@ -302,15 +302,15 @@ function calcularPercentilFicticio(meuTempoSegundos, mediaGlobalSegundos, ruidoS
     return Math.round(clampNumber(percentil, 3, 95));
 }
 
-function simularEstatisticasGlobais() {
+function simularEstatisticasGlobais(rowsSource = state.rows) {
     const jogoHeader = state.resolvedHeaders.jogo || findHeader([/jogo/, /titulo/, /nome/]);
     const tempoHeader = state.resolvedHeaders.tempo || findHeader([/tempo/, /duracao/, /horas/, /time/]);
 
-    if (!jogoHeader || !tempoHeader || !Array.isArray(state.rows)) {
+    if (!jogoHeader || !tempoHeader || !Array.isArray(rowsSource)) {
         return [];
     }
 
-    return state.rows
+    return rowsSource
         .map((row, index) => {
             const jogo = getRowValue(row, jogoHeader) || `Jogo ${index + 1}`;
             const tempoRaw = getRowValue(row, tempoHeader);
@@ -2637,7 +2637,8 @@ function renderUserRanking() {
 
     grid.innerHTML = "";
 
-    const ranking = simularEstatisticasGlobais();
+    const filteredRows = getOverviewFilteredRows();
+    const ranking = simularEstatisticasGlobais(filteredRows);
     const totalJogos = ranking.length;
 
     if (!totalJogos) {
