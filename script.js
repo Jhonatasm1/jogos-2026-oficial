@@ -810,8 +810,8 @@ function renderCharts(rows, statusCount) {
                 title: { display: true, text: "LAN\u00c7AMENTO POR STATUS", color: "#d4a853", font: { size: 16 } }
             },
             scales: {
-                y: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } },
-                x: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } }
+                y: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } },
+                x: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } }
             }
         }
     });
@@ -1757,7 +1757,7 @@ function renderTempoJogo() {
                 },
                 scales: {
                     y: { ticks: { color: "#d4a853" }, grid: { display: false } },
-                    x: { ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } }
+                    x: { ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } }
                 }
             }
         });
@@ -1792,7 +1792,7 @@ function renderTempoJogo() {
                 },
                 scales: {
                     y: { ticks: { color: "#d4a853" }, grid: { display: false } },
-                    x: { ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } }
+                    x: { ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } }
                 }
             }
         });
@@ -1887,7 +1887,7 @@ function renderDificuldade() {
                             "SEKIRO": "#8e44ad"
                         };
                         const label = ctx.raw ? ctx.raw._data.name : "";
-                        return levelColors[label] || "#1f3849";
+                        return levelColors[label] || "rgba(212, 168, 83, 0.1)";
                     },
                     borderColor: "var(--bg-2)",
                     borderWidth: 2,
@@ -1934,7 +1934,7 @@ function renderDificuldade() {
               sortedHoras.forEach(item => {
                   const hours = parseFloat((item[1] / 3600).toFixed(1));
                   dataTable.addRow([item[0], hours]);
-                  colorsArr.push(levelColors[item[0]] || "#1f3849");
+                  colorsArr.push(levelColors[item[0]] || "rgba(212, 168, 83, 0.1)");
               });
 
               const options = {
