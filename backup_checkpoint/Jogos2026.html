@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Gaming Temple</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260402-yxt12">
+    <link rel="stylesheet" href="style.css?v=20260402-yxt13">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -29,6 +29,7 @@
             <button class="tab-btn" data-tab="dificuldade">Dificuldade</button>
             <button class="tab-btn" data-tab="plataforma">Plataforma</button>
             <button class="tab-btn" data-tab="avaliacao">Avalia&ccedil;&atilde;o Pessoal</button>
+            <button class="tab-btn" data-tab="user-ranking">Classifica&ccedil;&atilde;o do Usu&aacute;rio</button>
             <button class="tab-btn" data-tab="tabela">Tabela Completa</button>
         </nav>
 
@@ -432,6 +433,57 @@
                 </div>
             </section>
 
+            <!-- Classificacao do Usuario -->
+            <section class="tab-content" id="user-ranking">
+                <div class="user-ranking-layout">
+                    <aside class="user-ranking-sidepanel">
+                        <h3 class="user-ranking-title">Classifica&ccedil;&atilde;o do Usu&aacute;rio</h3>
+                        <p class="user-ranking-subtitle">Gamifica&ccedil;&atilde;o e percentis com base no seu tempo e na m&eacute;dia global simulada.</p>
+                        <div class="user-ranking-side-metrics">
+                            <div class="user-ranking-mini-card">
+                                <span>Jogos analisados</span>
+                                <strong id="ur-total-jogos">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Percentil m&eacute;dio</span>
+                                <strong id="ur-percentil-medio">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Jogos no Top 20%</span>
+                                <strong id="ur-jogos-top20">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Maior vantagem</span>
+                                <strong id="ur-mais-rapido">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Maior desafio</span>
+                                <strong id="ur-mais-lento">-</strong>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="user-ranking-mainboard">
+                        <div class="user-ranking-kpi-grid">
+                            <article class="user-ranking-kpi">
+                                <p>Melhor posi&ccedil;&atilde;o</p>
+                                <h4 id="ur-kpi-melhor">-</h4>
+                            </article>
+                            <article class="user-ranking-kpi">
+                                <p>Desempenho m&eacute;dio</p>
+                                <h4 id="ur-kpi-media">-</h4>
+                            </article>
+                            <article class="user-ranking-kpi">
+                                <p>Recado da temporada</p>
+                                <h4 id="ur-kpi-impacto">-</h4>
+                            </article>
+                        </div>
+
+                        <div class="user-ranking-grid" id="user-ranking-grid"></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Tabela Completa -->
             <section class="tab-content" id="tabela">
                 <div class="table-container">
@@ -444,7 +496,7 @@
         </div>
     </main>
 
-    <script src="script.js?v=20260402-yxt12"></script>
+    <script src="script.js?v=20260402-yxt13"></script>
 </body>
 </html>
 

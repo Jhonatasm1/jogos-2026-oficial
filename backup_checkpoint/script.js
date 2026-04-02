@@ -269,6 +269,98 @@ function parsePersonalRating(value) {
     };
 }
 
+function seededRandomFromString(value) {
+    const text = String(value || "");
+    let hash = 2166136261;
+
+    for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    }
+
+    return (hash >>> 0) / 4294967295;
+}
+
+function clampNumber(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function calcularPercentilFicticio(meuTempoSegundos, mediaGlobalSegundos, ruidoSeed) {
+    if (!Number.isFinite(meuTempoSegundos) || !Number.isFinite(mediaGlobalSegundos) || mediaGlobalSegundos <= 0) {
+        return 50;
+    }
+
+    const relacao = (meuTempoSegundos - mediaGlobalSegundos) / mediaGlobalSegundos;
+    let percentil = 45 + (relacao * 130);
+
+    if (relacao <= -0.35) percentil -= 8;
+    if (relacao >= 0.35) percentil += 8;
+
+    const jitter = ((Number(ruidoSeed) || 0) - 0.5) * 8;
+    percentil += jitter;
+
+    return Math.round(clampNumber(percentil, 3, 95));
+}
+
+function simularEstatisticasGlobais() {
+    const jogoHeader = state.resolvedHeaders.jogo || findHeader([/jogo/, /titulo/, /nome/]);
+    const tempoHeader = state.resolvedHeaders.tempo || findHeader([/tempo/, /duracao/, /horas/, /time/]);
+
+    if (!jogoHeader || !tempoHeader || !Array.isArray(state.rows)) {
+        return [];
+    }
+
+    return state.rows
+        .map((row, index) => {
+            const jogo = getRowValue(row, jogoHeader) || `Jogo ${index + 1}`;
+            const tempoRaw = getRowValue(row, tempoHeader);
+
+            let meuTempoSegundos = parseTimeToSeconds(tempoRaw);
+            if (meuTempoSegundos === null || meuTempoSegundos <= 0) {
+                const tempoNumero = parseNumber(tempoRaw);
+                if (tempoNumero !== null && tempoNumero > 0) {
+                    meuTempoSegundos = Math.round(tempoNumero * 3600);
+                }
+            }
+
+            if (!Number.isFinite(meuTempoSegundos) || meuTempoSegundos <= 0) {
+                return null;
+            }
+
+            const seedBase = `${normalizeText(jogo)}|${meuTempoSegundos}|${index}`;
+            const fatorGlobal = 0.8 + (seededRandomFromString(`${seedBase}|global`) * 0.5);
+            const mediaGlobalSegundos = Math.max(300, Math.round(meuTempoSegundos * fatorGlobal));
+            const diferencaSegundos = mediaGlobalSegundos - meuTempoSegundos;
+            const percentil = calcularPercentilFicticio(
+                meuTempoSegundos,
+                mediaGlobalSegundos,
+                seededRandomFromString(`${seedBase}|percentil`)
+            );
+
+            let impacto = "Voce igualou a media mundial, ficando no Top 50%.";
+            if (diferencaSegundos > 0) {
+                impacto = `Voce zerou ${formatSecondsToTime(diferencaSegundos)} mais rapido que a media mundial, entrando para o Top ${percentil}%.`;
+            } else if (diferencaSegundos < 0) {
+                impacto = `Voce levou ${formatSecondsToTime(Math.abs(diferencaSegundos))} a mais que a media mundial, ficando no Top ${percentil}%.`;
+            }
+
+            return {
+                jogo,
+                meuTempoSegundos,
+                mediaGlobalSegundos,
+                diferencaSegundos,
+                percentil,
+                impacto
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+            if (a.percentil !== b.percentil) return a.percentil - b.percentil;
+            if (b.diferencaSegundos !== a.diferencaSegundos) return b.diferencaSegundos - a.diferencaSegundos;
+            return a.jogo.localeCompare(b.jogo, "pt-BR", { sensitivity: "base" });
+        });
+}
+
 function compareValues(a, b, direction, preferTime) {
     const firstRaw = String(a || "");
     const secondRaw = String(b || "");
@@ -2528,6 +2620,146 @@ function renderAvaliacao() {
     }
 }
 
+function renderUserRanking() {
+    const grid = document.getElementById("user-ranking-grid");
+    const totalJogosEl = document.getElementById("ur-total-jogos");
+    const percentilMedioEl = document.getElementById("ur-percentil-medio");
+    const jogosTop20El = document.getElementById("ur-jogos-top20");
+    const maisRapidoEl = document.getElementById("ur-mais-rapido");
+    const maisLentoEl = document.getElementById("ur-mais-lento");
+    const kpiMelhorEl = document.getElementById("ur-kpi-melhor");
+    const kpiMediaEl = document.getElementById("ur-kpi-media");
+    const kpiImpactoEl = document.getElementById("ur-kpi-impacto");
+
+    if (!grid || !totalJogosEl || !percentilMedioEl || !jogosTop20El || !maisRapidoEl || !maisLentoEl || !kpiMelhorEl || !kpiMediaEl || !kpiImpactoEl) {
+        return;
+    }
+
+    grid.innerHTML = "";
+
+    const ranking = simularEstatisticasGlobais();
+    const totalJogos = ranking.length;
+
+    if (!totalJogos) {
+        totalJogosEl.textContent = "0";
+        percentilMedioEl.textContent = "-";
+        jogosTop20El.textContent = "0";
+        maisRapidoEl.textContent = "-";
+        maisLentoEl.textContent = "-";
+        kpiMelhorEl.textContent = "-";
+        kpiMediaEl.textContent = "-";
+        kpiImpactoEl.textContent = "Sem dados suficientes";
+
+        const empty = document.createElement("p");
+        empty.className = "user-ranking-empty";
+        empty.textContent = "Nao foi possivel simular estatisticas globais para os jogos atuais.";
+        grid.appendChild(empty);
+        return;
+    }
+
+    const percentilMedio = ranking.reduce((acc, item) => acc + item.percentil, 0) / totalJogos;
+    const jogosTop20 = ranking.filter((item) => item.percentil <= 20).length;
+    const maiorVantagem = [...ranking].filter((item) => item.diferencaSegundos > 0).sort((a, b) => b.diferencaSegundos - a.diferencaSegundos)[0] || null;
+    const maiorDesafio = [...ranking].filter((item) => item.diferencaSegundos < 0).sort((a, b) => a.diferencaSegundos - b.diferencaSegundos)[0] || null;
+    const melhorPosicao = ranking[0];
+    const mediaDiferencaSegundos = Math.round(ranking.reduce((acc, item) => acc + item.diferencaSegundos, 0) / totalJogos);
+
+    totalJogosEl.textContent = String(totalJogos);
+    percentilMedioEl.textContent = `Top ${percentilMedio.toFixed(1)}%`;
+    jogosTop20El.textContent = String(jogosTop20);
+    maisRapidoEl.textContent = maiorVantagem
+        ? `${maiorVantagem.jogo} (${formatSecondsToTime(maiorVantagem.diferencaSegundos)})`
+        : "-";
+    maisLentoEl.textContent = maiorDesafio
+        ? `${maiorDesafio.jogo} (${formatSecondsToTime(Math.abs(maiorDesafio.diferencaSegundos))})`
+        : "-";
+
+    kpiMelhorEl.textContent = `${melhorPosicao.jogo} (Top ${melhorPosicao.percentil}%)`;
+    if (mediaDiferencaSegundos > 0) {
+        kpiMediaEl.textContent = `${formatSecondsToTime(mediaDiferencaSegundos)} mais rapido`;
+    } else if (mediaDiferencaSegundos < 0) {
+        kpiMediaEl.textContent = `${formatSecondsToTime(Math.abs(mediaDiferencaSegundos))} mais lento`;
+    } else {
+        kpiMediaEl.textContent = "No ritmo da media global";
+    }
+
+    if (percentilMedio <= 20) {
+        kpiImpactoEl.textContent = "Perfil elite da comunidade";
+    } else if (percentilMedio <= 40) {
+        kpiImpactoEl.textContent = "Desempenho acima da media";
+    } else if (percentilMedio <= 60) {
+        kpiImpactoEl.textContent = "Bom espaco para subir no ranking";
+    } else {
+        kpiImpactoEl.textContent = "Modo hardcore de evolucao ativado";
+    }
+
+    ranking.forEach((item, index) => {
+        const card = document.createElement("article");
+        card.className = "user-ranking-card";
+
+        if (item.diferencaSegundos > 0) {
+            card.classList.add("is-faster");
+        } else if (item.diferencaSegundos < 0) {
+            card.classList.add("is-slower");
+        } else {
+            card.classList.add("is-even");
+        }
+
+        const top = document.createElement("div");
+        top.className = "user-ranking-card-top";
+
+        const title = document.createElement("h4");
+        title.textContent = `${index + 1}. ${item.jogo}`;
+
+        const badge = document.createElement("span");
+        badge.className = "user-ranking-badge";
+        badge.textContent = `Top ${item.percentil}%`;
+
+        top.appendChild(title);
+        top.appendChild(badge);
+
+        const times = document.createElement("div");
+        times.className = "user-ranking-times";
+
+        const meuTempoBlock = document.createElement("div");
+        meuTempoBlock.className = "user-ranking-time-block";
+        meuTempoBlock.innerHTML = `
+            <span class="user-ranking-time-label">Seu tempo</span>
+            <strong class="user-ranking-time-value">${formatSecondsToTime(item.meuTempoSegundos)}</strong>
+        `;
+
+        const mediaBlock = document.createElement("div");
+        mediaBlock.className = "user-ranking-time-block";
+        mediaBlock.innerHTML = `
+            <span class="user-ranking-time-label">Media global</span>
+            <strong class="user-ranking-time-value">${formatSecondsToTime(item.mediaGlobalSegundos)}</strong>
+        `;
+
+        times.appendChild(meuTempoBlock);
+        times.appendChild(mediaBlock);
+
+        const delta = document.createElement("div");
+        delta.className = "user-ranking-delta";
+        if (item.diferencaSegundos > 0) {
+            delta.textContent = `${formatSecondsToTime(item.diferencaSegundos)} mais rapido que a media`;
+        } else if (item.diferencaSegundos < 0) {
+            delta.textContent = `${formatSecondsToTime(Math.abs(item.diferencaSegundos))} mais lento que a media`;
+        } else {
+            delta.textContent = "Mesmo ritmo da media global";
+        }
+
+        const impact = document.createElement("p");
+        impact.className = "user-ranking-impact";
+        impact.textContent = item.impacto;
+
+        card.appendChild(top);
+        card.appendChild(times);
+        card.appendChild(delta);
+        card.appendChild(impact);
+        grid.appendChild(card);
+    });
+}
+
 function switchTab(tabId) {
     dom.tabBtns.forEach(btn => btn.classList.remove("active"));
     dom.tabContents.forEach(content => content.classList.remove("active"));
@@ -2555,6 +2787,8 @@ function switchTab(tabId) {
         renderPlataforma();
     } else if (tabId === "avaliacao") {
         renderAvaliacao();
+    } else if (tabId === "user-ranking") {
+        renderUserRanking();
     }
 }
 
@@ -2585,6 +2819,8 @@ async function fetchRankingData() {
         const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
         if (activeTab === "bi-gamer") {
             renderBiGamer();
+        } else if (activeTab === "user-ranking") {
+            renderUserRanking();
         }
 
         state.lastPayload = payload;
