@@ -2124,23 +2124,163 @@ function renderDificuldade() {
 }
 
 function renderPlataforma() {
-    const platHeader = findHeader([/plataforma/, /platform/]);
+    const headers = state.resolvedHeaders;
+    const platHeader = headers.plataforma || findHeader([/plataforma/, /platform/]);
+    const tempoHeader = headers.tempo;
+
     const grid = document.getElementById("grid-plataforma");
-    if (!grid) return;
+    const totalJogosEl = document.getElementById("pl-total-jogos");
+    const totalPlataformasEl = document.getElementById("pl-total-plataformas");
+    const liderEl = document.getElementById("pl-lider");
+    const liderPercentEl = document.getElementById("pl-lider-percent");
+    const mediaJogosEl = document.getElementById("pl-media-jogos");
+    const singletonsEl = document.getElementById("pl-singletons");
+    const horasTopEl = document.getElementById("pl-horas-top");
+    const kpiTopEl = document.getElementById("pl-kpi-top");
+    const kpiHorasEl = document.getElementById("pl-kpi-horas");
+    const kpiTop3El = document.getElementById("pl-kpi-top3");
+    const chartEl = document.getElementById("chart-plataforma-distribuicao");
+
+    if (!grid || !totalJogosEl || !totalPlataformasEl || !liderEl || !liderPercentEl || !mediaJogosEl || !singletonsEl || !horasTopEl || !kpiTopEl || !kpiHorasEl || !kpiTop3El) {
+        return;
+    }
+
     grid.innerHTML = "";
 
     const platCount = {};
-    getOverviewFilteredRows().forEach(row => {
-        const plat = String(row[platHeader] || "").trim();
-        if (plat) platCount[plat] = (platCount[plat] || 0) + 1;
+    const platHours = {};
+    const rows = getOverviewFilteredRows();
+
+    rows.forEach((row) => {
+        const plat = String(getRowValue(row, platHeader) || "").trim() || "N/A";
+        platCount[plat] = (platCount[plat] || 0) + 1;
+
+        const seconds = parseTimeToSeconds(getRowValue(row, tempoHeader)) || 0;
+        platHours[plat] = (platHours[plat] || 0) + seconds;
     });
 
-    Object.entries(platCount).sort((a, b) => b[1] - a[1]).forEach(([plat, count]) => {
-        const item = document.createElement("div");
-        item.className = "platform-item";
-        item.innerHTML = `<strong>${count}<\/strong><span>${plat}<\/span>`;
-        grid.appendChild(item);
-    });
+    const sortedPlatforms = Object.entries(platCount)
+        .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0], "pt-BR", { sensitivity: "base" }));
+
+    const totalJogos = rows.length;
+    const totalPlataformas = sortedPlatforms.length;
+    const [topPlatform, topCount] = sortedPlatforms[0] || ["-", 0];
+    const topShare = totalJogos > 0 ? (topCount / totalJogos) * 100 : 0;
+    const mediaPorPlataforma = totalPlataformas > 0 ? totalJogos / totalPlataformas : 0;
+    const singletonCount = sortedPlatforms.filter(([, count]) => count === 1).length;
+
+    const topByHours = Object.entries(platHours)
+        .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0], "pt-BR", { sensitivity: "base" }))[0] || ["-", 0];
+    const [topHoursPlatform, topHoursSeconds] = topByHours;
+
+    const top3Count = sortedPlatforms.slice(0, 3).reduce((acc, [, count]) => acc + count, 0);
+    const top3Share = totalJogos > 0 ? (top3Count / totalJogos) * 100 : 0;
+
+    totalJogosEl.textContent = String(totalJogos);
+    totalPlataformasEl.textContent = String(totalPlataformas);
+    liderEl.textContent = topPlatform;
+    liderPercentEl.textContent = totalJogos > 0 ? `${topShare.toFixed(1)}% (${topCount})` : "-";
+    mediaJogosEl.textContent = totalPlataformas > 0 ? mediaPorPlataforma.toFixed(1) : "-";
+    singletonsEl.textContent = String(singletonCount);
+    horasTopEl.textContent = topHoursSeconds > 0 ? `${topHoursPlatform} • ${formatHoursCompact(topHoursSeconds)}` : "-";
+
+    kpiTopEl.textContent = totalJogos > 0 ? `${topPlatform} (${topCount})` : "-";
+    kpiHorasEl.textContent = topHoursSeconds > 0 ? formatHoursCompact(topHoursSeconds) : "-";
+    kpiTop3El.textContent = totalJogos > 0 ? `${top3Share.toFixed(1)}%` : "-";
+
+    if (!sortedPlatforms.length) {
+        const empty = document.createElement("p");
+        empty.className = "platform-empty";
+        empty.textContent = "Nenhuma plataforma encontrada para os filtros atuais.";
+        grid.appendChild(empty);
+    } else {
+        sortedPlatforms.forEach(([plat, count], index) => {
+            const percentage = totalJogos > 0 ? (count / totalJogos) * 100 : 0;
+            const jogosLabel = count === 1 ? "jogo" : "jogos";
+
+            const item = document.createElement("article");
+            item.className = "platform-item";
+
+            const main = document.createElement("div");
+            main.className = "platform-item-main";
+
+            const rank = document.createElement("span");
+            rank.className = "platform-item-rank";
+            rank.textContent = `#${index + 1}`;
+
+            const labels = document.createElement("div");
+            labels.className = "platform-item-labels";
+
+            const nameEl = document.createElement("strong");
+            nameEl.textContent = plat;
+
+            const detailEl = document.createElement("span");
+            detailEl.textContent = `${count} ${jogosLabel} • ${percentage.toFixed(1)}%`;
+
+            labels.appendChild(nameEl);
+            labels.appendChild(detailEl);
+            main.appendChild(rank);
+            main.appendChild(labels);
+
+            const hoursEl = document.createElement("div");
+            hoursEl.className = "platform-item-meta";
+            hoursEl.textContent = formatHoursCompact(platHours[plat] || 0);
+
+            item.appendChild(main);
+            item.appendChild(hoursEl);
+            grid.appendChild(item);
+        });
+    }
+
+    if (chartEl && typeof Chart !== "undefined") {
+        if (state.charts.plataformaDistribuicao) {
+            state.charts.plataformaDistribuicao.destroy();
+        }
+
+        if (sortedPlatforms.length) {
+            const chartData = sortedPlatforms.slice(0, 8);
+            state.charts.plataformaDistribuicao = new Chart(chartEl, {
+                type: "bar",
+                data: {
+                    labels: chartData.map(([plat]) => plat),
+                    datasets: [{
+                        label: "Jogos",
+                        data: chartData.map(([, count]) => count),
+                        backgroundColor: ["#d4a853", "#c9952a", "#1a9fda", "#00d4ff", "#a07830", "#f0c95c", "#6bc6e6", "#8b6c2f"],
+                        borderRadius: 8,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: "y",
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: "DISTRIBUICAO POR PLATAFORMA",
+                            color: "#d4a853",
+                            font: { size: 16 }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { color: "#cdc7bc" },
+                            grid: { color: "rgba(212, 168, 83, 0.14)" }
+                        },
+                        y: {
+                            ticks: { color: "#cdc7bc" },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            state.charts.plataformaDistribuicao = null;
+        }
+    }
 }
 
 

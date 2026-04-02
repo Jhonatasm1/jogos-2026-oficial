@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Gaming Temple</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260402-yxt10">
+    <link rel="stylesheet" href="style.css?v=20260402-yxt11">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -304,7 +304,69 @@
 
             <!-- Plataforma -->
             <section class="tab-content" id="plataforma">
-                <div class="grid-container" id="grid-plataforma"></div>
+                <div class="platform-layout">
+                    <aside class="platform-sidepanel">
+                        <h3 class="platform-title">Plataforma</h3>
+                        <p class="platform-subtitle">Distribui&ccedil;&atilde;o dos jogos por ecossistema.</p>
+                        <div class="platform-side-metrics">
+                            <div class="platform-mini-card">
+                                <span>Total de jogos no recorte</span>
+                                <strong id="pl-total-jogos">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataformas ativas</span>
+                                <strong id="pl-total-plataformas">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataforma l&iacute;der</span>
+                                <strong id="pl-lider">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Maior participa&ccedil;&atilde;o</span>
+                                <strong id="pl-lider-percent">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>M&eacute;dia jogos/plataforma</span>
+                                <strong id="pl-media-jogos">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataformas com 1 jogo</span>
+                                <strong id="pl-singletons">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataforma com mais horas</span>
+                                <strong id="pl-horas-top">-</strong>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="platform-mainboard">
+                        <div class="platform-kpi-grid">
+                            <article class="platform-kpi">
+                                <p>Top 1</p>
+                                <h4 id="pl-kpi-top">-</h4>
+                            </article>
+                            <article class="platform-kpi">
+                                <p>Horas na l&iacute;der</p>
+                                <h4 id="pl-kpi-horas">-</h4>
+                            </article>
+                            <article class="platform-kpi">
+                                <p>Concentra&ccedil;&atilde;o Top 3</p>
+                                <h4 id="pl-kpi-top3">-</h4>
+                            </article>
+                        </div>
+
+                        <div class="platform-charts-row">
+                            <div class="chart-container platform-chart">
+                                <canvas id="chart-plataforma-distribuicao"></canvas>
+                            </div>
+                            <div class="platform-list-card">
+                                <h4>Ranking de Plataformas</h4>
+                                <div class="platform-rank-list" id="grid-plataforma"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Avaliacao Pessoal -->
@@ -324,7 +386,7 @@
         </div>
     </main>
 
-    <script src="script.js?v=20260402-yxt9"></script>
+    <script src="script.js?v=20260402-yxt11"></script>
 </body>
 </html>
 
