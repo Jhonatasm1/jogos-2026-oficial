@@ -639,16 +639,39 @@ td {
     font-weight: 500;
     color: var(--text-light);
     background: rgba(255, 255, 255, 0.04);
-    padding: 0.6rem 1rem;
+    padding: 0.65rem 0.9rem;
     border-radius: 8px;
     border-left: 3px solid var(--gold);
     transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
     overflow-wrap: anywhere;
     word-break: break-word;
 }
 
 .dif-game-item:hover {
     background: rgba(212, 168, 83, 0.1);
+}
+
+.dif-game-name {
+    flex: 1;
+    min-width: 0;
+}
+
+.dif-game-level {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold-bright);
+    background: rgba(212, 168, 83, 0.08);
+    border: 1px solid var(--gold-border);
+    border-radius: 999px;
+    padding: 0.25rem 0.55rem;
+    white-space: nowrap;
 }
 
 .dif-empty {
@@ -665,6 +688,15 @@ td {
 
     .dif-banner {
         min-height: 170px;
+    }
+
+    .dif-game-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dif-game-level {
+        align-self: flex-start;
     }
 }
 

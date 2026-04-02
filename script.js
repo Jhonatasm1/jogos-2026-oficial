@@ -2020,12 +2020,12 @@ function renderDificuldade() {
     });
 
     const difficultyBlocks = [
-        { key: "sekiro", listId: "list-sekiro" },
-        { key: "realmente trabalhoso", listId: "list-trabalhoso" },
-        { key: "precisa de um esforco", listId: "list-esforco" },
-        { key: "medio", listId: "list-medio" },
-        { key: "mamao com acucar", listId: "list-mamao" },
-        { key: "basta ter cerebro", listId: "list-cerebro" }
+        { key: "sekiro", listId: "list-sekiro", label: "SEKIRO" },
+        { key: "realmente trabalhoso", listId: "list-trabalhoso", label: "REALMENTE TRABALHOSO" },
+        { key: "precisa de um esforco", listId: "list-esforco", label: "PRECISA DE UM ESFORÇO" },
+        { key: "medio", listId: "list-medio", label: "MÉDIO" },
+        { key: "mamao com acucar", listId: "list-mamao", label: "MAMÃO COM AÇÚCAR" },
+        { key: "basta ter cerebro", listId: "list-cerebro", label: "BASTA TER CÉREBRO" }
     ].map((block) => ({ ...block, games: [] }));
 
     getOverviewFilteredRows().forEach((row) => {
@@ -2039,7 +2039,7 @@ function renderDificuldade() {
         }
     });
 
-    const fillList = (list, games) => {
+    const fillList = (list, games, levelLabel) => {
         if (!list) return;
 
         list.innerHTML = "";
@@ -2056,13 +2056,16 @@ function renderDificuldade() {
         items.forEach((jogo) => {
             const el = document.createElement("div");
             el.className = "dif-game-item";
-            el.textContent = jogo;
+            el.innerHTML = `
+                <span class="dif-game-name">${jogo}</span>
+                <span class="dif-game-level">${levelLabel}</span>
+            `;
             list.appendChild(el);
         });
     };
 
     difficultyBlocks.forEach((block) => {
-        fillList(document.getElementById(block.listId), block.games);
+        fillList(document.getElementById(block.listId), block.games, block.label);
     });
 }
 
