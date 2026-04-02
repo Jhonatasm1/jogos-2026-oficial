@@ -751,7 +751,7 @@ function renderCharts(rows, statusCount) {
 
     const barConfigMap = {
         pendente: { label: "Pendente", color: "#ffcc00" },
-        concluido: { label: "Conclu\u00eddo", color: "#4a90e2" },
+        concluido: { label: "Conclu\u00eddo", color: "#d4a853" },
         pausado: { label: "Pausado", color: "#ff9800" },
         dropado: { label: "Dropado", color: "#e06c75" },
         jogando: { label: "Jogando", color: "#1a9fda" },
