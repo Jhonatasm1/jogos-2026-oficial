@@ -1911,8 +1911,21 @@ function renderDificuldade() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "JOGOS POR DIFICULDADE", color: "#d4a853", font: { size: 16 } },
+                    title: {
+                        display: true,
+                        text: "JOGOS POR DIFICULDADE",
+                        color: "#f0c95c",
+                        font: { size: 18, weight: 'bold', family: "'Cinzel', serif" },
+                        padding: { top: 10, bottom: 14 }
+                    },
                     tooltip: {
+                        backgroundColor: "rgba(12, 13, 20, 0.92)",
+                        borderColor: "#d4a853",
+                        borderWidth: 1,
+                        titleColor: "#f0c95c",
+                        bodyColor: "#f0ebe3",
+                        bodyFont: { family: "'Manrope', sans-serif" },
+                        cornerRadius: 6,
                         callbacks: {
                             title: () => "",
                             label: (ctx) => {
