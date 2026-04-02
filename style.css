@@ -587,19 +587,19 @@ td {
     border-color: #ff6666;
 }
 #banner-esforco {
-    background: linear-gradient(135deg, #b85d18 0%, #7a3a0a 100%);
+    background-image: url('ffvii.png');
     border-color: #e67e22;
 }
 #banner-medio {
-    background: linear-gradient(135deg, #1a6fa8 0%, #0d3a5c 100%);
+    background-image: url('44.png'), url('u4.png');
     border-color: #3498db;
 }
 #banner-mamao {
-    background: linear-gradient(135deg, #c9952a 0%, #7a5a10 100%);
+    background-image: url('split.png');
     border-color: #f1c40f;
 }
 #banner-cerebro {
-    background: linear-gradient(135deg, #1a7a42 0%, #0d4a28 100%);
+    background-image: url('unr.png');
     border-color: #2ecc71;
 }
 
