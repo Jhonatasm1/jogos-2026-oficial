@@ -1874,24 +1874,36 @@ function renderDificuldade() {
                             }
                             return "";
                         },
-                        font: [{ size: 14, weight: 'bold' }, { size: 12 }],
-                        color: "#fff"
+                        font: [{ size: 14, weight: 'bold', family: "'Syne', sans-serif" }, { size: 13, family: "'Manrope', sans-serif" }],
+                        color: "#f0ebe3"
                     },
                     backgroundColor: (ctx) => {
                         const levelColors = {
-                            "BASTA TER CÉREBRO": "#2ecc71",
-                            "MAMÃO COM AÇÚCAR": "#f1c40f",
-                            "MÉDIO": "#3498db",
-                            "PRECISA DE UM ESFORÇO": "#e67e22",
-                            "REALMENTE TRABALHOSO": "#e74c3c",
-                            "SEKIRO": "#8e44ad"
+                            "BASTA TER CÉREBRO": "#1a7a42",
+                            "MAMÃO COM AÇÚCAR": "#c9952a",
+                            "MÉDIO": "#1a6fa8",
+                            "PRECISA DE UM ESFORÇO": "#b85d18",
+                            "REALMENTE TRABALHOSO": "#a83232",
+                            "SEKIRO": "#6a2e8a"
                         };
                         const label = ctx.raw ? ctx.raw._data.name : "";
-                        return levelColors[label] || "#2a2530";
+                        return levelColors[label] || "#1a1c26";
                     },
-                    borderColor: "var(--bg-2)",
+                    hoverBackgroundColor: (ctx) => {
+                        const levelHover = {
+                            "BASTA TER CÉREBRO": "#24a058",
+                            "MAMÃO COM AÇÚCAR": "#e0aa3a",
+                            "MÉDIO": "#2488c8",
+                            "PRECISA DE UM ESFORÇO": "#d47020",
+                            "REALMENTE TRABALHOSO": "#cc4040",
+                            "SEKIRO": "#8838a8"
+                        };
+                        const label = ctx.raw ? ctx.raw._data.name : "";
+                        return levelHover[label] || "#2a2530";
+                    },
+                    borderColor: "#d4a853",
                     borderWidth: 2,
-                    spacing: 1
+                    spacing: 2
                 }]
             },
             options: {
