@@ -704,7 +704,7 @@ function renderCharts(rows, statusCount) {
 
     const doughnutConfig = [
         { key: "pendente", label: "Pendente", color: "#ffcc00" }, // Amarelo
-        { key: "concluido", label: "Conclu\u00eddo", color: "#4a90e2" }, // Azul
+        { key: "concluido", label: "Conclu\u00eddo", color: "#d4a853" }, // Dourado
         { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
         { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
         { key: "jogando", label: "Jogando", color: "#1a9fda" }, // Safira
