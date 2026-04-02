@@ -1975,19 +1975,19 @@ function renderDificuldade() {
               dataTable.addColumn("number", "Horas");
 
               const levelColors = {
-                  "BASTA TER CÉREBRO": "#2ecc71",
-                  "MAMÃO COM AÇÚCAR": "#f1c40f",
-                  "MÉDIO": "#3498db",
-                  "PRECISA DE UM ESFORÇO": "#e67e22",
-                  "REALMENTE TRABALHOSO": "#e74c3c",
-                  "SEKIRO": "#8e44ad"
+                  "BASTA TER CÉREBRO": "#1a7a42",
+                  "MAMÃO COM AÇÚCAR": "#c9952a",
+                  "MÉDIO": "#1a6fa8",
+                  "PRECISA DE UM ESFORÇO": "#b85d18",
+                  "REALMENTE TRABALHOSO": "#a83232",
+                  "SEKIRO": "#6a2e8a"
               };
 
               const colorsArr = [];
               sortedHoras.forEach(item => {
                   const hours = parseFloat((item[1] / 3600).toFixed(1));
                   dataTable.addRow([item[0], hours]);
-                  colorsArr.push(levelColors[item[0]] || "#2a2530");
+                  colorsArr.push(levelColors[item[0]] || "#1a1c26");
               });
 
               const options = {
@@ -1995,8 +1995,11 @@ function renderDificuldade() {
                   is3D: true,
                   backgroundColor: "transparent",
                   colors: colorsArr,
-                  titleTextStyle: { color: "#d4a853", fontSize: 16, bold: true },
-                  legend: { position: "right", textStyle: { color: "#d4a853" } },
+                  titleTextStyle: { color: "#f0c95c", fontSize: 18, bold: true, fontName: "Cinzel" },
+                  legend: { position: "right", textStyle: { color: "#f0ebe3", fontName: "Manrope", fontSize: 12 } },
+                  pieSliceBorderColor: "#d4a853",
+                  pieSliceTextStyle: { color: "#f0ebe3", fontName: "Manrope", fontSize: 12 },
+                  tooltip: { textStyle: { color: "#f0ebe3", fontName: "Manrope" }, showColorCode: true },
                   chartArea: { width: "100%", height: "80%" }
               };
 
