@@ -54,7 +54,7 @@ body::before {
     content: "";
     position: fixed;
     inset: 0;
-    background-image: url("fundo_1.png");
+    background-image: url("fundo_pc.png");
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
@@ -64,8 +64,10 @@ body::before {
     transition: opacity 0.6s ease;
 }
 
-body.bg-2::before {
-    background-image: url("fundo_2.png");
+@media (max-width: 768px) and (orientation: portrait) {
+    body::before {
+        background-image: url("fundo_m.png");
+    }
 }
 
 body::after {
