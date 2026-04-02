@@ -2058,10 +2058,6 @@ function switchTab(tabId) {
     targetBtn.classList.add("active");
     targetContent.classList.add("active");
 
-    // Alternate background between tabs
-    const bg2Tabs = ["bi-gamer", "dificuldade", "avaliacao", "tabela"];
-    document.body.classList.toggle("bg-2", bg2Tabs.includes(tabId));
-
     if (dom.filtersTop) {
         dom.filtersTop.hidden = tabId === "tabela";
     }
