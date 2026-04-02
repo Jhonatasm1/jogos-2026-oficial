@@ -1777,8 +1777,8 @@ function renderTempoJogo() {
                 datasets: [{
                     label: "Horas Jogadas",
                     data: dataCurtos,
-                    backgroundColor: "#56b6c2",
-                    borderColor: "#3b8d99",
+                    backgroundColor: "#00d4ff",
+                    borderColor: "#1a9fda",
                     borderWidth: 1
                 }]
             },
