@@ -1930,7 +1930,8 @@ function renderDificuldade() {
                     },
                     borderColor: "#d4a853",
                     borderWidth: 2,
-                    spacing: 2
+                    borderRadius: 6,
+                    spacing: 3
                 }]
             },
             options: {
