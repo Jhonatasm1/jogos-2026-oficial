@@ -707,7 +707,7 @@ function renderCharts(rows, statusCount) {
         { key: "concluido", label: "Conclu\u00eddo", color: "#4a90e2" }, // Azul
         { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
         { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
-        { key: "jogando", label: "Jogando", color: "#5a9d6a" }, // Verde
+        { key: "jogando", label: "Jogando", color: "#1a9fda" }, // Safira
         { key: "iniciado", label: "Iniciado", color: "#56b6c2" } // Ciano
     ];
 
