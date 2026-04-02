@@ -1887,7 +1887,7 @@ function renderDificuldade() {
                             "SEKIRO": "#8e44ad"
                         };
                         const label = ctx.raw ? ctx.raw._data.name : "";
-                        return levelColors[label] || "rgba(212, 168, 83, 0.1)";
+                        return levelColors[label] || "#2a2530";
                     },
                     borderColor: "var(--bg-2)",
                     borderWidth: 2,
