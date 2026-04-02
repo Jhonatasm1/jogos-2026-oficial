@@ -2039,15 +2039,15 @@ function renderDificuldade() {
         });
         
         if (sekiroGames.length === 0) listSekiro.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
-        else sekiroGames.forEach(jogo => {
+        else sekiroGames.slice(0, 3).forEach(jogo => {
             const el = document.createElement("div");
             el.className = "hardcore-game-item";
             el.textContent = jogo;
             listSekiro.appendChild(el);
         });
-        
+
         if (trabalhosoGames.length === 0) listTrabalhoso.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
-        else trabalhosoGames.forEach(jogo => {
+        else trabalhosoGames.slice(0, 3).forEach(jogo => {
             const el = document.createElement("div");
             el.className = "hardcore-game-item";
             el.textContent = jogo;
