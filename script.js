@@ -1617,7 +1617,7 @@ function renderBiGamer() {
                 datasets: [{
                     label: "Jogos",
                     data: values,
-                    backgroundColor: ["#5a9d6a", "#7ab88f", "#d4896e", "#b66f56", "#3f7f53", "#a0c9ab"],
+                    backgroundColor: ["#d4a853", "#c9952a", "#1a9fda", "#00d4ff", "#a07830", "#f0c95c"],
                     borderWidth: 0,
                     borderRadius: 8
                 }]
