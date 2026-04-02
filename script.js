@@ -1934,7 +1934,7 @@ function renderDificuldade() {
               sortedHoras.forEach(item => {
                   const hours = parseFloat((item[1] / 3600).toFixed(1));
                   dataTable.addRow([item[0], hours]);
-                  colorsArr.push(levelColors[item[0]] || "rgba(212, 168, 83, 0.1)");
+                  colorsArr.push(levelColors[item[0]] || "#2a2530");
               });
 
               const options = {
