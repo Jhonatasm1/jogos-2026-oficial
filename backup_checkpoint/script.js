@@ -2026,24 +2026,51 @@ function renderDificuldade() {
         { key: "medio", listId: "list-medio", label: "MÉDIO" },
         { key: "mamao com acucar", listId: "list-mamao", label: "MAMÃO COM AÇÚCAR" },
         { key: "basta ter cerebro", listId: "list-cerebro", label: "BASTA TER CÉREBRO" }
-    ].map((block) => ({ ...block, games: [] }));
+    ];
+
+    const difficultyGroups = difficultyBlocks.reduce((accumulator, block) => {
+        accumulator[block.key] = [];
+        return accumulator;
+    }, {});
+
+    const normalizeDifficultyLabel = (value) => normalizeText(value).replace(/\s+/g, " ").trim();
+
+    const getDifficultyBucket = (value) => {
+        const normalized = normalizeDifficultyLabel(value);
+        if (!normalized) return null;
+
+        if (normalized.includes("sekiro")) return "sekiro";
+        if (normalized.includes("realmente trabalhoso")) return "realmente trabalhoso";
+        if (normalized.includes("precisa de um esforco")) return "precisa de um esforco";
+        if (normalized.includes("mamao com acucar")) return "mamao com acucar";
+        if (normalized.includes("basta ter cerebro")) return "basta ter cerebro";
+        if (normalized === "medio" || normalized.includes(" medio") || normalized.includes("medio ")) return "medio";
+
+        return null;
+    };
 
     getOverviewFilteredRows().forEach((row) => {
-        const dif = normalizeText(row[dificuldadeHeader] || "");
+        const difficultyValue = row[dificuldadeHeader] || "";
         const name = String(row[jogoHeader] || "").trim();
-        if (!name) return;
+        const tempoRaw = String(row[tempoHeader] || "");
+        const seconds = parseTimeToSeconds(tempoRaw) || 0;
+        const bucket = getDifficultyBucket(difficultyValue);
 
-        const targetBlock = difficultyBlocks.find((block) => block.key === dif);
-        if (targetBlock) {
-            targetBlock.games.push(name);
-        }
+        if (!name || !bucket) return;
+
+        difficultyGroups[bucket].push({
+            name,
+            seconds
+        });
     });
 
     const fillList = (list, games, levelLabel) => {
         if (!list) return;
 
         list.innerHTML = "";
-        const items = games.slice(0, 3);
+        const items = [...games]
+            .sort((first, second) => (second.seconds - first.seconds) || first.name.localeCompare(second.name, "pt-BR", { sensitivity: "base" }))
+            .slice(0, 3);
 
         if (items.length === 0) {
             const empty = document.createElement("div");
@@ -2053,19 +2080,25 @@ function renderDificuldade() {
             return;
         }
 
-        items.forEach((jogo) => {
+        items.forEach((itemData) => {
             const el = document.createElement("div");
             el.className = "dif-game-item";
-            el.innerHTML = `
-                <span class="dif-game-name">${jogo}</span>
-                <span class="dif-game-level">${levelLabel}</span>
-            `;
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "dif-game-name";
+            nameSpan.textContent = itemData.name;
+
+            const levelSpan = document.createElement("span");
+            levelSpan.className = "dif-game-level";
+            levelSpan.textContent = levelLabel;
+
+            el.appendChild(nameSpan);
+            el.appendChild(levelSpan);
             list.appendChild(el);
         });
     };
 
     difficultyBlocks.forEach((block) => {
-        fillList(document.getElementById(block.listId), block.games, block.label);
+        fillList(document.getElementById(block.listId), difficultyGroups[block.key], block.label);
     });
 }
 
