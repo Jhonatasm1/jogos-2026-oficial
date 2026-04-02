@@ -754,7 +754,7 @@ function renderCharts(rows, statusCount) {
         concluido: { label: "Conclu\u00eddo", color: "#4a90e2" },
         pausado: { label: "Pausado", color: "#ff9800" },
         dropado: { label: "Dropado", color: "#e06c75" },
-        jogando: { label: "Jogando", color: "#5a9d6a" },
+        jogando: { label: "Jogando", color: "#1a9fda" },
         iniciado: { label: "Iniciado", color: "#56b6c2" },
         outros: { label: "Outros", color: "#ff1493" }
     };
