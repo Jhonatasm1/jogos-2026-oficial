@@ -2021,38 +2021,37 @@ function renderDificuldade() {
     // Show hardcore games (SEKIRO e REALMENTE TRABALHOSO)
     const listSekiro = document.getElementById("list-sekiro");
     const listTrabalhoso = document.getElementById("list-trabalhoso");
-    
-    if (listSekiro && listTrabalhoso) {
+    const jogoHeader = state.resolvedHeaders.jogo;
+
+    if (listSekiro && listTrabalhoso && jogoHeader) {
         listSekiro.innerHTML = "";
         listTrabalhoso.innerHTML = "";
-        
-        const titleHeader = findHeader([/jogo/, /titulo/, /nome/]);
-        
+
         const sekiroGames = [];
         const trabalhosoGames = [];
-        
+
         getOverviewFilteredRows().forEach(row => {
-            const dif = String(row[dificuldadeHeader] || "").trim().toUpperCase();
-            const name = String(row[titleHeader] || "").trim();
-            if (dif === "SEKIRO") sekiroGames.push(name);
-            if (dif === "REALMENTE TRABALHOSO") trabalhosoGames.push(name);
-        });
-        
-        if (sekiroGames.length === 0) listSekiro.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
-        else sekiroGames.slice(0, 3).forEach(jogo => {
-            const el = document.createElement("div");
-            el.className = "hardcore-game-item";
-            el.textContent = jogo;
-            listSekiro.appendChild(el);
+            const dif = normalizeText(row[dificuldadeHeader] || "");
+            const name = String(row[jogoHeader] || "").trim();
+            if (!name) return;
+            if (dif === "sekiro") sekiroGames.push(name);
+            if (dif === "realmente trabalhoso") trabalhosoGames.push(name);
         });
 
-        if (trabalhosoGames.length === 0) listTrabalhoso.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
-        else trabalhosoGames.slice(0, 3).forEach(jogo => {
-            const el = document.createElement("div");
-            el.className = "hardcore-game-item";
-            el.textContent = jogo;
-            listTrabalhoso.appendChild(el);
-        });
+        const fillList = (list, games) => {
+            if (games.length === 0) {
+                list.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
+            } else {
+                games.slice(0, 3).forEach(jogo => {
+                    const el = document.createElement("div");
+                    el.className = "hardcore-game-item";
+                    el.textContent = jogo;
+                    list.appendChild(el);
+                });
+            }
+        };
+        fillList(listSekiro, sekiroGames);
+        fillList(listTrabalhoso, trabalhosoGames);
     }
 }
 
