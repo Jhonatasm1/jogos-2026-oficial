@@ -341,6 +341,10 @@ main {
     min-height: 420px;
 }
 
+#dificuldade .charts-grid .chart-container {
+    min-height: 400px;
+}
+
 /* ── Lists ── */
 .list-container {
     display: flex;
