@@ -1815,12 +1815,13 @@ function renderTempoJogo() {
 function renderDificuldade() {
     const dificuldadeHeader = findHeader([/dificuldade/, /difficulty/]);
     const tempoHeader = state.resolvedHeaders.tempo;
+    const jogoHeader = state.resolvedHeaders.jogo;
     
     const grid = document.getElementById("grid-dificuldade");
     const ctxDifBar = document.getElementById("chart-dificuldade-bar");
     const divDifHoras = document.getElementById("chart-dificuldade-horas");
 
-    if (!grid) return;
+    if (!grid || !dificuldadeHeader || !tempoHeader || !jogoHeader) return;
     grid.innerHTML = "";
 
     const dificCount = {};
@@ -2018,41 +2019,51 @@ function renderDificuldade() {
         grid.appendChild(card);
     });
 
-    // Show hardcore games (SEKIRO e REALMENTE TRABALHOSO)
-    const listSekiro = document.getElementById("list-sekiro");
-    const listTrabalhoso = document.getElementById("list-trabalhoso");
-    const jogoHeader = state.resolvedHeaders.jogo;
+    const difficultyBlocks = [
+        { key: "sekiro", listId: "list-sekiro" },
+        { key: "realmente trabalhoso", listId: "list-trabalhoso" },
+        { key: "precisa de um esforco", listId: "list-esforco" },
+        { key: "medio", listId: "list-medio" },
+        { key: "mamao com acucar", listId: "list-mamao" },
+        { key: "basta ter cerebro", listId: "list-cerebro" }
+    ].map((block) => ({ ...block, games: [] }));
 
-    if (listSekiro && listTrabalhoso && jogoHeader) {
-        listSekiro.innerHTML = "";
-        listTrabalhoso.innerHTML = "";
+    getOverviewFilteredRows().forEach((row) => {
+        const dif = normalizeText(row[dificuldadeHeader] || "");
+        const name = String(row[jogoHeader] || "").trim();
+        if (!name) return;
 
-        const sekiroGames = [];
-        const trabalhosoGames = [];
+        const targetBlock = difficultyBlocks.find((block) => block.key === dif);
+        if (targetBlock) {
+            targetBlock.games.push(name);
+        }
+    });
 
-        getOverviewFilteredRows().forEach(row => {
-            const dif = normalizeText(row[dificuldadeHeader] || "");
-            const name = String(row[jogoHeader] || "").trim();
-            if (!name) return;
-            if (dif === "sekiro") sekiroGames.push(name);
-            if (dif === "realmente trabalhoso") trabalhosoGames.push(name);
+    const fillList = (list, games) => {
+        if (!list) return;
+
+        list.innerHTML = "";
+        const items = games.slice(0, 3);
+
+        if (items.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "dif-empty";
+            empty.textContent = "Nenhum no momento";
+            list.appendChild(empty);
+            return;
+        }
+
+        items.forEach((jogo) => {
+            const el = document.createElement("div");
+            el.className = "dif-game-item";
+            el.textContent = jogo;
+            list.appendChild(el);
         });
+    };
 
-        const fillList = (list, games) => {
-            if (games.length === 0) {
-                list.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
-            } else {
-                games.slice(0, 3).forEach(jogo => {
-                    const el = document.createElement("div");
-                    el.className = "hardcore-game-item";
-                    el.textContent = jogo;
-                    list.appendChild(el);
-                });
-            }
-        };
-        fillList(listSekiro, sekiroGames);
-        fillList(listTrabalhoso, trabalhosoGames);
-    }
+    difficultyBlocks.forEach((block) => {
+        fillList(document.getElementById(block.listId), block.games);
+    });
 }
 
 function renderPlataforma() {

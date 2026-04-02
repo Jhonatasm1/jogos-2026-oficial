@@ -534,18 +534,20 @@ td {
 
 .dif-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(300px, 1.15fr) minmax(260px, 1fr);
     gap: 1rem;
     min-height: 220px;
+    align-items: stretch;
 }
 
 .dif-banner {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
+    justify-content: flex-start;
     background-size: cover;
     background-position: center;
     border-radius: 12px;
-    padding: 2rem 2rem;
+    padding: 2rem 2.2rem;
     position: relative;
     overflow: hidden;
     min-height: 220px;
@@ -571,6 +573,8 @@ td {
     text-transform: uppercase;
     line-height: 1.1;
     text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+    text-align: left;
+    max-width: 70%;
 }
 
 /* Banner images & colors per difficulty */
@@ -609,6 +613,7 @@ td {
     flex-direction: column;
     gap: 0.75rem;
     backdrop-filter: blur(12px);
+    min-height: 220px;
 }
 
 .dif-panel-heading {
@@ -638,6 +643,8 @@ td {
     border-radius: 8px;
     border-left: 3px solid var(--gold);
     transition: background 0.2s;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .dif-game-item:hover {
@@ -649,6 +656,16 @@ td {
     color: var(--fg-muted);
     font-style: italic;
     padding: 0.5rem 0;
+}
+
+@media (max-width: 900px) {
+    .dif-row {
+        grid-template-columns: 1fr;
+    }
+
+    .dif-banner {
+        min-height: 170px;
+    }
 }
 
 /* ══════════════════════════════════════

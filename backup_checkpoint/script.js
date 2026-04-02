@@ -704,11 +704,11 @@ function renderCharts(rows, statusCount) {
 
     const doughnutConfig = [
         { key: "pendente", label: "Pendente", color: "#ffcc00" }, // Amarelo
-        { key: "concluido", label: "Conclu\u00eddo", color: "#4a90e2" }, // Azul
+        { key: "concluido", label: "Conclu\u00eddo", color: "#d4a853" }, // Dourado
         { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
         { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
-        { key: "jogando", label: "Jogando", color: "#5a9d6a" }, // Verde
-        { key: "iniciado", label: "Iniciado", color: "#56b6c2" } // Ciano
+        { key: "jogando", label: "Jogando", color: "#1a9fda" }, // Safira
+        { key: "iniciado", label: "Iniciado", color: "#00d4ff" } // Turquesa
     ];
 
     const doughnutLabels = [];
@@ -743,19 +743,19 @@ function renderCharts(rows, statusCount) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: { 
-                legend: { labels: { color: "#a8c5d5" } },
-                title: { display: true, text: "STATUS", color: "#a8c5d5", font: { size: 16 } }
+                legend: { labels: { color: "#d4a853" } },
+                title: { display: true, text: "STATUS", color: "#d4a853", font: { size: 16 } }
             }
         }
     });
 
     const barConfigMap = {
         pendente: { label: "Pendente", color: "#ffcc00" },
-        concluido: { label: "Conclu\u00eddo", color: "#4a90e2" },
+        concluido: { label: "Conclu\u00eddo", color: "#d4a853" },
         pausado: { label: "Pausado", color: "#ff9800" },
         dropado: { label: "Dropado", color: "#e06c75" },
-        jogando: { label: "Jogando", color: "#5a9d6a" },
-        iniciado: { label: "Iniciado", color: "#56b6c2" },
+        jogando: { label: "Jogando", color: "#1a9fda" },
+        iniciado: { label: "Iniciado", color: "#00d4ff" },
         outros: { label: "Outros", color: "#ff1493" }
     };
 
@@ -804,14 +804,14 @@ function renderCharts(rows, statusCount) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            plugins: { 
-                legend: { labels: { color: "#a8c5d5" } },
-                title: { display: true, text: "LAN\u00c7AMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: "#d4a853" } },
+                title: { display: true, text: "LAN\u00c7AMENTO POR STATUS", color: "#d4a853", font: { size: 16 } }
             },
             scales: {
-                y: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
-                x: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                y: { stacked: true, ticks: { color: "#d4a853", stepSize: 2 }, grid: { color: "rgba(212, 168, 83, 0.1)" } },
+                x: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } }
             }
         }
     });
@@ -1121,7 +1121,7 @@ function getTierColor(tierKey) {
         "Don't know": "#76a9df",
         "Doesn't count": "#7f7ae2"
     };
-    return colors[tierKey] || "#a8c5d5";
+    return colors[tierKey] || "#d4a853";
 }
 
 function getTierContainerByName(name) {
@@ -1617,7 +1617,7 @@ function renderBiGamer() {
                 datasets: [{
                     label: "Jogos",
                     data: values,
-                    backgroundColor: ["#5a9d6a", "#7ab88f", "#d4896e", "#b66f56", "#3f7f53", "#a0c9ab"],
+                    backgroundColor: ["#d4a853", "#c9952a", "#1a9fda", "#00d4ff", "#a07830", "#f0c95c"],
                     borderWidth: 0,
                     borderRadius: 8
                 }]
@@ -1635,8 +1635,8 @@ function renderBiGamer() {
                     }
                 },
                 scales: {
-                    y: { ticks: { color: "#a8c5d5" }, grid: { color: "rgba(90, 157, 106, 0.18)" } },
-                    x: { ticks: { color: "#a8c5d5" }, grid: { display: false } }
+                    y: { ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.12)" } },
+                    x: { ticks: { color: "#d4a853" }, grid: { display: false } }
                 }
             }
         });
@@ -1742,8 +1742,8 @@ function renderTempoJogo() {
                 datasets: [{
                     label: "Horas Jogadas",
                     data: data10,
-                    backgroundColor: "#d4896e",
-                    borderColor: "#b66f56",
+                    backgroundColor: "#1a9fda",
+                    borderColor: "#0080b0",
                     borderWidth: 1
                 }]
             },
@@ -1753,11 +1753,11 @@ function renderTempoJogo() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "TOP 10 JOGOS MAIS JOGADOS", color: "#a8c5d5", font: { size: 16 } }
+                    title: { display: true, text: "TOP 10 JOGOS MAIS JOGADOS", color: "#d4a853", font: { size: 16 } }
                 },
                 scales: {
-                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
-                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                    y: { ticks: { color: "#d4a853" }, grid: { display: false } },
+                    x: { ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } }
                 }
             }
         });
@@ -1777,8 +1777,8 @@ function renderTempoJogo() {
                 datasets: [{
                     label: "Horas Jogadas",
                     data: dataCurtos,
-                    backgroundColor: "#56b6c2",
-                    borderColor: "#3b8d99",
+                    backgroundColor: "#00d4ff",
+                    borderColor: "#1a9fda",
                     borderWidth: 1
                 }]
             },
@@ -1788,11 +1788,11 @@ function renderTempoJogo() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "TOP 10 JOGOS MAIS CURTOS ZERADOS", color: "#a8c5d5", font: { size: 16 } }
+                    title: { display: true, text: "TOP 10 JOGOS MAIS CURTOS ZERADOS", color: "#d4a853", font: { size: 16 } }
                 },
                 scales: {
-                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
-                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                    y: { ticks: { color: "#d4a853" }, grid: { display: false } },
+                    x: { ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } }
                 }
             }
         });
@@ -1815,12 +1815,13 @@ function renderTempoJogo() {
 function renderDificuldade() {
     const dificuldadeHeader = findHeader([/dificuldade/, /difficulty/]);
     const tempoHeader = state.resolvedHeaders.tempo;
+    const jogoHeader = state.resolvedHeaders.jogo;
     
     const grid = document.getElementById("grid-dificuldade");
     const ctxDifBar = document.getElementById("chart-dificuldade-bar");
     const divDifHoras = document.getElementById("chart-dificuldade-horas");
 
-    if (!grid) return;
+    if (!grid || !dificuldadeHeader || !tempoHeader || !jogoHeader) return;
     grid.innerHTML = "";
 
     const dificCount = {};
@@ -1867,31 +1868,71 @@ function renderDificuldade() {
                     key: "value",
                     labels: {
                         display: true,
+                        overflow: "fit",
                         formatter: (ctx) => {
                             const data = ctx.raw._data;
-                            if (data && data.name) {
-                                return [data.name, String(data.value)];
+                            if (!data || !data.name) return "";
+                            const w = ctx.raw.w || 0;
+                            const h = ctx.raw.h || 0;
+                            const name = data.name;
+                            const val = String(data.value);
+                            if (w < 50 || h < 30) return [val];
+                            const words = name.split(" ");
+                            const lines = [];
+                            let cur = "";
+                            const maxChars = Math.max(6, Math.floor(w / 8));
+                            for (const word of words) {
+                                if (cur && (cur.length + 1 + word.length) > maxChars) {
+                                    lines.push(cur);
+                                    cur = word;
+                                } else {
+                                    cur = cur ? cur + " " + word : word;
+                                }
                             }
-                            return "";
+                            if (cur) lines.push(cur);
+                            lines.push(val);
+                            return lines;
                         },
-                        font: [{ size: 14, weight: 'bold' }, { size: 12 }],
-                        color: "#fff"
+                        font: (ctx) => {
+                            const w = ctx.raw ? (ctx.raw.w || 0) : 0;
+                            const h = ctx.raw ? (ctx.raw.h || 0) : 0;
+                            const small = w < 70 || h < 50;
+                            const nameFont = { size: small ? 10 : 13, weight: "bold", family: "'Syne', sans-serif" };
+                            const valFont = { size: small ? 9 : 12, family: "'Manrope', sans-serif" };
+                            return [nameFont, nameFont, nameFont, nameFont, valFont];
+                        },
+                        color: "#f0ebe3",
+                        align: "center",
+                        position: "middle"
                     },
                     backgroundColor: (ctx) => {
                         const levelColors = {
-                            "BASTA TER CEREBRO": "#a3d1ff", // Light Blue
-                            "MAMAO COM ACUCAR": "#82b4ff", // Slightly darker blue
-                            "MEDIO": "#6699ff", // Medium blue
-                            "PRECISA DE UM ESFORCO": "#ffa3a3", // Light Red
-                            "REALMENTE TRABALHOSO": "#ff6666", // Red
-                            "SEKIRO": "#cc0000" // Dark Red
+                            "BASTA TER CÉREBRO": "#1a7a42",
+                            "MAMÃO COM AÇÚCAR": "#c9952a",
+                            "MÉDIO": "#1a6fa8",
+                            "PRECISA DE UM ESFORÇO": "#b85d18",
+                            "REALMENTE TRABALHOSO": "#a83232",
+                            "SEKIRO": "#6a2e8a"
                         };
                         const label = ctx.raw ? ctx.raw._data.name : "";
-                        return levelColors[label] || "#1f3849";
+                        return levelColors[label] || "#1a1c26";
                     },
-                    borderColor: "var(--bg-2)",
+                    hoverBackgroundColor: (ctx) => {
+                        const levelHover = {
+                            "BASTA TER CÉREBRO": "#24a058",
+                            "MAMÃO COM AÇÚCAR": "#e0aa3a",
+                            "MÉDIO": "#2488c8",
+                            "PRECISA DE UM ESFORÇO": "#d47020",
+                            "REALMENTE TRABALHOSO": "#cc4040",
+                            "SEKIRO": "#8838a8"
+                        };
+                        const label = ctx.raw ? ctx.raw._data.name : "";
+                        return levelHover[label] || "#2a2530";
+                    },
+                    borderColor: "#d4a853",
                     borderWidth: 2,
-                    spacing: 1
+                    borderRadius: 6,
+                    spacing: 3
                 }]
             },
             options: {
@@ -1899,8 +1940,21 @@ function renderDificuldade() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "JOGOS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } },
+                    title: {
+                        display: true,
+                        text: "JOGOS POR DIFICULDADE",
+                        color: "#f0c95c",
+                        font: { size: 18, weight: 'bold', family: "'Cinzel', serif" },
+                        padding: { top: 10, bottom: 14 }
+                    },
                     tooltip: {
+                        backgroundColor: "rgba(12, 13, 20, 0.92)",
+                        borderColor: "#d4a853",
+                        borderWidth: 1,
+                        titleColor: "#f0c95c",
+                        bodyColor: "#f0ebe3",
+                        bodyFont: { family: "'Manrope', sans-serif" },
+                        cornerRadius: 6,
                         callbacks: {
                             title: () => "",
                             label: (ctx) => {
@@ -1922,19 +1976,19 @@ function renderDificuldade() {
               dataTable.addColumn("number", "Horas");
 
               const levelColors = {
-                  "BASTA TER CEREBRO": "#a3d1ff",
-                  "MAMAO COM ACUCAR": "#82b4ff",
-                  "MEDIO": "#6699ff",
-                  "PRECISA DE UM ESFORCO": "#ffa3a3",
-                  "REALMENTE TRABALHOSO": "#ff6666",
-                  "SEKIRO": "#cc0000"
+                  "BASTA TER CÉREBRO": "#1a7a42",
+                  "MAMÃO COM AÇÚCAR": "#c9952a",
+                  "MÉDIO": "#1a6fa8",
+                  "PRECISA DE UM ESFORÇO": "#b85d18",
+                  "REALMENTE TRABALHOSO": "#a83232",
+                  "SEKIRO": "#6a2e8a"
               };
 
               const colorsArr = [];
               sortedHoras.forEach(item => {
                   const hours = parseFloat((item[1] / 3600).toFixed(1));
                   dataTable.addRow([item[0], hours]);
-                  colorsArr.push(levelColors[item[0]] || "#1f3849");
+                  colorsArr.push(levelColors[item[0]] || "#1a1c26");
               });
 
               const options = {
@@ -1942,8 +1996,11 @@ function renderDificuldade() {
                   is3D: true,
                   backgroundColor: "transparent",
                   colors: colorsArr,
-                  titleTextStyle: { color: "#a8c5d5", fontSize: 16, bold: true },
-                  legend: { position: "right", textStyle: { color: "#a8c5d5" } },
+                  titleTextStyle: { color: "#f0c95c", fontSize: 18, bold: true, fontName: "Cinzel" },
+                  legend: { position: "right", textStyle: { color: "#f0ebe3", fontName: "Manrope", fontSize: 12 } },
+                  pieSliceBorderColor: "#d4a853",
+                  pieSliceTextStyle: { color: "#f0ebe3", fontName: "Manrope", fontSize: 12 },
+                  tooltip: { textStyle: { color: "#f0ebe3", fontName: "Manrope" }, showColorCode: true },
                   chartArea: { width: "100%", height: "80%" }
               };
 
@@ -1962,42 +2019,51 @@ function renderDificuldade() {
         grid.appendChild(card);
     });
 
-    // Show hardcore games (SEKIRO e REALMENTE TRABALHOSO)
-    const listSekiro = document.getElementById("list-sekiro");
-    const listTrabalhoso = document.getElementById("list-trabalhoso");
-    
-    if (listSekiro && listTrabalhoso) {
-        listSekiro.innerHTML = "";
-        listTrabalhoso.innerHTML = "";
-        
-        const titleHeader = findHeader([/jogo/, /titulo/, /nome/]);
-        
-        const sekiroGames = [];
-        const trabalhosoGames = [];
-        
-        getOverviewFilteredRows().forEach(row => {
-            const dif = String(row[dificuldadeHeader] || "").trim().toUpperCase();
-            const name = String(row[titleHeader] || "").trim();
-            if (dif === "SEKIRO") sekiroGames.push(name);
-            if (dif === "REALMENTE TRABALHOSO") trabalhosoGames.push(name);
-        });
-        
-        if (sekiroGames.length === 0) listSekiro.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
-        else sekiroGames.forEach(jogo => {
+    const difficultyBlocks = [
+        { key: "sekiro", listId: "list-sekiro" },
+        { key: "realmente trabalhoso", listId: "list-trabalhoso" },
+        { key: "precisa de um esforco", listId: "list-esforco" },
+        { key: "medio", listId: "list-medio" },
+        { key: "mamao com acucar", listId: "list-mamao" },
+        { key: "basta ter cerebro", listId: "list-cerebro" }
+    ].map((block) => ({ ...block, games: [] }));
+
+    getOverviewFilteredRows().forEach((row) => {
+        const dif = normalizeText(row[dificuldadeHeader] || "");
+        const name = String(row[jogoHeader] || "").trim();
+        if (!name) return;
+
+        const targetBlock = difficultyBlocks.find((block) => block.key === dif);
+        if (targetBlock) {
+            targetBlock.games.push(name);
+        }
+    });
+
+    const fillList = (list, games) => {
+        if (!list) return;
+
+        list.innerHTML = "";
+        const items = games.slice(0, 3);
+
+        if (items.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "dif-empty";
+            empty.textContent = "Nenhum no momento";
+            list.appendChild(empty);
+            return;
+        }
+
+        items.forEach((jogo) => {
             const el = document.createElement("div");
-            el.className = "hardcore-game-item";
+            el.className = "dif-game-item";
             el.textContent = jogo;
-            listSekiro.appendChild(el);
+            list.appendChild(el);
         });
-        
-        if (trabalhosoGames.length === 0) listTrabalhoso.innerHTML = "<span class='hardcore-game-item'>Nenhum no momento</span>";
-        else trabalhosoGames.forEach(jogo => {
-            const el = document.createElement("div");
-            el.className = "hardcore-game-item";
-            el.textContent = jogo;
-            listTrabalhoso.appendChild(el);
-        });
-    }
+    };
+
+    difficultyBlocks.forEach((block) => {
+        fillList(document.getElementById(block.listId), block.games);
+    });
 }
 
 function renderPlataforma() {
