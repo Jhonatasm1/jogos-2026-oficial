@@ -2225,7 +2225,7 @@ async function fetchRankingData() {
         renderTable();
         renderVisaoGeral();
 
-        const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+        const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
         if (activeTab === "bi-gamer") {
             renderBiGamer();
         }
@@ -2265,7 +2265,7 @@ function bindEvents() {
     if (dom.filterPlataforma) {
         dom.filterPlataforma.addEventListener("change", (event) => {
             state.overviewFilters.plataforma = event.target.value;
-            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
             switchTab(activeTab);
         });
     }
@@ -2273,7 +2273,7 @@ function bindEvents() {
     if (dom.filterMultiplayer) {
         dom.filterMultiplayer.addEventListener("change", (event) => {
             state.overviewFilters.multiplayer = event.target.value;
-            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
             switchTab(activeTab);
         });
     }
@@ -2281,7 +2281,7 @@ function bindEvents() {
     if (dom.filterAnoConclusao) {
         dom.filterAnoConclusao.addEventListener("change", (event) => {
             state.overviewFilters.anoConclusao = event.target.value;
-            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "visao-geral";
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
             switchTab(activeTab);
         });
     }
