@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Gaming Temple</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260402-yxt11">
+    <link rel="stylesheet" href="style.css?v=20260402-yxt12">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -371,7 +371,65 @@
 
             <!-- Avaliacao Pessoal -->
             <section class="tab-content" id="avaliacao">
-                <div class="list-container" id="lista-avaliacao"></div>
+                <div class="rating-layout">
+                    <aside class="rating-sidepanel">
+                        <h3 class="rating-title">Avaliacao Pessoal</h3>
+                        <p class="rating-subtitle">Ranking por criterio pessoal, do melhor para o pior.</p>
+                        <div class="rating-side-metrics">
+                            <div class="rating-mini-card">
+                                <span>Jogos avaliados</span>
+                                <strong id="av-total-jogos">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Nota media (escala convertida)</span>
+                                <strong id="av-nota-media">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Melhor faixa atual</span>
+                                <strong id="av-melhor-faixa">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Faixa dominante</span>
+                                <strong id="av-faixa-dominante">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Jogos de excelencia (>=9)</span>
+                                <strong id="av-jogos-excelencia">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Jogos fracos (<=3,5)</span>
+                                <strong id="av-jogos-fracos">-</strong>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="rating-mainboard">
+                        <div class="rating-kpi-grid">
+                            <article class="rating-kpi">
+                                <p>Jogo Top 1</p>
+                                <h4 id="av-kpi-top1">-</h4>
+                            </article>
+                            <article class="rating-kpi">
+                                <p>Cobertura de avaliacoes</p>
+                                <h4 id="av-kpi-cobertura">-</h4>
+                            </article>
+                            <article class="rating-kpi">
+                                <p>Variacao geral</p>
+                                <h4 id="av-kpi-variacao">-</h4>
+                            </article>
+                        </div>
+
+                        <div class="rating-charts-row">
+                            <div class="chart-container rating-chart">
+                                <canvas id="chart-avaliacao-distribuicao"></canvas>
+                            </div>
+                            <div class="rating-list-card">
+                                <h4>Ranking de Jogos por Avaliacao</h4>
+                                <div class="rating-rank-list" id="lista-avaliacao"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Tabela Completa -->
@@ -386,7 +444,7 @@
         </div>
     </main>
 
-    <script src="script.js?v=20260402-yxt11"></script>
+    <script src="script.js?v=20260402-yxt12"></script>
 </body>
 </html>
 

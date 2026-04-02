@@ -10,6 +10,15 @@ const TIER_STATE_STORE = "tier_state";
 const TIER_ASSET_STORE = "tier_assets";
 const TIER_STATE_ID = "main";
 const TIER_SAVE_DEBOUNCE_MS = 450;
+const AVALIACAO_SCALE = [
+    { key: "obra de arte", label: "Obra de arte", score: 10, color: "#7e78ff" },
+    { key: "nivel altissimo", label: "Nivel Altissimo", score: 9, color: "#8789ed" },
+    { key: "muito bom", label: "Muito bom", score: 8, color: "#9db7d5" },
+    { key: "legalzinho", label: "Legalzinho", score: 6.5, color: "#b0bfd1" },
+    { key: "intermediario", label: "Intermediario", score: 5, color: "#9eafc0" },
+    { key: "fraco", label: "Fraco", score: 3.5, color: "#cfb1bc" },
+    { key: "decepcionante", label: "Decepcionante", score: 2, color: "#ef9ea5" }
+];
 
 const state = {
     headers: [],
@@ -212,6 +221,52 @@ function parseTimeToSeconds(value) {
     }
 
     return null;
+}
+
+function formatRatingScore(value) {
+    if (!Number.isFinite(value)) return "-";
+    const hasFraction = Math.abs(value % 1) > 0.0001;
+    return value.toLocaleString("pt-BR", {
+        minimumFractionDigits: hasFraction ? 1 : 0,
+        maximumFractionDigits: 1
+    });
+}
+
+function parsePersonalRating(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+
+    const normalized = normalizeText(raw);
+    const mapped = AVALIACAO_SCALE.find((entry) => normalized === entry.key || normalized.includes(entry.key));
+
+    if (mapped) {
+        return {
+            key: mapped.key,
+            label: mapped.label,
+            score: mapped.score,
+            color: mapped.color,
+            mapped: true
+        };
+    }
+
+    const numeric = parseNumber(raw);
+    if (numeric !== null) {
+        return {
+            key: "numeric",
+            label: raw,
+            score: numeric,
+            color: "#93a5bc",
+            mapped: false
+        };
+    }
+
+    return {
+        key: "raw",
+        label: raw,
+        score: 0,
+        color: "#93a5bc",
+        mapped: false
+    };
 }
 
 function compareValues(a, b, direction, preferTime) {
@@ -2289,26 +2344,184 @@ function renderAvaliacao() {
     const jogoHeader = findHeader([/jogo/, /titulo/, /nome/]);
 
     const lista = document.getElementById("lista-avaliacao");
-    if (!lista) return;
+    const totalJogosEl = document.getElementById("av-total-jogos");
+    const notaMediaEl = document.getElementById("av-nota-media");
+    const melhorFaixaEl = document.getElementById("av-melhor-faixa");
+    const faixaDominanteEl = document.getElementById("av-faixa-dominante");
+    const jogosExcelenciaEl = document.getElementById("av-jogos-excelencia");
+    const jogosFracosEl = document.getElementById("av-jogos-fracos");
+    const top1El = document.getElementById("av-kpi-top1");
+    const coberturaEl = document.getElementById("av-kpi-cobertura");
+    const variacaoEl = document.getElementById("av-kpi-variacao");
+    const chartEl = document.getElementById("chart-avaliacao-distribuicao");
+
+    if (!lista || !totalJogosEl || !notaMediaEl || !melhorFaixaEl || !faixaDominanteEl || !jogosExcelenciaEl || !jogosFracosEl || !top1El || !coberturaEl || !variacaoEl) {
+        return;
+    }
+
     lista.innerHTML = "";
 
-    const sorted = [...getOverviewFilteredRows()].sort((a, b) => {
-        const avaA = parseNumber(a[avaliacaoHeader] || "") || 0;
-        const avaB = parseNumber(b[avaliacaoHeader] || "") || 0;
-        return avaB - avaA;
+    const rows = getOverviewFilteredRows();
+    const avaliados = rows
+        .map((row) => {
+            const jogo = String(row[jogoHeader] || "").trim() || "Sem titulo";
+            const parsed = parsePersonalRating(row[avaliacaoHeader]);
+            if (!parsed) return null;
+            return {
+                jogo,
+                ...parsed
+            };
+        })
+        .filter(Boolean);
+
+    const sorted = [...avaliados].sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.jogo.localeCompare(b.jogo, "pt-BR", { sensitivity: "base" });
     });
 
-    sorted.slice(0, 20).forEach(row => {
-        const item = document.createElement("div");
-        item.className = "list-item";
-        const ava = String(row[avaliacaoHeader] || "");
-        const jogo = String(row[jogoHeader] || "");
-        item.innerHTML = `
-            <div class="list-item-title">${jogo}<\/div>
-            <div class="list-item-value">${ava}<\/div>
-        `;
-        lista.appendChild(item);
+    const totalAvaliados = sorted.length;
+    const totalRows = rows.length;
+    const scoreSum = sorted.reduce((acc, item) => acc + item.score, 0);
+    const mediaScore = totalAvaliados ? (scoreSum / totalAvaliados) : 0;
+    const topItem = sorted[0] || null;
+    const bottomItem = sorted[sorted.length - 1] || null;
+
+    const faixaCounts = {};
+    sorted.forEach((item) => {
+        faixaCounts[item.label] = (faixaCounts[item.label] || 0) + 1;
     });
+    const faixaDominante = Object.entries(faixaCounts)
+        .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0], "pt-BR", { sensitivity: "base" }))[0] || null;
+
+    const excelenciaCount = sorted.filter((item) => item.score >= 9).length;
+    const fracosCount = sorted.filter((item) => item.score <= 3.5).length;
+
+    totalJogosEl.textContent = String(totalAvaliados);
+    notaMediaEl.textContent = totalAvaliados ? formatRatingScore(mediaScore) : "-";
+    melhorFaixaEl.textContent = topItem ? `${topItem.label} (${formatRatingScore(topItem.score)})` : "-";
+    faixaDominanteEl.textContent = faixaDominante ? `${faixaDominante[0]} (${faixaDominante[1]})` : "-";
+    jogosExcelenciaEl.textContent = String(excelenciaCount);
+    jogosFracosEl.textContent = String(fracosCount);
+
+    top1El.textContent = topItem ? `${topItem.jogo} (${topItem.label})` : "-";
+    coberturaEl.textContent = totalRows > 0 ? `${((totalAvaliados / totalRows) * 100).toFixed(1)}%` : "-";
+    variacaoEl.textContent = topItem && bottomItem
+        ? `${formatRatingScore(topItem.score)} -> ${formatRatingScore(bottomItem.score)}`
+        : "-";
+
+    if (!sorted.length) {
+        const empty = document.createElement("p");
+        empty.className = "rating-empty";
+        empty.textContent = "Nenhuma avaliacao encontrada para os filtros atuais.";
+        lista.appendChild(empty);
+    } else {
+        sorted.forEach((item, index) => {
+            const row = document.createElement("article");
+            row.className = "rating-item";
+
+            const main = document.createElement("div");
+            main.className = "rating-item-main";
+
+            const rank = document.createElement("span");
+            rank.className = "rating-item-rank";
+            rank.textContent = `#${index + 1}`;
+
+            const labels = document.createElement("div");
+            labels.className = "rating-item-labels";
+
+            const gameEl = document.createElement("strong");
+            gameEl.textContent = item.jogo;
+
+            const chip = document.createElement("span");
+            chip.className = "rating-chip";
+            chip.style.setProperty("--rating-chip-bg", item.color);
+            chip.textContent = item.label;
+
+            labels.appendChild(gameEl);
+            labels.appendChild(chip);
+            main.appendChild(rank);
+            main.appendChild(labels);
+
+            const score = document.createElement("div");
+            score.className = "rating-item-score";
+            score.textContent = formatRatingScore(item.score);
+
+            row.appendChild(main);
+            row.appendChild(score);
+            lista.appendChild(row);
+        });
+    }
+
+    if (chartEl && typeof Chart !== "undefined") {
+        if (state.charts.avaliacaoDistribuicao) {
+            state.charts.avaliacaoDistribuicao.destroy();
+        }
+
+        if (!sorted.length) {
+            state.charts.avaliacaoDistribuicao = null;
+            return;
+        }
+
+        const counts = Object.fromEntries(AVALIACAO_SCALE.map((entry) => [entry.key, 0]));
+        let outrosCount = 0;
+
+        sorted.forEach((item) => {
+            if (Object.prototype.hasOwnProperty.call(counts, item.key)) {
+                counts[item.key] += 1;
+            } else {
+                outrosCount += 1;
+            }
+        });
+
+        const labels = AVALIACAO_SCALE.map((entry) => entry.label.toUpperCase());
+        const values = AVALIACAO_SCALE.map((entry) => counts[entry.key]);
+        const colors = AVALIACAO_SCALE.map((entry) => entry.color);
+
+        if (outrosCount > 0) {
+            labels.push("OUTROS");
+            values.push(outrosCount);
+            colors.push("#93a5bc");
+        }
+
+        state.charts.avaliacaoDistribuicao = new Chart(chartEl, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Jogos",
+                    data: values,
+                    backgroundColor: colors,
+                    borderRadius: 8,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: "y",
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: "AVALIACAO PESSOAL - DISTRIBUICAO",
+                        color: "#d4a853",
+                        font: { size: 16 }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { color: "#cdc7bc" },
+                        grid: { color: "rgba(212, 168, 83, 0.14)" }
+                    },
+                    y: {
+                        ticks: { color: "#cdc7bc" },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
 }
 
 function switchTab(tabId) {
