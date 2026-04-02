@@ -1635,7 +1635,7 @@ function renderBiGamer() {
                     }
                 },
                 scales: {
-                    y: { ticks: { color: "#d4a853" }, grid: { color: "rgba(90, 157, 106, 0.18)" } },
+                    y: { ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.12)" } },
                     x: { ticks: { color: "#d4a853" }, grid: { display: false } }
                 }
             }
