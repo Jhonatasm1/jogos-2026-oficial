@@ -822,6 +822,17 @@ function formatHoursCompact(totalSeconds) {
     return `${hours}h`;
 }
 
+function formatSecondsToTime(totalSeconds) {
+    const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+
+    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h`;
+    if (minutes > 0) return `${minutes}m`;
+    return "0h";
+}
+
 function getCoverFromRow(row, title) {
     const coverHeader = findHeader([/capa/, /imagem/, /image/, /cover/, /thumb/]);
     const rawCover = coverHeader ? String(row[coverHeader] || "").trim() : "";
@@ -2087,12 +2098,22 @@ function renderDificuldade() {
             nameSpan.className = "dif-game-name";
             nameSpan.textContent = itemData.name;
 
+            const metaWrap = document.createElement("span");
+            metaWrap.className = "dif-game-meta";
+
+            const hoursSpan = document.createElement("span");
+            hoursSpan.className = "dif-game-hours";
+            hoursSpan.textContent = formatSecondsToTime(itemData.seconds);
+
             const levelSpan = document.createElement("span");
             levelSpan.className = "dif-game-level";
             levelSpan.textContent = levelLabel;
 
+            metaWrap.appendChild(hoursSpan);
+            metaWrap.appendChild(levelSpan);
+
             el.appendChild(nameSpan);
-            el.appendChild(levelSpan);
+            el.appendChild(metaWrap);
             list.appendChild(el);
         });
     };
@@ -2121,6 +2142,7 @@ function renderPlataforma() {
         grid.appendChild(item);
     });
 }
+
 
 function renderAvaliacao() {
     const avaliacaoHeader = findHeader([/avaliacao pessoal/, /avaliacao/, /nota/]);

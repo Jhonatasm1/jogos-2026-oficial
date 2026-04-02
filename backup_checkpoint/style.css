@@ -660,6 +660,27 @@ td {
     min-width: 0;
 }
 
+.dif-game-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.dif-game-hours {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #121418;
+    background: linear-gradient(135deg, #f0c95c, #d4a853);
+    border: 1px solid rgba(212, 168, 83, 0.6);
+    border-radius: 999px;
+    padding: 0.25rem 0.55rem;
+    white-space: nowrap;
+}
+
 .dif-game-level {
     flex: 0 0 auto;
     font-size: 0.72rem;
@@ -693,6 +714,10 @@ td {
     .dif-game-item {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .dif-game-meta {
+        justify-content: flex-start;
     }
 
     .dif-game-level {
