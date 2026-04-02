@@ -523,8 +523,8 @@ td {
     font-style: italic;
 }
 
-/* ── Hardcore Showcase ── */
-.hardcore-showcase {
+/* ── Difficulty Showcase ── */
+.dif-showcase {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -532,72 +532,123 @@ td {
     margin-bottom: 2rem;
 }
 
-.hardcore-banner {
+.dif-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    min-height: 220px;
+}
+
+.dif-banner {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    align-items: flex-end;
     background-size: cover;
     background-position: center;
     border-radius: 12px;
-    padding: 3rem 2.5rem;
+    padding: 2rem 2rem;
     position: relative;
     overflow: hidden;
-    min-height: 320px;
+    min-height: 220px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     border: 2px solid transparent;
 }
 
-.hardcore-banner::before {
+.dif-banner::before {
     content: '';
     position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.6) 100%);
+    inset: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.4) 100%);
     z-index: 1;
 }
 
-#banner-sekiro {
-    background-image: url('sekiro.png');
-    border-color: #cc0000;
-}
-
-#banner-trabalhoso {
-    background-image: url('cuphead.png');
-    border-color: #ff6666;
-}
-
-.hardcore-title {
+.dif-banner-title {
     position: relative;
     z-index: 2;
     font-family: 'Cinzel', serif;
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 900;
     color: #fff;
     text-transform: uppercase;
     line-height: 1.1;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    flex: 1;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
 }
 
-.hardcore-games {
-    position: relative;
-    z-index: 2;
+/* Banner images & colors per difficulty */
+#banner-sekiro {
+    background-image: url('sekiro.png');
+    border-color: #cc0000;
+}
+#banner-trabalhoso {
+    background-image: url('cuphead.png');
+    border-color: #ff6666;
+}
+#banner-esforco {
+    background: linear-gradient(135deg, #b85d18 0%, #7a3a0a 100%);
+    border-color: #e67e22;
+}
+#banner-medio {
+    background: linear-gradient(135deg, #1a6fa8 0%, #0d3a5c 100%);
+    border-color: #3498db;
+}
+#banner-mamao {
+    background: linear-gradient(135deg, #c9952a 0%, #7a5a10 100%);
+    border-color: #f1c40f;
+}
+#banner-cerebro {
+    background: linear-gradient(135deg, #1a7a42 0%, #0d4a28 100%);
+    border-color: #2ecc71;
+}
+
+/* Games panel (right side) */
+.dif-games-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    backdrop-filter: blur(12px);
+}
+
+.dif-panel-heading {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--gold-border);
+}
+
+.dif-games-list {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     flex: 1;
-    align-items: flex-end;
 }
 
-.hardcore-game-item {
-    font-size: 1.2rem;
+.dif-game-item {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1rem;
     font-weight: 500;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 0.4rem 1rem;
-    border-radius: 6px;
-    backdrop-filter: blur(4px);
-    border-left: 4px solid var(--gold);
+    color: var(--text-light);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--gold);
+    transition: background 0.2s;
+}
+
+.dif-game-item:hover {
+    background: rgba(212, 168, 83, 0.1);
+}
+
+.dif-empty {
+    font-size: 0.9rem;
+    color: var(--fg-muted);
+    font-style: italic;
+    padding: 0.5rem 0;
 }
 
 /* ══════════════════════════════════════
