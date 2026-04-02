@@ -708,7 +708,7 @@ function renderCharts(rows, statusCount) {
         { key: "pausado", label: "Pausado", color: "#ff9800" }, // Laranja
         { key: "dropado", label: "Dropado", color: "#e06c75" }, // Vermelho
         { key: "jogando", label: "Jogando", color: "#1a9fda" }, // Safira
-        { key: "iniciado", label: "Iniciado", color: "#56b6c2" } // Ciano
+        { key: "iniciado", label: "Iniciado", color: "#00d4ff" } // Turquesa
     ];
 
     const doughnutLabels = [];
