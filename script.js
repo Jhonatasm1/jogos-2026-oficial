@@ -743,8 +743,8 @@ function renderCharts(rows, statusCount) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: { 
-                legend: { labels: { color: "#a8c5d5" } },
-                title: { display: true, text: "STATUS", color: "#a8c5d5", font: { size: 16 } }
+                legend: { labels: { color: "#d4a853" } },
+                title: { display: true, text: "STATUS", color: "#d4a853", font: { size: 16 } }
             }
         }
     });
@@ -806,12 +806,12 @@ function renderCharts(rows, statusCount) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: { 
-                legend: { labels: { color: "#a8c5d5" } },
-                title: { display: true, text: "LAN\u00c7AMENTO POR STATUS", color: "#a8c5d5", font: { size: 16 } }
+                legend: { labels: { color: "#d4a853" } },
+                title: { display: true, text: "LAN\u00c7AMENTO POR STATUS", color: "#d4a853", font: { size: 16 } }
             },
             scales: {
-                y: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } },
-                x: { stacked: true, ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                y: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } },
+                x: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } }
             }
         }
     });
@@ -1121,7 +1121,7 @@ function getTierColor(tierKey) {
         "Don't know": "#76a9df",
         "Doesn't count": "#7f7ae2"
     };
-    return colors[tierKey] || "#a8c5d5";
+    return colors[tierKey] || "#d4a853";
 }
 
 function getTierContainerByName(name) {
@@ -1635,8 +1635,8 @@ function renderBiGamer() {
                     }
                 },
                 scales: {
-                    y: { ticks: { color: "#a8c5d5" }, grid: { color: "rgba(90, 157, 106, 0.18)" } },
-                    x: { ticks: { color: "#a8c5d5" }, grid: { display: false } }
+                    y: { ticks: { color: "#d4a853" }, grid: { color: "rgba(90, 157, 106, 0.18)" } },
+                    x: { ticks: { color: "#d4a853" }, grid: { display: false } }
                 }
             }
         });
@@ -1753,11 +1753,11 @@ function renderTempoJogo() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "TOP 10 JOGOS MAIS JOGADOS", color: "#a8c5d5", font: { size: 16 } }
+                    title: { display: true, text: "TOP 10 JOGOS MAIS JOGADOS", color: "#d4a853", font: { size: 16 } }
                 },
                 scales: {
-                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
-                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                    y: { ticks: { color: "#d4a853" }, grid: { display: false } },
+                    x: { ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } }
                 }
             }
         });
@@ -1788,11 +1788,11 @@ function renderTempoJogo() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "TOP 10 JOGOS MAIS CURTOS ZERADOS", color: "#a8c5d5", font: { size: 16 } }
+                    title: { display: true, text: "TOP 10 JOGOS MAIS CURTOS ZERADOS", color: "#d4a853", font: { size: 16 } }
                 },
                 scales: {
-                    y: { ticks: { color: "#a8c5d5" }, grid: { display: false } },
-                    x: { ticks: { color: "#a8c5d5" }, grid: { color: "#1f3849" } }
+                    y: { ticks: { color: "#d4a853" }, grid: { display: false } },
+                    x: { ticks: { color: "#d4a853" }, grid: { color: "#1f3849" } }
                 }
             }
         });
@@ -1899,7 +1899,7 @@ function renderDificuldade() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
-                    title: { display: true, text: "JOGOS POR DIFICULDADE", color: "#a8c5d5", font: { size: 16 } },
+                    title: { display: true, text: "JOGOS POR DIFICULDADE", color: "#d4a853", font: { size: 16 } },
                     tooltip: {
                         callbacks: {
                             title: () => "",
@@ -1942,8 +1942,8 @@ function renderDificuldade() {
                   is3D: true,
                   backgroundColor: "transparent",
                   colors: colorsArr,
-                  titleTextStyle: { color: "#a8c5d5", fontSize: 16, bold: true },
-                  legend: { position: "right", textStyle: { color: "#a8c5d5" } },
+                  titleTextStyle: { color: "#d4a853", fontSize: 16, bold: true },
+                  legend: { position: "right", textStyle: { color: "#d4a853" } },
                   chartArea: { width: "100%", height: "80%" }
               };
 
