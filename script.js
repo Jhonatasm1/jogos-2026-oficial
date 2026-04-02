@@ -804,13 +804,13 @@ function renderCharts(rows, statusCount) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            plugins: { 
+            maintainAspectRatio: false,
+            plugins: {
                 legend: { labels: { color: "#d4a853" } },
                 title: { display: true, text: "LAN\u00c7AMENTO POR STATUS", color: "#d4a853", font: { size: 16 } }
             },
             scales: {
-                y: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } },
+                y: { stacked: true, ticks: { color: "#d4a853", stepSize: 2 }, grid: { color: "rgba(212, 168, 83, 0.1)" } },
                 x: { stacked: true, ticks: { color: "#d4a853" }, grid: { color: "rgba(212, 168, 83, 0.1)" } }
             }
         }
