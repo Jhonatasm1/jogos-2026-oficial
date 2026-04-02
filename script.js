@@ -1879,12 +1879,12 @@ function renderDificuldade() {
                     },
                     backgroundColor: (ctx) => {
                         const levelColors = {
-                            "BASTA TER CEREBRO": "#a3d1ff", // Light Blue
-                            "MAMAO COM ACUCAR": "#82b4ff", // Slightly darker blue
-                            "MEDIO": "#6699ff", // Medium blue
-                            "PRECISA DE UM ESFORCO": "#ffa3a3", // Light Red
-                            "REALMENTE TRABALHOSO": "#ff6666", // Red
-                            "SEKIRO": "#cc0000" // Dark Red
+                            "BASTA TER CEREBRO": "#2ecc71", // Green
+                            "MAMAO COM ACUCAR": "#f1c40f", // Yellow
+                            "MEDIO": "#3498db", // Blue
+                            "PRECISA DE UM ESFORCO": "#e67e22", // Orange
+                            "REALMENTE TRABALHOSO": "#e74c3c", // Red
+                            "SEKIRO": "#8e44ad" // Purple
                         };
                         const label = ctx.raw ? ctx.raw._data.name : "";
                         return levelColors[label] || "#1f3849";
@@ -1922,12 +1922,12 @@ function renderDificuldade() {
               dataTable.addColumn("number", "Horas");
 
               const levelColors = {
-                  "BASTA TER CEREBRO": "#a3d1ff",
-                  "MAMAO COM ACUCAR": "#82b4ff",
-                  "MEDIO": "#6699ff",
-                  "PRECISA DE UM ESFORCO": "#ffa3a3",
-                  "REALMENTE TRABALHOSO": "#ff6666",
-                  "SEKIRO": "#cc0000"
+                  "BASTA TER CEREBRO": "#2ecc71",
+                  "MAMAO COM ACUCAR": "#f1c40f",
+                  "MEDIO": "#3498db",
+                  "PRECISA DE UM ESFORCO": "#e67e22",
+                  "REALMENTE TRABALHOSO": "#e74c3c",
+                  "SEKIRO": "#8e44ad"
               };
 
               const colorsArr = [];
