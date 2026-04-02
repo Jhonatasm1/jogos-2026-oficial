@@ -33,18 +33,18 @@ const state = {
         saveTimer: null,
         objectUrls: [],
         nextId: 1,
-        title: "Tier List de Jogos",
+        title: "MAKE YOUR TIERLIST",
         labelWidth: 72,
         labels: {
-            S: "S",
-            A: "A",
-            B: "B",
-            C: "C",
-            D: "D",
-            E: "E",
-            F: "F",
-            "Don\u0027t know": "Don\u0027t know",
-            "Doesn\u0027t count": "Doesn\u0027t count"
+            S: "ABSOLUTE VIDEOGAME",
+            A: "N\u00cdVEL ALT\u00cdSSIMO",
+            B: "EXCELENTE",
+            C: "MUITO BOM",
+            D: "BOM",
+            E: "MEDIANO",
+            F: "DECEPCIONOU",
+            "Don\u0027t know": "FRACO",
+            "Doesn\u0027t count": "\u00c9 PRA RIR OU SOFRER"
         },
         tiers: {
             S: [],
@@ -1099,7 +1099,7 @@ async function loadTierListFromStorage() {
         const poolIds = Array.isArray(savedState.pool) ? savedState.pool : [];
         state.tierList.pool = poolIds.map((id) => assetMap.get(id)).filter(Boolean);
 
-        state.tierList.title = String(savedState.title || "Tier List de Jogos");
+        state.tierList.title = String(savedState.title || "MAKE YOUR TIERLIST");
         state.tierList.labelWidth = Number(savedState.labelWidth) || 72;
         state.tierList.labels = {
             ...state.tierList.labels,
@@ -1350,7 +1350,7 @@ function bindTierListEvents() {
 
     const handleTitleEdit = (event) => {
         const value = String(event.target.value || "").trim();
-        state.tierList.title = value || "Tier List de Jogos";
+        state.tierList.title = value || "MAKE YOUR TIERLIST";
         if (!value) event.target.value = state.tierList.title;
         scheduleTierListSave();
     };
