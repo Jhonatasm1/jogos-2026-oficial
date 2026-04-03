@@ -2581,7 +2581,7 @@ function switchTab(tabId) {
     targetContent.classList.add("active");
 
     if (dom.filtersTop) {
-        dom.filtersTop.hidden = tabId === "tabela";
+        dom.filtersTop.hidden = tabId === "steam-library";
     }
 
     if (tabId === "visao-geral") {
