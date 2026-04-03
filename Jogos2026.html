@@ -484,14 +484,18 @@
                 </div>
             </section>
 
-            <!-- Tabela Completa -->
-            <section class="tab-content" id="tabela">
-                <div class="table-container">
-                    <table>
-                        <thead id="cabecalho-tabela"></thead>
-                        <tbody id="corpo-tabela"></tbody>
-                    </table>
+            <!-- Biblioteca Steam -->
+            <section class="tab-content" id="steam-library">
+                <div class="steam-header">
+                    <h3 class="steam-title">Biblioteca Steam</h3>
+                    <p class="steam-subtitle">Sincronize sua biblioteca Steam para ver seus jogos e horas jogadas.</p>
+                    <div class="steam-input-group">
+                        <input type="text" id="steam-id-input" placeholder="Digite seu SteamID64" />
+                        <button id="steam-sync-btn">Sincronizar Steam</button>
+                    </div>
+                    <p class="steam-status" id="steam-status"></p>
                 </div>
+                <div class="steam-results" id="steam-results"></div>
             </section>
         </div>
     </main>
