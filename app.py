@@ -1,8 +1,10 @@
 import os
+import re
+import unicodedata
 from dotenv import load_dotenv
 
 import requests
-from flask import Flask, jsonify, abort
+from flask import Flask, jsonify, abort, request
 from flask_cors import CORS
 
 load_dotenv()
@@ -18,6 +20,16 @@ CORS(app, origins=[
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY")
 STEAM_API_URL = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
+STEAM_STORE_SEARCH_URL = "https://store.steampowered.com/api/storesearch/"
+
+
+def normalize_text(value):
+    raw = str(value or "").strip().lower()
+    no_accents = "".join(
+        char for char in unicodedata.normalize("NFD", raw)
+        if unicodedata.category(char) != "Mn"
+    )
+    return re.sub(r"[^a-z0-9]+", " ", no_accents).strip()
 
 
 @app.route("/steam-library/<steam_id>")
@@ -51,6 +63,51 @@ def steam_library(steam_id):
     ]
 
     return jsonify({"game_count": len(result), "games": result})
+
+
+@app.route("/steam-search")
+def steam_search():
+    query = (request.args.get("q") or "").strip()
+    if not query:
+        abort(400, description="Parametro 'q' e obrigatorio.")
+
+    params = {
+        "term": query,
+        "l": "portuguese",
+        "cc": "BR",
+    }
+
+    resp = requests.get(STEAM_STORE_SEARCH_URL, params=params, timeout=10)
+    if resp.status_code != 200:
+        abort(502, description="Erro ao consultar busca da Steam.")
+
+    data = resp.json() if resp.content else {}
+    items = data.get("items", []) if isinstance(data, dict) else []
+
+    if not items:
+        return jsonify({"found": False, "query": query, "game": None})
+
+    normalized_query = normalize_text(query)
+
+    def match_score(item):
+        candidate = normalize_text(item.get("name", ""))
+        if candidate == normalized_query:
+            return 3
+        if normalized_query and normalized_query in candidate:
+            return 2
+        if candidate and candidate in normalized_query:
+            return 1
+        return 0
+
+    best = sorted(items, key=lambda item: (match_score(item), -(item.get("id") or 0)), reverse=True)[0]
+
+    game = {
+        "appid": best.get("id"),
+        "name": best.get("name", ""),
+        "cover": best.get("tiny_image") or "",
+    }
+
+    return jsonify({"found": True, "query": query, "game": game})
 
 
 if __name__ == "__main__":

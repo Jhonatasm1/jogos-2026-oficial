@@ -15,6 +15,7 @@ const AVALIACAO_SCALE = [
 ];
 
 const STEAM_API_BASE = "http://localhost:5000/steam-library/";
+const STEAM_SEARCH_API_BASE = "http://localhost:5000/steam-search";
 const STEAM_LIBRARY_STORAGE_KEY = "yxt_library";
 const STEAM_LIBRARY_STEAM_ID_KEY = "yxt_library_steam_id";
 const MANUAL_GAME_STORAGE_KEY = "yxt_manual_games";
@@ -261,6 +262,18 @@ function getResolvedGameCover(game) {
     if (game?.coverSrc) return game.coverSrc;
     if (game?.appid) return getGameCover(game);
     return DEFAULT_GAME_COVER_PLACEHOLDER;
+}
+
+async function searchSteamGameByName(name) {
+    const response = await fetch(`${STEAM_SEARCH_API_BASE}?q=${encodeURIComponent(String(name || "").trim())}`);
+    if (!response.ok) throw new Error(`Erro ${response.status}`);
+    const data = await response.json();
+    if (!data?.found || !data?.game?.appid) return null;
+    return {
+        appid: String(data.game.appid),
+        name: String(data.game.name || ""),
+        cover: String(data.game.cover || "")
+    };
 }
 
 /* ====================== LIBRARY DATA ACCESS ====================== */
@@ -2506,7 +2519,7 @@ async function addManualGame(event) {
 
     const name = String(nameInput?.value || "").trim();
     const playtimeHours = Number(hoursInput?.value || 0);
-    const appid = String(appIdInput?.value || "").trim();
+    let appid = String(appIdInput?.value || "").trim();
     const coverUrl = String(coverUrlInput?.value || "").trim();
     const file = coverInput?.files?.[0] || null;
 
@@ -2533,6 +2546,24 @@ async function addManualGame(event) {
         coverSrc = coverUrl;
     }
 
+    let autoFillMessage = "";
+    if (!appid && !coverSrc) {
+        try {
+            const match = await searchSteamGameByName(name);
+            if (match) {
+                appid = match.appid;
+                coverSrc = match.cover;
+                if (appIdInput) appIdInput.value = appid;
+                if (coverUrlInput && match.cover) coverUrlInput.value = match.cover;
+                autoFillMessage = " AppID e capa preenchidos automaticamente pela Steam.";
+            } else {
+                autoFillMessage = " Nao encontrei match automatico na Steam, mas o jogo foi adicionado normalmente.";
+            }
+        } catch {
+            autoFillMessage = " Nao foi possivel buscar na Steam agora, mas o jogo foi adicionado normalmente.";
+        }
+    }
+
     const nextGame = normalizeManualGame({
         name,
         playtime_hours: playtimeHours,
@@ -2546,7 +2577,7 @@ async function addManualGame(event) {
     updateDashboards();
 
     if (statusEl) {
-        statusEl.textContent = `${name} adicionado aos jogos manuais.`;
+        statusEl.textContent = `${name} adicionado aos jogos manuais.${autoFillMessage}`;
         statusEl.className = "steam-status steam-status--success";
     }
 
