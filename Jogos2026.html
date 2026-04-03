@@ -571,6 +571,11 @@
 
             <form class="steam-modal-form" id="steam-metadata-form">
                 <label>
+                    <span>Horas Jogadas</span>
+                    <input id="meta-playtime-hours" name="playtimeHours" type="number" min="0" step="0.1" placeholder="Ex.: 55">
+                </label>
+
+                <label>
                     <span>Status</span>
                     <select id="meta-status" name="status">
                         <option value="">Selecione</option>
@@ -653,6 +658,7 @@
                 </label>
 
                 <div class="steam-modal-actions steam-modal-form-full">
+                    <button type="button" class="steam-btn-danger" id="steam-modal-delete">Remover jogo</button>
                     <button type="button" class="steam-btn-secondary" id="steam-modal-cancel">Cancelar</button>
                     <button type="submit" class="steam-btn-primary">Salvar Metadados</button>
                 </div>

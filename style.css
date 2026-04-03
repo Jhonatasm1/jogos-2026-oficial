@@ -1449,7 +1449,8 @@ main {
 }
 
 .steam-btn-primary,
-.steam-btn-secondary {
+.steam-btn-secondary,
+.steam-btn-danger {
     border-radius: 8px;
     padding: 0.58rem 1rem;
     font-family: "Syne", sans-serif;
@@ -1475,6 +1476,18 @@ main {
 
 .steam-btn-secondary:hover {
     border-color: var(--gold);
+}
+
+.steam-btn-danger {
+    border: 1px solid rgba(229, 79, 79, 0.8);
+    background: rgba(73, 14, 14, 0.6);
+    color: #ffb4b4;
+    margin-right: auto;
+}
+
+.steam-btn-danger:hover {
+    border-color: #ff6a6a;
+    background: rgba(95, 18, 18, 0.75);
 }
 
 body.modal-open {

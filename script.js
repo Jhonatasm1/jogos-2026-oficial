@@ -2296,9 +2296,11 @@ function getSteamModalElements() {
         overlay: document.getElementById("steam-modal-overlay"),
         closeBtn: document.getElementById("steam-modal-close"),
         cancelBtn: document.getElementById("steam-modal-cancel"),
+        deleteBtn: document.getElementById("steam-modal-delete"),
         form: document.getElementById("steam-metadata-form"),
         gameName: document.getElementById("steam-modal-game-name"),
         gameHours: document.getElementById("steam-modal-game-hours"),
+        playtimeHours: document.getElementById("meta-playtime-hours"),
         appid: document.getElementById("meta-appid"),
         status: document.getElementById("meta-status"),
         avaliacao: document.getElementById("meta-avaliacao"),
@@ -2317,17 +2319,25 @@ function getSteamModalElements() {
     };
 }
 
-function normalizeSteamGame(game, currentMetadata, currentCoverSrc) {
+function normalizeSteamGame(game, currentMetadata, currentCoverSrc, currentPlaytimeOverride, currentPlaytimeOverridden) {
     const mergedMetadata = {
         ...DEFAULT_STEAM_METADATA,
         ...(currentMetadata || {}),
         ...(game.metadata || {})
     };
 
+    const hasOverride = currentPlaytimeOverride !== undefined || Boolean(game.playtime_overridden);
+    const resolvedPlaytime = currentPlaytimeOverride !== undefined
+        ? Number(currentPlaytimeOverride)
+        : Number(game.playtime_hours);
+
     return {
         appid: game.appid,
         name: game.name || "Desconhecido",
-        playtime_hours: Number(game.playtime_hours) || 0,
+        playtime_hours: Number.isFinite(resolvedPlaytime) ? resolvedPlaytime : 0,
+        playtime_overridden: currentPlaytimeOverride !== undefined
+            ? Boolean(currentPlaytimeOverridden)
+            : hasOverride,
         metadata: mergedMetadata,
         coverSrc: String(currentCoverSrc || game.coverSrc || "")
     };
@@ -2599,6 +2609,7 @@ function openManualGameModal(gameId) {
 
     modal.gameName.textContent = game.name;
     modal.gameHours.textContent = `${game.playtime_hours}h`;
+    if (modal.playtimeHours) modal.playtimeHours.value = String(Number(game.playtime_hours) || 0);
     if (modal.appid) modal.appid.value = game.appid || "";
     modal.status.value = game.metadata.status || "";
     modal.avaliacao.value = game.metadata.avaliacao || "";
@@ -2640,6 +2651,10 @@ function saveGameMetadata(event) {
     };
 
     const nextAppId = String(modal.appid?.value || "").trim();
+    const nextPlaytimeRaw = Number(modal.playtimeHours?.value || 0);
+    const nextPlaytimeHours = Number.isFinite(nextPlaytimeRaw) && nextPlaytimeRaw >= 0
+        ? nextPlaytimeRaw
+        : 0;
     const currentCoverSrc = gameEditorState.libraryType === "steam"
         ? steamState.library.find((item) => String(item.appid) === String(gameEditorState.gameId))?.coverSrc || ""
         : manualGameState.library.find((item) => item.id === String(gameEditorState.gameId))?.coverSrc || "";
@@ -2655,6 +2670,8 @@ function saveGameMetadata(event) {
         steamState.library[idx] = {
             ...steamState.library[idx],
             appid: nextAppId || steamState.library[idx].appid,
+            playtime_hours: nextPlaytimeHours,
+            playtime_overridden: true,
             metadata: {
                 ...DEFAULT_STEAM_METADATA,
                 ...steamState.library[idx].metadata,
@@ -2673,6 +2690,7 @@ function saveGameMetadata(event) {
             ...manualGameState.library[idx],
             name: modal.gameName?.textContent || manualGameState.library[idx].name,
             appid: nextAppId || manualGameState.library[idx].appid,
+            playtime_hours: nextPlaytimeHours,
             metadata: {
                 ...DEFAULT_STEAM_METADATA,
                 ...manualGameState.library[idx].metadata,
@@ -2714,6 +2732,7 @@ function openSteamMetadataModal(appId) {
     gameEditorState.pendingCoverSrc = null;
     modal.gameName.textContent = game.name;
     modal.gameHours.textContent = `${game.playtime_hours}h`;
+    if (modal.playtimeHours) modal.playtimeHours.value = String(Number(game.playtime_hours) || 0);
     if (modal.appid) modal.appid.value = game.appid || "";
 
     modal.status.value = metadata.status || "";
@@ -2744,9 +2763,43 @@ function closeSteamMetadataModal() {
     gameEditorState.pendingCoverSrc = null;
     if (modal.coverUrl) modal.coverUrl.value = "";
     if (modal.coverFile) modal.coverFile.value = "";
+    if (modal.playtimeHours) modal.playtimeHours.value = "";
     modal.overlay.classList.remove("is-open");
     modal.overlay.setAttribute("aria-hidden", "true");
     document.body.classList.remove("modal-open");
+}
+
+function deleteCurrentGameFromModal() {
+    if (!gameEditorState.libraryType || !gameEditorState.gameId) return;
+
+    if (gameEditorState.libraryType === "steam") {
+        const previousLength = steamState.library.length;
+        steamState.library = steamState.library.filter((item) => String(item.appid) !== String(gameEditorState.gameId));
+        if (steamState.library.length === previousLength) return;
+        saveSteamLibraryToStorage();
+        renderSteamLibrary(steamState.library);
+
+        const statusEl = document.getElementById("steam-status");
+        if (statusEl) {
+            statusEl.textContent = "Jogo removido da Biblioteca Steam local.";
+            statusEl.className = "steam-status steam-status--success";
+        }
+    } else {
+        const previousLength = manualGameState.library.length;
+        manualGameState.library = manualGameState.library.filter((item) => String(item.id) !== String(gameEditorState.gameId));
+        if (manualGameState.library.length === previousLength) return;
+        saveManualGamesToStorage();
+        renderManualGames(manualGameState.library);
+
+        const statusEl = document.getElementById("manual-status");
+        if (statusEl) {
+            statusEl.textContent = "Jogo removido da aba Add Your Game.";
+            statusEl.className = "steam-status steam-status--success";
+        }
+    }
+
+    closeSteamMetadataModal();
+    updateDashboards();
 }
 
 function getSteamMetadataFromForm() {
@@ -2837,13 +2890,16 @@ async function fetchSteamLibrary() {
             return;
         }
 
-        const metadataByAppId = new Map(steamState.library.map((game) => [String(game.appid), game.metadata || DEFAULT_STEAM_METADATA]));
-        const coverByAppId = new Map(steamState.library.map((game) => [String(game.appid), game.coverSrc || ""]));
+        const existingByAppId = new Map(steamState.library.map((game) => [String(game.appid), game]));
 
         steamState.library = games.map((game) => normalizeSteamGame(
             game,
-            metadataByAppId.get(String(game.appid)),
-            coverByAppId.get(String(game.appid))
+            existingByAppId.get(String(game.appid))?.metadata || DEFAULT_STEAM_METADATA,
+            existingByAppId.get(String(game.appid))?.coverSrc || "",
+            existingByAppId.get(String(game.appid))?.playtime_overridden
+                ? existingByAppId.get(String(game.appid))?.playtime_hours
+                : undefined,
+            existingByAppId.get(String(game.appid))?.playtime_overridden || false
         ));
         steamState.steamId = steamId;
         saveSteamLibraryToStorage();
@@ -2970,6 +3026,10 @@ function bindSteamEvents() {
 
     if (modal.cancelBtn) {
         modal.cancelBtn.addEventListener("click", closeSteamMetadataModal);
+    }
+
+    if (modal.deleteBtn) {
+        modal.deleteBtn.addEventListener("click", deleteCurrentGameFromModal);
     }
 
     if (modal.overlay) {
