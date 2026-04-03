@@ -1078,6 +1078,20 @@ main {
     transform: translateY(-1px);
 }
 
+#export-backup-btn,
+#import-backup-btn {
+    background: var(--bg-1);
+    border: 1px solid #d4a853;
+    color: var(--text-light);
+    cursor: pointer;
+}
+
+#export-backup-btn:hover,
+#import-backup-btn:hover {
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 10px rgba(212, 168, 83, 0.25);
+}
+
 .steam-status {
     margin-top: 0.75rem;
     font-size: 0.85rem;

@@ -2521,12 +2521,99 @@ async function fetchSteamLibrary() {
     }
 }
 
+function exportSteamLibraryBackup() {
+    try {
+        const rawLibrary = localStorage.getItem(STEAM_LIBRARY_STORAGE_KEY);
+        const payload = rawLibrary ? JSON.parse(rawLibrary) : [];
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "yxt_backup.json";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        const statusEl = document.getElementById("steam-status");
+        if (statusEl) {
+            statusEl.textContent = "Backup exportado com sucesso.";
+            statusEl.className = "steam-status steam-status--success";
+        }
+    } catch (error) {
+        const statusEl = document.getElementById("steam-status");
+        if (statusEl) {
+            statusEl.textContent = "Falha ao exportar backup. Verifique os dados locais.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        console.error("Falha ao exportar yxt_library:", error);
+    }
+}
+
+function triggerSteamLibraryImport() {
+    const input = document.getElementById("import-backup-input");
+    if (input) {
+        input.value = "";
+        input.click();
+    }
+}
+
+function importSteamLibraryBackup(event) {
+    const file = event?.target?.files?.[0];
+    const statusEl = document.getElementById("steam-status");
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(String(reader.result || "[]"));
+            if (!Array.isArray(parsed)) {
+                throw new Error("Formato de backup invalido.");
+            }
+
+            localStorage.setItem(STEAM_LIBRARY_STORAGE_KEY, JSON.stringify(parsed));
+            steamState.library = parsed
+                .map((game) => normalizeSteamGame(game))
+                .filter((game) => Number.isFinite(Number(game.appid)) || typeof game.appid === "string");
+
+            renderSteamLibrary(steamState.library);
+            updateDashboards();
+
+            if (statusEl) {
+                statusEl.textContent = `${steamState.library.length} jogos importados do backup.`;
+                statusEl.className = "steam-status steam-status--success";
+            }
+        } catch (error) {
+            if (statusEl) {
+                statusEl.textContent = "Falha ao importar backup. Arquivo JSON invalido.";
+                statusEl.className = "steam-status steam-status--error";
+            }
+            console.error("Falha ao importar yxt_library:", error);
+        }
+    };
+
+    reader.onerror = () => {
+        if (statusEl) {
+            statusEl.textContent = "Falha ao ler o arquivo de backup.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+    };
+
+    reader.readAsText(file, "UTF-8");
+}
+
 function bindSteamEvents() {
     const btn = document.getElementById("steam-sync-btn");
+    const exportBackupBtn = document.getElementById("export-backup-btn");
+    const importBackupBtn = document.getElementById("import-backup-btn");
+    const importBackupInput = document.getElementById("import-backup-input");
     const input = document.getElementById("steam-id-input");
     const modal = getSteamModalElements();
 
     if (btn) btn.addEventListener("click", fetchSteamLibrary);
+    if (exportBackupBtn) exportBackupBtn.addEventListener("click", exportSteamLibraryBackup);
+    if (importBackupBtn) importBackupBtn.addEventListener("click", triggerSteamLibraryImport);
+    if (importBackupInput) importBackupInput.addEventListener("change", importSteamLibraryBackup);
     if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") fetchSteamLibrary(); });
 
     if (modal.form) {
