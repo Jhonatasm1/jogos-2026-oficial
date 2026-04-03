@@ -2381,12 +2381,12 @@ function renderSteamLibrary(games) {
     if (!resultsEl || !statusEl) return;
 
     const sortedGames = [...games]
-        .filter((g) => (Number(g.playtime_hours) || 0) > 0)
+        .filter((g) => (Number(g.playtime_hours) || 0) >= 0)
         .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0));
 
     if (!sortedGames.length) {
         resultsEl.innerHTML = "";
-        statusEl.textContent = "Nenhum jogo com horas registradas encontrado.";
+        statusEl.textContent = "Nenhum jogo encontrado na biblioteca Steam.";
         statusEl.className = "steam-status steam-status--error";
         return;
     }
@@ -2880,11 +2880,10 @@ async function fetchSteamLibrary() {
 
         const data = await response.json();
         const games = (data.games || [])
-            .filter(g => g.playtime_hours > 0)
             .sort((a, b) => b.playtime_hours - a.playtime_hours);
 
         if (!games.length) {
-            statusEl.textContent = "Nenhum jogo com horas registradas encontrado.";
+            statusEl.textContent = "Nenhum jogo encontrado na biblioteca Steam.";
             statusEl.className = "steam-status steam-status--error";
             resultsEl.innerHTML = "";
             return;
