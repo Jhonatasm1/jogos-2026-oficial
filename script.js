@@ -23,7 +23,6 @@ const AVALIACAO_SCALE = [
 const state = {
     headers: [],
     rows: [],
-    filters: {},
     overviewFilters: {
         plataforma: "",
         multiplayer: "",
