@@ -2740,6 +2740,7 @@ function bindEvents() {
 
 function init() {
     bindEvents();
+    bindSteamEvents();
     if (dom.filtersTop) dom.filtersTop.hidden = false;
     fetchRankingData();
 
