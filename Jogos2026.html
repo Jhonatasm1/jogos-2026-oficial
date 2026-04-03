@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Gaming Temple</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260402-yxt13">
+    <link rel="stylesheet" href="style.css?v=20260402-yxt14">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -500,7 +500,117 @@
         </div>
     </main>
 
-    <script src="script.js?v=20260402-yxt13"></script>
+    <div class="steam-modal-overlay" id="steam-modal-overlay" aria-hidden="true">
+        <div class="steam-modal" role="dialog" aria-modal="true" aria-labelledby="steam-modal-title">
+            <button class="steam-modal-close" id="steam-modal-close" type="button" aria-label="Fechar modal">x</button>
+            <div class="steam-modal-head">
+                <h3 class="steam-modal-title" id="steam-modal-title">Ficha do Jogo</h3>
+                <p class="steam-modal-subtitle">Enriqueca os dados da biblioteca para alimentar os graficos de BI.</p>
+            </div>
+
+            <div class="steam-modal-summary">
+                <div>
+                    <span class="steam-modal-label">Jogo</span>
+                    <strong id="steam-modal-game-name">-</strong>
+                </div>
+                <div>
+                    <span class="steam-modal-label">Horas Jogadas</span>
+                    <strong id="steam-modal-game-hours">-</strong>
+                </div>
+            </div>
+
+            <form class="steam-modal-form" id="steam-metadata-form">
+                <label>
+                    <span>Status</span>
+                    <select id="meta-status" name="status">
+                        <option value="">Selecione</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Jogando">Jogando</option>
+                        <option value="Concluido">Concluido</option>
+                        <option value="Pausado">Pausado</option>
+                        <option value="Dropado">Dropado</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Avaliacao Pessoal</span>
+                    <input id="meta-avaliacao" name="avaliacao" type="number" min="1" max="10" step="0.5" placeholder="Ex.: 8.5">
+                </label>
+
+                <label>
+                    <span>Multiplayer</span>
+                    <select id="meta-multiplayer" name="multiplayer">
+                        <option value="">Selecione</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Nao">Nao</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Prioridade</span>
+                    <select id="meta-prioridade" name="prioridade">
+                        <option value="">Selecione</option>
+                        <option value="Baixa">Baixa</option>
+                        <option value="Media">Media</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Ano de Conclusao</span>
+                    <input id="meta-ano-conclusao" name="anoConclusao" type="number" min="1980" max="2100" placeholder="Ex.: 2026">
+                </label>
+
+                <label>
+                    <span>Plataforma</span>
+                    <select id="meta-plataforma" name="plataforma">
+                        <option value="Steam">Steam</option>
+                        <option value="PS">PS</option>
+                        <option value="Xbox">Xbox</option>
+                        <option value="Epic">Epic</option>
+                        <option value="Switch">Switch</option>
+                        <option value="PC">PC</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Expectativa de Horas</span>
+                    <input id="meta-expectativa-horas" name="expectativaHoras" type="number" min="0" step="1" placeholder="Ex.: 40">
+                </label>
+
+                <label>
+                    <span>Dificuldade</span>
+                    <select id="meta-dificuldade" name="dificuldade">
+                        <option value="">Selecione</option>
+                        <option value="Mamao com acucar">Mamao com acucar</option>
+                        <option value="Basta ter cerebro">Basta ter cerebro</option>
+                        <option value="Medio">Medio</option>
+                        <option value="Precisa de esforco">Precisa de esforco</option>
+                        <option value="Realmente trabalhoso">Realmente trabalhoso</option>
+                        <option value="Nivel Sekiro">Nivel Sekiro</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Ano de Lancamento</span>
+                    <input id="meta-ano-lancamento" name="anoLancamento" type="number" min="1970" max="2100" placeholder="Ex.: 2018">
+                </label>
+
+                <label class="steam-modal-form-full">
+                    <span>Comentarios</span>
+                    <textarea id="meta-comentarios" name="comentarios" rows="4" placeholder="Observacoes sobre gameplay, backlog e objetivos."></textarea>
+                </label>
+
+                <div class="steam-modal-actions steam-modal-form-full">
+                    <button type="button" class="steam-btn-secondary" id="steam-modal-cancel">Cancelar</button>
+                    <button type="submit" class="steam-btn-primary">Salvar Metadados</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js?v=20260402-yxt14"></script>
 </body>
 </html>
 

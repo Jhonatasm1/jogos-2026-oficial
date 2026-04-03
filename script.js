@@ -2562,6 +2562,267 @@ function renderUserRanking() {
 }
 
 const STEAM_API_BASE = "http://localhost:5000/steam-library/";
+const STEAM_LIBRARY_STORAGE_KEY = "yxt_library";
+const STEAM_LIBRARY_STEAM_ID_KEY = "yxt_library_steam_id";
+const DEFAULT_STEAM_METADATA = {
+    status: "",
+    avaliacao: "",
+    multiplayer: "",
+    prioridade: "",
+    anoConclusao: "",
+    plataforma: "Steam",
+    expectativaHoras: "",
+    dificuldade: "",
+    anoLancamento: "",
+    comentarios: ""
+};
+
+const steamState = {
+    library: [],
+    steamId: "",
+    selectedAppId: null
+};
+
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function getSteamModalElements() {
+    return {
+        overlay: document.getElementById("steam-modal-overlay"),
+        closeBtn: document.getElementById("steam-modal-close"),
+        cancelBtn: document.getElementById("steam-modal-cancel"),
+        form: document.getElementById("steam-metadata-form"),
+        gameName: document.getElementById("steam-modal-game-name"),
+        gameHours: document.getElementById("steam-modal-game-hours"),
+        status: document.getElementById("meta-status"),
+        avaliacao: document.getElementById("meta-avaliacao"),
+        multiplayer: document.getElementById("meta-multiplayer"),
+        prioridade: document.getElementById("meta-prioridade"),
+        anoConclusao: document.getElementById("meta-ano-conclusao"),
+        plataforma: document.getElementById("meta-plataforma"),
+        expectativaHoras: document.getElementById("meta-expectativa-horas"),
+        dificuldade: document.getElementById("meta-dificuldade"),
+        anoLancamento: document.getElementById("meta-ano-lancamento"),
+        comentarios: document.getElementById("meta-comentarios")
+    };
+}
+
+function normalizeSteamGame(game, currentMetadata) {
+    const mergedMetadata = {
+        ...DEFAULT_STEAM_METADATA,
+        ...(currentMetadata || {}),
+        ...(game.metadata || {})
+    };
+
+    return {
+        appid: game.appid,
+        name: game.name || "Desconhecido",
+        playtime_hours: Number(game.playtime_hours) || 0,
+        metadata: mergedMetadata
+    };
+}
+
+function saveSteamLibraryToStorage() {
+    try {
+        localStorage.setItem(STEAM_LIBRARY_STORAGE_KEY, JSON.stringify(steamState.library));
+        if (steamState.steamId) {
+            localStorage.setItem(STEAM_LIBRARY_STEAM_ID_KEY, steamState.steamId);
+        }
+    } catch (error) {
+        console.error("Falha ao persistir yxt_library:", error);
+    }
+}
+
+function loadSteamLibraryFromStorage() {
+    try {
+        const raw = localStorage.getItem(STEAM_LIBRARY_STORAGE_KEY);
+        if (!raw) return false;
+
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return false;
+
+        steamState.library = parsed
+            .map((game) => normalizeSteamGame(game))
+            .filter((game) => Number.isFinite(Number(game.appid)) || typeof game.appid === "string");
+
+        const storedSteamId = localStorage.getItem(STEAM_LIBRARY_STEAM_ID_KEY) || "";
+        steamState.steamId = storedSteamId;
+        return steamState.library.length > 0;
+    } catch (error) {
+        console.error("Falha ao ler yxt_library:", error);
+        return false;
+    }
+}
+
+function renderSteamLibrary(games) {
+    const resultsEl = document.getElementById("steam-results");
+    const statusEl = document.getElementById("steam-status");
+    if (!resultsEl || !statusEl) return;
+
+    const sortedGames = [...games]
+        .filter((g) => (Number(g.playtime_hours) || 0) > 0)
+        .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0));
+
+    if (!sortedGames.length) {
+        resultsEl.innerHTML = "";
+        statusEl.textContent = "Nenhum jogo com horas registradas encontrado.";
+        statusEl.className = "steam-status steam-status--error";
+        return;
+    }
+
+    const maxHours = Math.max(...sortedGames.map((g) => Number(g.playtime_hours) || 0), 1);
+
+    resultsEl.innerHTML = '<div class="steam-grid">' + sortedGames.map((g, i) => {
+        const barWidth = Math.max(((Number(g.playtime_hours) || 0) / maxHours) * 100, 2);
+        const safeName = escapeHtml(g.name);
+
+        return `<div class="steam-card" tabindex="0" role="button" data-appid="${g.appid}" style="animation-delay:${i * 0.03}s">
+            <div class="steam-card-rank">#${i + 1}</div>
+            <img class="steam-card-img"
+                 src="https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg"
+                 alt="${safeName}" loading="lazy"
+                 onerror="this.style.display='none'" />
+            <div class="steam-card-info">
+                <span class="steam-card-name">${safeName}</span>
+                <div class="steam-card-bar-wrap">
+                    <div class="steam-card-bar" style="width:${barWidth}%"></div>
+                </div>
+                <span class="steam-card-hours">${Number(g.playtime_hours) || 0}h</span>
+            </div>
+        </div>`;
+    }).join("") + "</div>";
+
+    statusEl.textContent = `${sortedGames.length} jogos carregados. Clique em um card para editar metadados.`;
+    statusEl.className = "steam-status steam-status--success";
+    bindSteamCardEvents();
+}
+
+function openSteamMetadataModal(appId) {
+    const appIdText = String(appId || "");
+    const game = steamState.library.find((item) => String(item.appid) === appIdText);
+    const modal = getSteamModalElements();
+    if (!game || !modal.overlay || !modal.form) return;
+
+    const metadata = {
+        ...DEFAULT_STEAM_METADATA,
+        ...(game.metadata || {})
+    };
+
+    steamState.selectedAppId = appIdText;
+    modal.gameName.textContent = game.name;
+    modal.gameHours.textContent = `${game.playtime_hours}h`;
+
+    modal.status.value = metadata.status || "";
+    modal.avaliacao.value = metadata.avaliacao || "";
+    modal.multiplayer.value = metadata.multiplayer || "";
+    modal.prioridade.value = metadata.prioridade || "";
+    modal.anoConclusao.value = metadata.anoConclusao || "";
+    modal.plataforma.value = metadata.plataforma || "Steam";
+    modal.expectativaHoras.value = metadata.expectativaHoras || "";
+    modal.dificuldade.value = metadata.dificuldade || "";
+    modal.anoLancamento.value = metadata.anoLancamento || "";
+    modal.comentarios.value = metadata.comentarios || "";
+
+    modal.overlay.classList.add("is-open");
+    modal.overlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+}
+
+function closeSteamMetadataModal() {
+    const modal = getSteamModalElements();
+    if (!modal.overlay) return;
+    steamState.selectedAppId = null;
+    modal.overlay.classList.remove("is-open");
+    modal.overlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+}
+
+function getSteamMetadataFromForm() {
+    const modal = getSteamModalElements();
+    return {
+        status: modal.status?.value || "",
+        avaliacao: modal.avaliacao?.value || "",
+        multiplayer: modal.multiplayer?.value || "",
+        prioridade: modal.prioridade?.value || "",
+        anoConclusao: modal.anoConclusao?.value || "",
+        plataforma: modal.plataforma?.value || "Steam",
+        expectativaHoras: modal.expectativaHoras?.value || "",
+        dificuldade: modal.dificuldade?.value || "",
+        anoLancamento: modal.anoLancamento?.value || "",
+        comentarios: modal.comentarios?.value || ""
+    };
+}
+
+function saveSteamMetadata(event) {
+    event.preventDefault();
+    if (!steamState.selectedAppId) return;
+
+    const metadata = getSteamMetadataFromForm();
+    const idx = steamState.library.findIndex((item) => String(item.appid) === String(steamState.selectedAppId));
+    if (idx === -1) return;
+
+    steamState.library[idx] = {
+        ...steamState.library[idx],
+        metadata: {
+            ...DEFAULT_STEAM_METADATA,
+            ...steamState.library[idx].metadata,
+            ...metadata
+        }
+    };
+
+    saveSteamLibraryToStorage();
+    renderSteamLibrary(steamState.library);
+
+    const statusEl = document.getElementById("steam-status");
+    if (statusEl) {
+        statusEl.textContent = `Metadados salvos para ${steamState.library[idx].name}.`;
+        statusEl.className = "steam-status steam-status--success";
+    }
+
+    closeSteamMetadataModal();
+}
+
+function bindSteamCardEvents() {
+    const cards = document.querySelectorAll(".steam-card[data-appid]");
+    cards.forEach((card) => {
+        card.addEventListener("click", () => {
+            const appid = card.getAttribute("data-appid");
+            openSteamMetadataModal(appid);
+        });
+
+        card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                const appid = card.getAttribute("data-appid");
+                openSteamMetadataModal(appid);
+            }
+        });
+    });
+}
+
+function initializeSteamLibraryFromStorage() {
+    const loaded = loadSteamLibraryFromStorage();
+    const input = document.getElementById("steam-id-input");
+    const statusEl = document.getElementById("steam-status");
+
+    if (input && steamState.steamId) {
+        input.value = steamState.steamId;
+    }
+
+    if (loaded) {
+        renderSteamLibrary(steamState.library);
+        if (statusEl) {
+            statusEl.textContent = `${steamState.library.length} jogos restaurados do armazenamento local.`;
+            statusEl.className = "steam-status steam-status--success";
+        }
+    }
+}
 
 async function fetchSteamLibrary() {
     const input = document.getElementById("steam-id-input");
@@ -2595,28 +2856,14 @@ async function fetchSteamLibrary() {
             return;
         }
 
-        statusEl.textContent = `${games.length} jogos encontrados com tempo registrado.`;
-        statusEl.className = "steam-status steam-status--success";
+        const metadataByAppId = new Map(
+            steamState.library.map((game) => [String(game.appid), game.metadata || DEFAULT_STEAM_METADATA])
+        );
 
-        const maxHours = games[0].playtime_hours;
-
-        resultsEl.innerHTML = '<div class="steam-grid">' + games.map((g, i) => {
-            const barWidth = Math.max((g.playtime_hours / maxHours) * 100, 2);
-            return `<div class="steam-card" style="animation-delay:${i * 0.03}s">
-                <div class="steam-card-rank">#${i + 1}</div>
-                <img class="steam-card-img"
-                     src="https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg"
-                     alt="${g.name}" loading="lazy"
-                     onerror="this.style.display='none'" />
-                <div class="steam-card-info">
-                    <span class="steam-card-name">${g.name}</span>
-                    <div class="steam-card-bar-wrap">
-                        <div class="steam-card-bar" style="width:${barWidth}%"></div>
-                    </div>
-                    <span class="steam-card-hours">${g.playtime_hours}h</span>
-                </div>
-            </div>`;
-        }).join("") + "</div>";
+        steamState.library = games.map((game) => normalizeSteamGame(game, metadataByAppId.get(String(game.appid))));
+        steamState.steamId = steamId;
+        saveSteamLibraryToStorage();
+        renderSteamLibrary(steamState.library);
 
     } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
@@ -2629,8 +2876,36 @@ async function fetchSteamLibrary() {
 function bindSteamEvents() {
     const btn = document.getElementById("steam-sync-btn");
     const input = document.getElementById("steam-id-input");
+    const modal = getSteamModalElements();
+
     if (btn) btn.addEventListener("click", fetchSteamLibrary);
     if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") fetchSteamLibrary(); });
+
+    if (modal.form) {
+        modal.form.addEventListener("submit", saveSteamMetadata);
+    }
+
+    if (modal.closeBtn) {
+        modal.closeBtn.addEventListener("click", closeSteamMetadataModal);
+    }
+
+    if (modal.cancelBtn) {
+        modal.cancelBtn.addEventListener("click", closeSteamMetadataModal);
+    }
+
+    if (modal.overlay) {
+        modal.overlay.addEventListener("click", (event) => {
+            if (event.target === modal.overlay) {
+                closeSteamMetadataModal();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            closeSteamMetadataModal();
+        }
+    });
 }
 
 function switchTab(tabId) {
@@ -2741,6 +3016,7 @@ function bindEvents() {
 function init() {
     bindEvents();
     bindSteamEvents();
+    initializeSteamLibraryFromStorage();
     if (dom.filtersTop) dom.filtersTop.hidden = false;
     fetchRankingData();
 
