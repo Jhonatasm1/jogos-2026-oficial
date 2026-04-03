@@ -2602,7 +2602,6 @@ async function fetchSteamLibrary() {
 
         resultsEl.innerHTML = '<div class="steam-grid">' + games.map((g, i) => {
             const barWidth = Math.max((g.playtime_hours / maxHours) * 100, 2);
-            const imgUrl = `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.appid}_header.jpg`;
             return `<div class="steam-card" style="animation-delay:${i * 0.03}s">
                 <div class="steam-card-rank">#${i + 1}</div>
                 <img class="steam-card-img"
