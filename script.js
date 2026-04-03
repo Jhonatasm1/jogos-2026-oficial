@@ -2677,10 +2677,7 @@ function bindEvents() {
 }
 
 function init() {
-    if (!dom.thead || !dom.tbody) return;
-
     bindEvents();
-    updateCustomSortVisibility();
     if (dom.filtersTop) dom.filtersTop.hidden = false;
     fetchRankingData();
 
