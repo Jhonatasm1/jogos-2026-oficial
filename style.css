@@ -1092,6 +1092,12 @@ main {
     box-shadow: 0 0 10px rgba(212, 168, 83, 0.25);
 }
 
+.manual-note {
+    margin-top: 0.75rem;
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+}
+
 .steam-status {
     margin-top: 0.75rem;
     font-size: 0.85rem;
@@ -1226,53 +1232,6 @@ main {
     color: var(--gold);
 }
 
-.manual-game-form {
-    margin-top: 1rem;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem;
-}
-
-.manual-game-form label {
-    display: grid;
-    gap: 0.35rem;
-}
-
-.manual-game-form span {
-    color: var(--fg-muted);
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-}
-
-.manual-game-form input {
-    width: 100%;
-    background: rgba(8, 9, 13, 0.9);
-    border: 1px solid rgba(26, 159, 218, 0.35);
-    border-radius: 8px;
-    color: var(--text-light);
-    padding: 0.55rem 0.65rem;
-    font-family: "Manrope", sans-serif;
-    font-size: 0.92rem;
-}
-
-.manual-game-form input:focus {
-    outline: none;
-    border-color: var(--gold);
-    box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.2);
-}
-
-.manual-game-form-full {
-    grid-column: 1 / -1;
-}
-
-.manual-game-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.65rem;
-    padding-top: 0.45rem;
-}
-
 .steam-modal-overlay {
     position: fixed;
     inset: 0;
@@ -1368,6 +1327,71 @@ main {
     font-size: 1rem;
 }
 
+.steam-modal-cover {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.steam-modal-cover-preview-wrap {
+    background: rgba(8, 12, 22, 0.9);
+    border: 1px solid var(--gold-border);
+    border-radius: 12px;
+    padding: 0.65rem;
+}
+
+#meta-cover-preview {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid rgba(26, 159, 218, 0.35);
+    background: #0f1419;
+}
+
+.steam-modal-cover-fields {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.steam-modal-cover-fields label {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.steam-modal-cover-fields span {
+    color: var(--fg-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.steam-modal-cover-fields input {
+    width: 100%;
+    background: rgba(8, 9, 13, 0.9);
+    border: 1px solid rgba(26, 159, 218, 0.35);
+    border-radius: 8px;
+    color: var(--text-light);
+    padding: 0.55rem 0.65rem;
+    font-family: "Manrope", sans-serif;
+    font-size: 0.92rem;
+}
+
+.steam-modal-cover-fields input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.2);
+}
+
+.steam-modal-cover-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
 .steam-modal-form {
     margin-top: 1rem;
     display: grid;
@@ -1459,6 +1483,7 @@ body.modal-open {
 
 @media (max-width: 760px) {
     .steam-modal-summary,
+    .steam-modal-cover,
     .steam-modal-form {
         grid-template-columns: 1fr;
     }
