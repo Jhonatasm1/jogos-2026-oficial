@@ -78,8 +78,6 @@ const state = {
 };
 
 const dom = {
-    thead: document.getElementById("cabecalho-tabela"),
-    tbody: document.getElementById("corpo-tabela"),
     status: document.getElementById("status-atualizacao"),
     updatedAt: document.getElementById("ultima-atualizacao"),
     refreshButton: document.getElementById("refresh-button"),
