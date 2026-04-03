@@ -533,64 +533,6 @@ function updateOverviewFilterSelects() {
     }
 }
 
-function applyFilters(rows) {
-    return rows.filter((row) => {
-        return state.headers.every((header) => {
-            const filterValue = String(state.filters[header] || "").trim();
-            if (!filterValue) return true;
-
-            const cellValue = String(row[header] || "");
-            return normalizeText(cellValue).includes(normalizeText(filterValue));
-        });
-    });
-}
-
-function applySort(rows) {
-    if (!rows.length) return rows;
-
-    if (state.sortMode === "custom") {
-        const header = state.customSortColumn || state.headers[0];
-        const direction = state.customSortDirection || "asc";
-        return [...rows].sort((a, b) => compareValues(a[header], b[header], direction, false));
-    }
-
-    if (state.sortMode === "none") return rows;
-
-    const preset = getPresetConfig(state.sortMode);
-    if (!preset || !preset.header) return rows;
-
-    return [...rows].sort((a, b) => compareValues(a[preset.header], b[preset.header], preset.direction, preset.preferTime));
-}
-
-function renderTable() {
-    if (!dom.tbody) return;
-
-    dom.tbody.innerHTML = "";
-
-    const filteredRows = applyFilters(state.rows);
-    const sortedRows = applySort(filteredRows);
-
-    if (!sortedRows.length) {
-        const tr = document.createElement("tr");
-        tr.className = "empty-state";
-        const td = document.createElement("td");
-        td.colSpan = state.headers.length || 1;
-        td.textContent = "Nenhum registro encontrado para os filtros atuais.";
-        tr.appendChild(td);
-        dom.tbody.appendChild(tr);
-        return;
-    }
-
-    sortedRows.forEach((row) => {
-        const tr = document.createElement("tr");
-        state.headers.forEach((header) => {
-            const td = document.createElement("td");
-            td.textContent = row[header] || "";
-            tr.appendChild(td);
-        });
-        dom.tbody.appendChild(tr);
-    });
-}
 
 function updateStatus(message, isError) {
     if (!dom.status || !dom.updatedAt) return;
