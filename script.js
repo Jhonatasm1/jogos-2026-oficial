@@ -586,6 +586,15 @@ function renderBiGamer() {
         .sort((a, b) => b.seconds - a.seconds)
         .slice(0, 8);
 
+    const tierSeedCandidates = getLibrary()
+        .filter((game) => Number(game.playtime_hours) > 0)
+        .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0))
+        .map((game) => ({
+            game,
+            name: game.name || "Sem titulo",
+            seconds: Math.round((Number(game.playtime_hours) || 0) * 3600)
+        }));
+
     topJogosEl.innerHTML = "";
     topByTime.forEach((item) => {
         const row = document.createElement("div");
@@ -602,7 +611,7 @@ function renderBiGamer() {
             state.tierList.loaded = true;
 
             if (!loaded) {
-                const added = seedTierPool(topByTime);
+                const added = seedTierPool(tierSeedCandidates);
                 if (added > 0) scheduleTierListSave();
             }
 
@@ -610,7 +619,7 @@ function renderBiGamer() {
         });
     } else {
         if (state.tierList.loaded) {
-            const added = seedTierPool(topByTime);
+            const added = seedTierPool(tierSeedCandidates);
             if (added > 0) scheduleTierListSave();
         }
         renderTierList();
@@ -2219,7 +2228,7 @@ function seedTierPool(topByTime) {
 
     let addedCount = 0;
 
-    topByTime.slice(0, 20).forEach((item) => {
+    topByTime.forEach((item) => {
         if (!item) return;
         const title = String(item.name || "Sem titulo").trim();
         const key = title.toLowerCase();
