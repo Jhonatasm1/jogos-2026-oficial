@@ -29,9 +29,6 @@ const state = {
         multiplayer: "",
         anoConclusao: ""
     },
-    sortMode: "none",
-    customSortColumn: "",
-    customSortDirection: "asc",
     lastPayload: "",
     charts: {},
     tierList: {
