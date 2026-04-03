@@ -480,65 +480,6 @@ function getOverviewFilteredRows() {
 }
 
 
-function renderHeaderAndFilters() {
-    if (!dom.thead) return;
-
-    dom.thead.innerHTML = "";
-
-    const headerRow = document.createElement("tr");
-    state.headers.forEach((header) => {
-        const th = document.createElement("th");
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
-    dom.thead.appendChild(headerRow);
-
-    const filterRow = document.createElement("tr");
-    filterRow.id = "linha-filtros";
-
-    state.headers.forEach((header) => {
-        const th = document.createElement("th");
-        const existingValue = state.filters[header] || "";
-
-        if (shouldUseSelectFilter(header)) {
-            const select = document.createElement("select");
-            const allOption = document.createElement("option");
-            allOption.value = "";
-            allOption.textContent = "Todos";
-            select.appendChild(allOption);
-
-            const uniqueValues = Array.from(new Set(state.rows.map((row) => String(row[header] || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-            uniqueValues.forEach((value) => {
-                const option = document.createElement("option");
-                option.value = value;
-                option.textContent = value;
-                select.appendChild(option);
-            });
-
-            select.value = existingValue;
-            select.addEventListener("change", (event) => {
-                state.filters[header] = event.target.value;
-                renderTable();
-            });
-            th.appendChild(select);
-        } else {
-            const input = document.createElement("input");
-            input.type = "text";
-            input.placeholder = `Filtrar ${header}`;
-            input.value = existingValue;
-            input.addEventListener("input", (event) => {
-                state.filters[header] = event.target.value;
-                renderTable();
-            });
-            th.appendChild(input);
-        }
-
-        filterRow.appendChild(th);
-    });
-
-    dom.thead.appendChild(filterRow);
-}
-
 function renderSortColumnOptions() {
     if (!dom.customSortColumn) return;
 
