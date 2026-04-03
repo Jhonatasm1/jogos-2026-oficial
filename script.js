@@ -30,6 +30,15 @@ const DEFAULT_STEAM_METADATA = {
     comentarios: ""
 };
 
+const DEFAULT_GAME_COVER_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 56">
+    <rect width="120" height="56" rx="6" fill="#10161f"/>
+    <path d="M14 38l16-16 11 11 14-14 15 15 15-15 21 21" fill="none" stroke="#d4a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="36" cy="18" r="4" fill="#1a9fda"/>
+    <text x="60" y="47" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#d0d5dd">Game Cover</text>
+</svg>
+`)}`;
+
 const state = {
     overviewFilters: {
         plataforma: "",
@@ -233,70 +242,119 @@ function escapeHtml(value) {
         .replace(/'/g, "&#39;");
 }
 
-/* ====================== LIBRARY DATA ACCESS ====================== */
-
-function getLibrary() {
-    if (steamState.library.length > 0) return steamState.library;
-    try {
-        const raw = localStorage.getItem(STEAM_LIBRARY_STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Falha ao ler a imagem."));
+        reader.readAsDataURL(file);
+    });
 }
 
-function getFilteredLibrary() {
-    const { plataforma, multiplayer, anoConclusao } = state.overviewFilters;
-    const library = getLibrary();
+/* ====================== LIBRARY DATA ACCESS ====================== */
 
-    return library.filter((game) => {
-        const meta = game.metadata || {};
-        if (plataforma && (meta.plataforma || "") !== plataforma) return false;
-        if (multiplayer && (meta.multiplayer || "") !== multiplayer) return false;
-        if (anoConclusao && String(meta.anoConclusao || "") !== anoConclusao) return false;
-        return true;
+function renderGameLibrary(games, { resultsId, statusId, emptyMessage, successMessage }) {
+    const resultsEl = document.getElementById(resultsId);
+    const statusEl = document.getElementById(statusId);
+    if (!resultsEl || !statusEl) return;
+
+    const sortedGames = [...games]
+        .filter((g) => (Number(g.playtime_hours) || 0) > 0)
+        .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0));
+
+    if (!sortedGames.length) {
+        resultsEl.innerHTML = "";
+        statusEl.textContent = emptyMessage;
+        statusEl.className = "steam-status steam-status--error";
+        return;
+    }
+
+    const maxHours = Math.max(...sortedGames.map((g) => Number(g.playtime_hours) || 0), 1);
+
+    resultsEl.innerHTML = '<div class="steam-grid">' + sortedGames.map((g, i) => {
+        const barWidth = Math.max(((Number(g.playtime_hours) || 0) / maxHours) * 100, 2);
+        const safeName = escapeHtml(g.name);
+        const imageSrc = getGameCoverSource(g);
+
+        return `<div class="steam-card" tabindex="0" role="button" data-appid="${escapeHtml(String(g.appid || ""))}" style="animation-delay:${i * 0.03}s">
+            <div class="steam-card-rank">#${i + 1}</div>
+            <img class="steam-card-img"
+                 src="${escapeHtml(imageSrc)}"
+                 alt="${safeName}" loading="lazy"
+                 onerror="this.style.display='none'" />
+            <div class="steam-card-info">
+                <span class="steam-card-name">${safeName}</span>
+                <div class="steam-card-bar-wrap">
+                    <div class="steam-card-bar" style="width:${barWidth}%"></div>
+                </div>
+                <span class="steam-card-hours">${Number(g.playtime_hours) || 0}h</span>
+            </div>
+        </div>`;
+    }).join("") + '</div>';
+
+    statusEl.textContent = successMessage || `${sortedGames.length} jogos carregados. Clique em um card para editar metadados.`;
+    statusEl.className = "steam-status steam-status--success";
+    bindSteamCardEvents();
+}
+
+function renderSteamLibrary(games) {
+    renderGameLibrary(games, {
+        resultsId: "steam-results",
+        statusId: "steam-status",
+        emptyMessage: "Nenhum jogo com horas registradas encontrado.",
+        successMessage: null
     });
+}
+
+function renderManualGameLibrary(games) {
+    renderGameLibrary(
+        games.filter((game) => game.source === "manual"),
+        {
+            resultsId: "manual-game-results",
+            statusId: "manual-game-status",
+            emptyMessage: "Nenhum jogo manual adicionado ainda.",
+            successMessage: null
+        }
+    );
 }
 
 function updateFilterSelects() {
     const library = getLibrary();
 
     if (dom.filterPlataforma) {
-        const values = [...new Set(library.map(g => (g.metadata?.plataforma || "").trim()).filter(Boolean))]
+        const values = [...new Set(library.map((g) => (g.metadata?.plataforma || "").trim()).filter(Boolean))]
             .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
         dom.filterPlataforma.innerHTML = '<option value="">Todas<\/option>';
-        values.forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v;
-            opt.textContent = v;
-            dom.filterPlataforma.appendChild(opt);
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            dom.filterPlataforma.appendChild(option);
         });
         dom.filterPlataforma.value = state.overviewFilters.plataforma || "";
     }
 
     if (dom.filterMultiplayer) {
-        const values = [...new Set(library.map(g => (g.metadata?.multiplayer || "").trim()).filter(Boolean))].sort();
+        const values = [...new Set(library.map((g) => (g.metadata?.multiplayer || "").trim()).filter(Boolean))].sort();
         dom.filterMultiplayer.innerHTML = '<option value="">Todos<\/option>';
-        values.forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v;
-            opt.textContent = v;
-            dom.filterMultiplayer.appendChild(opt);
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            dom.filterMultiplayer.appendChild(option);
         });
         dom.filterMultiplayer.value = state.overviewFilters.multiplayer || "";
     }
 
     if (dom.filterAnoConclusao) {
-        const values = [...new Set(library.map(g => String(g.metadata?.anoConclusao || "").trim()).filter(Boolean))]
+        const values = [...new Set(library.map((g) => String(g.metadata?.anoConclusao || "").trim()).filter(Boolean))]
             .sort((a, b) => Number(b) - Number(a));
         dom.filterAnoConclusao.innerHTML = '<option value="">Todos<\/option>';
-        values.forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v;
-            opt.textContent = v;
-            dom.filterAnoConclusao.appendChild(opt);
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            dom.filterAnoConclusao.appendChild(option);
         });
         dom.filterAnoConclusao.value = state.overviewFilters.anoConclusao || "";
     }
@@ -1636,6 +1694,7 @@ function updateDashboards() {
     else if (activeTab === "plataforma") renderPlataforma();
     else if (activeTab === "avaliacao") renderAvaliacao();
     else if (activeTab === "user-ranking") renderUserRanking();
+    else if (activeTab === "steam-library" || activeTab === "add-your-game") refreshGameLibraryViews();
 }
 
 /* ====================== TIER LIST ====================== */
@@ -1643,6 +1702,18 @@ function updateDashboards() {
 function getGameCover(game) {
     if (!game || !game.appid) return "";
     return `https://cdn.akamai.steamstatic.com/steam/apps/${game.appid}/header.jpg`;
+}
+
+function getGameCoverSource(game) {
+    if (!game) return DEFAULT_GAME_COVER_SVG;
+
+    const customCover = String(game.coverUrl || "").trim();
+    if (customCover) return customCover;
+
+    const appid = String(game.appid || "").trim();
+    if (appid) return getGameCover({ appid });
+
+    return DEFAULT_GAME_COVER_SVG;
 }
 
 function createTierItem(title, src, isUploaded) {
@@ -2255,6 +2326,8 @@ function getSteamModalElements() {
         form: document.getElementById("steam-metadata-form"),
         gameName: document.getElementById("steam-modal-game-name"),
         gameHours: document.getElementById("steam-modal-game-hours"),
+        coverUrl: document.getElementById("meta-cover-url"),
+        coverFile: document.getElementById("meta-cover-file"),
         status: document.getElementById("meta-status"),
         avaliacao: document.getElementById("meta-avaliacao"),
         multiplayer: document.getElementById("meta-multiplayer"),
@@ -2279,7 +2352,9 @@ function normalizeSteamGame(game, currentMetadata) {
         appid: game.appid,
         name: game.name || "Desconhecido",
         playtime_hours: Number(game.playtime_hours) || 0,
-        metadata: mergedMetadata
+        metadata: mergedMetadata,
+        source: game.source === "manual" ? "manual" : "steam",
+        coverUrl: String(game.coverUrl || "").trim()
     };
 }
 
@@ -2315,49 +2390,6 @@ function loadSteamLibraryFromStorage() {
     }
 }
 
-function renderSteamLibrary(games) {
-    const resultsEl = document.getElementById("steam-results");
-    const statusEl = document.getElementById("steam-status");
-    if (!resultsEl || !statusEl) return;
-
-    const sortedGames = [...games]
-        .filter((g) => (Number(g.playtime_hours) || 0) > 0)
-        .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0));
-
-    if (!sortedGames.length) {
-        resultsEl.innerHTML = "";
-        statusEl.textContent = "Nenhum jogo com horas registradas encontrado.";
-        statusEl.className = "steam-status steam-status--error";
-        return;
-    }
-
-    const maxHours = Math.max(...sortedGames.map((g) => Number(g.playtime_hours) || 0), 1);
-
-    resultsEl.innerHTML = '<div class="steam-grid">' + sortedGames.map((g, i) => {
-        const barWidth = Math.max(((Number(g.playtime_hours) || 0) / maxHours) * 100, 2);
-        const safeName = escapeHtml(g.name);
-
-        return `<div class="steam-card" tabindex="0" role="button" data-appid="${g.appid}" style="animation-delay:${i * 0.03}s">
-            <div class="steam-card-rank">#${i + 1}</div>
-            <img class="steam-card-img"
-                 src="https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg"
-                 alt="${safeName}" loading="lazy"
-                 onerror="this.style.display='none'" />
-            <div class="steam-card-info">
-                <span class="steam-card-name">${safeName}</span>
-                <div class="steam-card-bar-wrap">
-                    <div class="steam-card-bar" style="width:${barWidth}%"></div>
-                </div>
-                <span class="steam-card-hours">${Number(g.playtime_hours) || 0}h</span>
-            </div>
-        </div>`;
-    }).join("") + "</div>";
-
-    statusEl.textContent = `${sortedGames.length} jogos carregados. Clique em um card para editar metadados.`;
-    statusEl.className = "steam-status steam-status--success";
-    bindSteamCardEvents();
-}
-
 function openSteamMetadataModal(appId) {
     const appIdText = String(appId || "");
     const game = steamState.library.find((item) => String(item.appid) === appIdText);
@@ -2372,6 +2404,8 @@ function openSteamMetadataModal(appId) {
     steamState.selectedAppId = appIdText;
     modal.gameName.textContent = game.name;
     modal.gameHours.textContent = `${game.playtime_hours}h`;
+    if (modal.coverUrl) modal.coverUrl.value = game.coverUrl || "";
+    if (modal.coverFile) modal.coverFile.value = "";
 
     modal.status.value = metadata.status || "";
     modal.avaliacao.value = metadata.avaliacao || "";
@@ -2401,6 +2435,7 @@ function closeSteamMetadataModal() {
 function getSteamMetadataFromForm() {
     const modal = getSteamModalElements();
     return {
+        coverUrl: modal.coverUrl?.value || "",
         status: modal.status?.value || "",
         avaliacao: modal.avaliacao?.value || "",
         multiplayer: modal.multiplayer?.value || "",
@@ -2414,16 +2449,29 @@ function getSteamMetadataFromForm() {
     };
 }
 
-function saveSteamMetadata(event) {
+async function saveSteamMetadata(event) {
     event.preventDefault();
     if (!steamState.selectedAppId) return;
 
-    const metadata = getSteamMetadataFromForm();
+    const modal = getSteamModalElements();
+    let coverUrl = modal.coverUrl?.value || "";
+    const coverFile = modal.coverFile?.files?.[0];
+
+    if (coverFile) {
+        coverUrl = await readFileAsDataUrl(coverFile);
+    }
+
+    const metadata = {
+        ...getSteamMetadataFromForm(),
+        coverUrl
+    };
     const idx = steamState.library.findIndex((item) => String(item.appid) === String(steamState.selectedAppId));
     if (idx === -1) return;
 
     steamState.library[idx] = {
         ...steamState.library[idx],
+        source: steamState.library[idx].source || "steam",
+        coverUrl,
         metadata: {
             ...DEFAULT_STEAM_METADATA,
             ...steamState.library[idx].metadata,
@@ -2432,7 +2480,7 @@ function saveSteamMetadata(event) {
     };
 
     saveSteamLibraryToStorage();
-    renderSteamLibrary(steamState.library);
+    refreshGameLibraryViews();
 
     const statusEl = document.getElementById("steam-status");
     if (statusEl) {
@@ -2462,6 +2510,29 @@ function bindSteamCardEvents() {
     });
 }
 
+function bindManualGameEvents() {
+    const form = document.getElementById("manual-game-form");
+    const nameInput = document.getElementById("manual-game-name");
+    const appidInput = document.getElementById("manual-game-appid");
+
+    if (form && !form.dataset.bound) {
+        form.dataset.bound = "true";
+        form.addEventListener("submit", handleManualGameSubmit);
+    }
+
+    if (nameInput && !nameInput.dataset.bound) {
+        nameInput.dataset.bound = "true";
+        nameInput.addEventListener("input", syncManualGameFields);
+        nameInput.addEventListener("change", syncManualGameFields);
+    }
+
+    if (appidInput && !appidInput.dataset.bound) {
+        appidInput.dataset.bound = "true";
+        appidInput.addEventListener("input", syncManualGameFields);
+        appidInput.addEventListener("change", syncManualGameFields);
+    }
+}
+
 function initializeSteamLibraryFromStorage() {
     const loaded = loadSteamLibraryFromStorage();
     const input = document.getElementById("steam-id-input");
@@ -2472,12 +2543,144 @@ function initializeSteamLibraryFromStorage() {
     }
 
     if (loaded) {
-        renderSteamLibrary(steamState.library);
+        refreshGameLibraryViews();
         if (statusEl) {
             statusEl.textContent = `${steamState.library.length} jogos restaurados do armazenamento local.`;
             statusEl.className = "steam-status steam-status--success";
         }
     }
+}
+
+function refreshManualGameDatabase() {
+    const datalist = document.getElementById("manual-game-datalist");
+    if (!datalist) return;
+
+    const uniqueGames = new Map();
+    getLibrary()
+        .filter((game) => (Number(game.playtime_hours) || 0) > 0)
+        .forEach((game) => {
+            const key = normalizeText(game.name || "");
+            if (!key || uniqueGames.has(key)) return;
+            uniqueGames.set(key, game);
+        });
+
+    const orderedGames = [...uniqueGames.values()]
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" }));
+
+    datalist.innerHTML = orderedGames.map((game) => `<option value="${escapeHtml(game.name || "")}"></option>`).join("");
+}
+
+function refreshGameLibraryViews() {
+    renderSteamLibrary(steamState.library);
+    renderManualGameLibrary(steamState.library);
+    refreshManualGameDatabase();
+}
+
+function findGameByNameOrAppId(value) {
+    const query = normalizeText(value);
+    if (!query) return null;
+
+    return getLibrary().find((game) => {
+        return normalizeText(game.name || "") === query || String(game.appid || "") === String(value || "");
+    }) || null;
+}
+
+function syncManualGameFields() {
+    const nameInput = document.getElementById("manual-game-name");
+    const appidInput = document.getElementById("manual-game-appid");
+    const coverUrlInput = document.getElementById("manual-game-cover-url");
+
+    if (!nameInput || !appidInput || !coverUrlInput) return;
+
+    const byName = findGameByNameOrAppId(nameInput.value);
+    const byAppId = findGameByNameOrAppId(appidInput.value);
+    const matchedGame = byAppId || byName;
+
+    if (!matchedGame) return;
+
+    if (!appidInput.value.trim() && matchedGame.appid) {
+        appidInput.value = String(matchedGame.appid);
+    }
+
+    if (!nameInput.value.trim()) {
+        nameInput.value = matchedGame.name || "";
+    }
+
+    if (!coverUrlInput.value.trim()) {
+        coverUrlInput.value = matchedGame.coverUrl || getGameCoverSource(matchedGame) || "";
+    }
+}
+
+function getManualGameFormStatus() {
+    return document.getElementById("manual-game-status");
+}
+
+async function handleManualGameSubmit(event) {
+    event.preventDefault();
+
+    const nameInput = document.getElementById("manual-game-name");
+    const appidInput = document.getElementById("manual-game-appid");
+    const hoursInput = document.getElementById("manual-game-hours");
+    const coverUrlInput = document.getElementById("manual-game-cover-url");
+    const coverFileInput = document.getElementById("manual-game-cover-file");
+    const statusEl = getManualGameFormStatus();
+
+    const name = String(nameInput?.value || "").trim();
+    const appid = String(appidInput?.value || "").trim();
+    const playtimeHours = Number(hoursInput?.value || 0);
+
+    if (!name || !appid || !Number.isFinite(playtimeHours) || playtimeHours <= 0) {
+        if (statusEl) {
+            statusEl.textContent = "Preencha nome, AppID e horas jogadas maiores que zero.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        return;
+    }
+
+    let coverUrl = String(coverUrlInput?.value || "").trim();
+    const coverFile = coverFileInput?.files?.[0];
+    if (coverFile) {
+        coverUrl = await readFileAsDataUrl(coverFile);
+    }
+
+    const existingIndex = steamState.library.findIndex((game) => String(game.appid) === appid);
+    const existingGame = existingIndex >= 0 ? steamState.library[existingIndex] : null;
+
+    const updatedGame = normalizeSteamGame({
+        ...existingGame,
+        appid,
+        name,
+        playtime_hours: playtimeHours,
+        coverUrl: coverUrl || existingGame?.coverUrl || "",
+        source: "manual",
+        metadata: existingGame?.metadata || DEFAULT_STEAM_METADATA
+    }, existingGame?.metadata);
+
+    updatedGame.source = "manual";
+    updatedGame.coverUrl = coverUrl || existingGame?.coverUrl || "";
+    updatedGame.playtime_hours = playtimeHours;
+    updatedGame.name = name;
+
+    if (existingIndex >= 0) {
+        steamState.library[existingIndex] = updatedGame;
+    } else {
+        steamState.library.unshift(updatedGame);
+    }
+
+    saveSteamLibraryToStorage();
+    refreshGameLibraryViews();
+    updateDashboards();
+
+    if (statusEl) {
+        statusEl.textContent = `Jogo adicionado: ${name}.`;
+        statusEl.className = "steam-status steam-status--success";
+    }
+
+    if (nameInput) nameInput.value = "";
+    if (appidInput) appidInput.value = "";
+    if (hoursInput) hoursInput.value = "";
+    if (coverUrlInput) coverUrlInput.value = "";
+    if (coverFileInput) coverFileInput.value = "";
 }
 
 async function fetchSteamLibrary() {
@@ -2512,14 +2715,34 @@ async function fetchSteamLibrary() {
             return;
         }
 
-        const metadataByAppId = new Map(
-            steamState.library.map((game) => [String(game.appid), game.metadata || DEFAULT_STEAM_METADATA])
+        const existingByAppId = new Map(
+            steamState.library.map((game) => [String(game.appid), game])
         );
 
-        steamState.library = games.map((game) => normalizeSteamGame(game, metadataByAppId.get(String(game.appid))));
+        const fetchedAppIds = new Set();
+        steamState.library = games.map((game) => {
+            const existingGame = existingByAppId.get(String(game.appid));
+            fetchedAppIds.add(String(game.appid));
+
+            return normalizeSteamGame(
+                {
+                    ...game,
+                    source: existingGame?.source === "manual" ? "manual" : "steam",
+                    coverUrl: existingGame?.coverUrl || ""
+                },
+                existingGame?.metadata || DEFAULT_STEAM_METADATA
+            );
+        });
+
+        existingByAppId.forEach((existingGame, appId) => {
+            if (!fetchedAppIds.has(appId) && existingGame?.source === "manual") {
+                steamState.library.push(existingGame);
+            }
+        });
+
         steamState.steamId = steamId;
         saveSteamLibraryToStorage();
-        renderSteamLibrary(steamState.library);
+        refreshGameLibraryViews();
         updateDashboards();
 
     } catch (error) {
@@ -2585,7 +2808,7 @@ function importSteamLibraryBackup(event) {
                 .map((game) => normalizeSteamGame(game))
                 .filter((game) => Number.isFinite(Number(game.appid)) || typeof game.appid === "string");
 
-            renderSteamLibrary(steamState.library);
+            refreshGameLibraryViews();
             updateDashboards();
 
             if (statusEl) {
@@ -2666,7 +2889,7 @@ function switchTab(tabId) {
     targetContent.classList.add("active");
 
     if (dom.filtersTop) {
-        dom.filtersTop.hidden = tabId === "steam-library";
+        dom.filtersTop.hidden = tabId === "steam-library" || tabId === "add-your-game";
     }
 
     if (tabId === "visao-geral") renderVisaoGeral();
@@ -2676,6 +2899,7 @@ function switchTab(tabId) {
     else if (tabId === "plataforma") renderPlataforma();
     else if (tabId === "avaliacao") renderAvaliacao();
     else if (tabId === "user-ranking") renderUserRanking();
+    else if (tabId === "steam-library" || tabId === "add-your-game") refreshGameLibraryViews();
 }
 
 function bindEvents() {
@@ -2720,6 +2944,7 @@ function bindEvents() {
 function init() {
     bindEvents();
     bindSteamEvents();
+    bindManualGameEvents();
     initializeSteamLibraryFromStorage();
     if (dom.filtersTop) dom.filtersTop.hidden = false;
     updateDashboards();

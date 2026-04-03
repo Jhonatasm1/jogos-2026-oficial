@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Gaming Temple</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260402-yxt14">
+    <link rel="stylesheet" href="style.css?v=20260403-yxt15">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -31,6 +31,7 @@
             <button class="tab-btn" data-tab="avaliacao">Avalia&ccedil;&atilde;o Pessoal</button>
             <button class="tab-btn" data-tab="user-ranking">Classifica&ccedil;&atilde;o do Usu&aacute;rio</button>
             <button class="tab-btn" data-tab="steam-library">Biblioteca Steam</button>
+            <button class="tab-btn" data-tab="add-your-game">Add Your Game</button>
         </nav>
 
         <div class="filters-container" id="filters-top">
@@ -500,6 +501,49 @@
                 </div>
                 <div class="steam-results" id="steam-results"></div>
             </section>
+
+            <!-- Add Your Game -->
+            <section class="tab-content" id="add-your-game">
+                <div class="steam-header">
+                    <h3 class="steam-title">Add Your Game</h3>
+                    <p class="steam-subtitle">Adicione manualmente um jogo e ele entra na mesma base usada pelos cards e graficos.</p>
+
+                    <form class="manual-game-form" id="manual-game-form">
+                        <label>
+                            <span>Nome do jogo</span>
+                            <input id="manual-game-name" type="text" list="manual-game-datalist" placeholder="Ex.: Hollow Knight" required>
+                        </label>
+
+                        <label>
+                            <span>AppID Steam</span>
+                            <input id="manual-game-appid" type="text" placeholder="Ex.: 367520" required>
+                        </label>
+
+                        <label>
+                            <span>Horas jogadas</span>
+                            <input id="manual-game-hours" type="number" min="0.1" step="0.1" placeholder="Ex.: 42.5" required>
+                        </label>
+
+                        <label class="manual-game-form-full">
+                            <span>Imagem do jogo</span>
+                            <input id="manual-game-cover-url" type="url" placeholder="URL da capa ou deixe vazio para usar a Steam">
+                        </label>
+
+                        <label class="manual-game-form-full">
+                            <span>Ou enviar uma imagem local</span>
+                            <input id="manual-game-cover-file" type="file" accept="image/*">
+                        </label>
+
+                        <div class="manual-game-actions manual-game-form-full">
+                            <button type="submit" class="steam-btn-primary">Adicionar Jogo</button>
+                        </div>
+                    </form>
+
+                    <datalist id="manual-game-datalist"></datalist>
+                    <p class="steam-status" id="manual-game-status"></p>
+                </div>
+                <div class="steam-results" id="manual-game-results"></div>
+            </section>
         </div>
     </main>
 
@@ -523,6 +567,16 @@
             </div>
 
             <form class="steam-modal-form" id="steam-metadata-form">
+                <label class="steam-modal-form-full">
+                    <span>Imagem do jogo</span>
+                    <input id="meta-cover-url" name="coverUrl" type="url" placeholder="URL da imagem ou deixe vazio para usar a Steam">
+                </label>
+
+                <label class="steam-modal-form-full">
+                    <span>Enviar imagem local</span>
+                    <input id="meta-cover-file" type="file" accept="image/*">
+                </label>
+
                 <label>
                     <span>Status</span>
                     <select id="meta-status" name="status">
@@ -613,7 +667,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260402-yxt14"></script>
+    <script src="script.js?v=20260403-yxt15"></script>
 </body>
 </html>
 
