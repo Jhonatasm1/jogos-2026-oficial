@@ -251,6 +251,31 @@ function readFileAsDataUrl(file) {
     });
 }
 
+function getLibrary() {
+    if (steamState.library.length > 0) return steamState.library;
+    try {
+        const raw = localStorage.getItem(STEAM_LIBRARY_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function getFilteredLibrary() {
+    const { plataforma, multiplayer, anoConclusao } = state.overviewFilters;
+    const library = getLibrary();
+
+    return library.filter((game) => {
+        const meta = game.metadata || {};
+        if (plataforma && (meta.plataforma || "") !== plataforma) return false;
+        if (multiplayer && (meta.multiplayer || "") !== multiplayer) return false;
+        if (anoConclusao && String(meta.anoConclusao || "") !== anoConclusao) return false;
+        return true;
+    });
+}
+
 /* ====================== LIBRARY DATA ACCESS ====================== */
 
 function renderGameLibrary(games, { resultsId, statusId, emptyMessage, successMessage }) {
