@@ -2638,28 +2638,6 @@ async function fetchRankingData() {
 }
 
 function bindEvents() {
-    if (dom.sortMode) {
-        dom.sortMode.addEventListener("change", (event) => {
-            state.sortMode = event.target.value;
-            updateCustomSortVisibility();
-            renderTable();
-        });
-    }
-
-    if (dom.customSortColumn) {
-        dom.customSortColumn.addEventListener("change", (event) => {
-            state.customSortColumn = event.target.value;
-            renderTable();
-        });
-    }
-
-    if (dom.customSortDirection) {
-        dom.customSortDirection.addEventListener("change", (event) => {
-            state.customSortDirection = event.target.value;
-            renderTable();
-        });
-    }
-
     if (dom.filterPlataforma) {
         dom.filterPlataforma.addEventListener("change", (event) => {
             state.overviewFilters.plataforma = event.target.value;
