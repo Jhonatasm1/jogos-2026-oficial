@@ -480,23 +480,6 @@ function getOverviewFilteredRows() {
 }
 
 
-function renderSortColumnOptions() {
-    if (!dom.customSortColumn) return;
-
-    dom.customSortColumn.innerHTML = "";
-    state.headers.forEach((header) => {
-        const option = document.createElement("option");
-        option.value = header;
-        option.textContent = header;
-        dom.customSortColumn.appendChild(option);
-    });
-
-    if (!state.customSortColumn || !state.headers.includes(state.customSortColumn)) {
-        state.customSortColumn = state.headers[0] || "";
-    }
-
-    dom.customSortColumn.value = state.customSortColumn;
-}
 
 function updateOverviewFilterSelects() {
     const headers = state.resolvedHeaders;
