@@ -2608,8 +2608,6 @@ async function fetchRankingData() {
         state.rows = normalized.rows;
         resolveHeaders();
 
-        keepValidFilters();
-
         updateOverviewFilterSelects();
         renderVisaoGeral();
 
