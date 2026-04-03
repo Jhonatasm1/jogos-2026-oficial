@@ -356,28 +356,6 @@ function simularEstatisticasGlobais(rowsSource = state.rows) {
         });
 }
 
-function compareValues(a, b, direction, preferTime) {
-    const firstRaw = String(a || "");
-    const secondRaw = String(b || "");
-
-    const firstTime = preferTime ? parseTimeToSeconds(firstRaw) : null;
-    const secondTime = preferTime ? parseTimeToSeconds(secondRaw) : null;
-
-    if (firstTime !== null && secondTime !== null) {
-        return direction === "asc" ? firstTime - secondTime : secondTime - firstTime;
-    }
-
-    const firstNumber = parseNumber(firstRaw);
-    const secondNumber = parseNumber(secondRaw);
-
-    if (firstNumber !== null && secondNumber !== null) {
-        return direction === "asc" ? firstNumber - secondNumber : secondNumber - firstNumber;
-    }
-
-    return direction === "asc"
-        ? firstRaw.localeCompare(secondRaw, "pt-BR", { numeric: true, sensitivity: "base" })
-        : secondRaw.localeCompare(firstRaw, "pt-BR", { numeric: true, sensitivity: "base" });
-}
 
 function findHeader(patterns) {
     return state.headers.find((header) => patterns.some((pattern) => pattern.test(normalizeText(header))));
