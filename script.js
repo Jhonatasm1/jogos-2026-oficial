@@ -573,12 +573,6 @@ function keepValidFilters() {
     state.filters = nextFilters;
 }
 
-function updateCustomSortVisibility() {
-    if (!dom.customSortWrap || !dom.customSortDirectionWrap) return;
-    const isCustom = state.sortMode === "custom";
-    dom.customSortWrap.hidden = !isCustom;
-    dom.customSortDirectionWrap.hidden = !isCustom;
-}
 
 async function fetchWithTimeout(url, options, timeoutMs) {
     const controller = new AbortController();
