@@ -2618,11 +2618,7 @@ async function fetchRankingData() {
 
         keepValidFilters();
 
-        // Keep data updates resilient even if some UI blocks are not present.
-        renderHeaderAndFilters();
-        renderSortColumnOptions();
         updateOverviewFilterSelects();
-        renderTable();
         renderVisaoGeral();
 
         const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
