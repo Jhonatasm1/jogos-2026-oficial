@@ -479,31 +479,6 @@ function getOverviewFilteredRows() {
     });
 }
 
-function getPresetConfig(mode) {
-    const personalHeader = findHeader([/avaliacao pessoal/, /avaliacao/, /nota pessoal/, /nota/, /score/]);
-    const tempoHeader = findHeader([/tempo/, /duracao/, /duracao total/, /horas/, /time/]);
-    const anoHeader = findHeader([/ano de lancamento/, /ano lancamento/, /lancamento/, /ano/]);
-    const alphaHeader = findHeader([/jogo/, /titulo/, /nome/]);
-
-    const presets = {
-        "personal-desc": { header: personalHeader, direction: "desc", preferTime: false },
-        "tempo-asc": { header: tempoHeader, direction: "asc", preferTime: true },
-        "tempo-desc": { header: tempoHeader, direction: "desc", preferTime: true },
-        "ano-desc": { header: anoHeader, direction: "desc", preferTime: false },
-        "ano-asc": { header: anoHeader, direction: "asc", preferTime: false },
-        "alfabetica-asc": { header: alphaHeader || state.headers[0], direction: "asc", preferTime: false },
-        "alfabetica-desc": { header: alphaHeader || state.headers[0], direction: "desc", preferTime: false }
-    };
-
-    return presets[mode] || null;
-}
-
-function shouldUseSelectFilter(header) {
-    const uniqueValues = Array.from(new Set(state.rows.map((row) => String(row[header] || "").trim()).filter(Boolean)));
-    const isShortList = uniqueValues.length > 1 && uniqueValues.length <= 20;
-    const shortValues = uniqueValues.every((value) => value.length <= 26);
-    return isShortList && shortValues;
-}
 
 function renderHeaderAndFilters() {
     if (!dom.thead) return;
