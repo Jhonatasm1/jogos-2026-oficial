@@ -564,13 +564,6 @@ function normalizeRows(parsedRows) {
     return { headers, rows };
 }
 
-function keepValidFilters() {
-    const nextFilters = {};
-    state.headers.forEach((header) => {
-        nextFilters[header] = state.filters[header] || "";
-    });
-    state.filters = nextFilters;
-}
 
 
 async function fetchWithTimeout(url, options, timeoutMs) {
