@@ -1,8 +1,11 @@
 import os
+from dotenv import load_dotenv
 
 import requests
 from flask import Flask, jsonify, abort
 from flask_cors import CORS
+
+load_dotenv()
 
 app = Flask(__name__)
 
