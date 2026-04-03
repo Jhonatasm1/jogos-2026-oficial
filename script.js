@@ -2561,6 +2561,79 @@ function renderUserRanking() {
     });
 }
 
+const STEAM_API_BASE = "http://localhost:5000/steam-library/";
+
+async function fetchSteamLibrary() {
+    const input = document.getElementById("steam-id-input");
+    const statusEl = document.getElementById("steam-status");
+    const resultsEl = document.getElementById("steam-results");
+    const steamId = (input?.value || "").trim();
+
+    if (!steamId) {
+        statusEl.textContent = "Digite um SteamID64 valido.";
+        statusEl.className = "steam-status steam-status--error";
+        return;
+    }
+
+    statusEl.textContent = "Carregando...";
+    statusEl.className = "steam-status steam-status--loading";
+    resultsEl.innerHTML = '<div class="steam-loading"><div class="steam-spinner"></div><span>Buscando biblioteca Steam...</span></div>';
+
+    try {
+        const response = await fetch(STEAM_API_BASE + encodeURIComponent(steamId));
+        if (!response.ok) throw new Error(`Erro ${response.status}`);
+
+        const data = await response.json();
+        const games = (data.games || [])
+            .filter(g => g.playtime_hours > 0)
+            .sort((a, b) => b.playtime_hours - a.playtime_hours);
+
+        if (!games.length) {
+            statusEl.textContent = "Nenhum jogo com horas registradas encontrado.";
+            statusEl.className = "steam-status steam-status--error";
+            resultsEl.innerHTML = "";
+            return;
+        }
+
+        statusEl.textContent = `${games.length} jogos encontrados com tempo registrado.`;
+        statusEl.className = "steam-status steam-status--success";
+
+        const maxHours = games[0].playtime_hours;
+
+        resultsEl.innerHTML = '<div class="steam-grid">' + games.map((g, i) => {
+            const barWidth = Math.max((g.playtime_hours / maxHours) * 100, 2);
+            const imgUrl = `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.appid}_header.jpg`;
+            return `<div class="steam-card" style="animation-delay:${i * 0.03}s">
+                <div class="steam-card-rank">#${i + 1}</div>
+                <img class="steam-card-img"
+                     src="https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg"
+                     alt="${g.name}" loading="lazy"
+                     onerror="this.style.display='none'" />
+                <div class="steam-card-info">
+                    <span class="steam-card-name">${g.name}</span>
+                    <div class="steam-card-bar-wrap">
+                        <div class="steam-card-bar" style="width:${barWidth}%"></div>
+                    </div>
+                    <span class="steam-card-hours">${g.playtime_hours}h</span>
+                </div>
+            </div>`;
+        }).join("") + "</div>";
+
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        statusEl.textContent = `Falha ao buscar dados da Steam (${reason}).`;
+        statusEl.className = "steam-status steam-status--error";
+        resultsEl.innerHTML = "";
+    }
+}
+
+function bindSteamEvents() {
+    const btn = document.getElementById("steam-sync-btn");
+    const input = document.getElementById("steam-id-input");
+    if (btn) btn.addEventListener("click", fetchSteamLibrary);
+    if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") fetchSteamLibrary(); });
+}
+
 function switchTab(tabId) {
     dom.tabBtns.forEach(btn => btn.classList.remove("active"));
     dom.tabContents.forEach(content => content.classList.remove("active"));
