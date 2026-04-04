@@ -2889,7 +2889,15 @@ async function fetchSteamLibrary() {
             return;
         }
 
-        const isSameUser = steamState.steamId === steamId;
+        const isSameUser = steamState.steamId && steamState.steamId === steamId;
+
+        if (!isSameUser) {
+            steamState.library = [];
+            steamState.steamId = steamId;
+            localStorage.removeItem(STEAM_LIBRARY_STORAGE_KEY);
+            localStorage.removeItem(STEAM_LIBRARY_STEAM_ID_KEY);
+        }
+
         const existingByAppId = isSameUser
             ? new Map(steamState.library.map((game) => [String(game.appid), game]))
             : new Map();
