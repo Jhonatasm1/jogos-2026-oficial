@@ -294,11 +294,12 @@ function getLibrary() {
 }
 
 function getFilteredLibrary() {
-    const { plataforma, multiplayer, anoConclusao } = state.overviewFilters;
+    const { status, plataforma, multiplayer, anoConclusao } = state.overviewFilters;
     const library = getLibrary();
 
     return library.filter((game) => {
         const meta = game.metadata || {};
+        if (status && (meta.status || "") !== status) return false;
         if (plataforma && (meta.plataforma || "") !== plataforma) return false;
         if (multiplayer && (meta.multiplayer || "") !== multiplayer) return false;
         if (anoConclusao && String(meta.anoConclusao || "") !== anoConclusao) return false;
