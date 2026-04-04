@@ -3710,8 +3710,11 @@ function createDefaultMyWorldCup() {
 
 function normalizeMyWorldCupChoice(choice) {
     const mediaType = String(choice?.mediaType || "image") === "video" ? "video" : "image";
-    const mediaSrc = String(choice?.mediaSrc || choice?.cover || "");
-    const resolvedCover = String(choice?.cover || (mediaType === "video" ? DEFAULT_GAME_COVER_PLACEHOLDER : mediaSrc || DEFAULT_GAME_COVER_PLACEHOLDER));
+    const sourceCandidate = String(choice?.mediaSrc || choice?.cover || "");
+    const mediaSrc = mediaType === "video" ? normalizeVideoUrl(sourceCandidate) : sourceCandidate;
+    const resolvedCover = mediaType === "video"
+        ? String(choice?.cover || getVideoCoverFromUrl(mediaSrc))
+        : String(choice?.cover || mediaSrc || DEFAULT_GAME_COVER_PLACEHOLDER);
     return {
         id: String(choice?.id || createMyWorldCupId("choice")),
         name: String(choice?.name || "Nova escolha").trim() || "Nova escolha",
@@ -3791,14 +3794,90 @@ function formatMyWorldCupStepLabel(step) {
     return step.charAt(0).toUpperCase() + step.slice(1);
 }
 
-function getMyWorldCupChoiceAccept() {
-    return myWcState.choiceType === "video" ? "video/*" : "image/*";
+function extractYoutubeVideoId(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    try {
+        const parsed = new URL(raw);
+        const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+
+        if (host === "youtu.be") {
+            return parsed.pathname.split("/").filter(Boolean)[0] || "";
+        }
+
+        if (host.endsWith("youtube.com")) {
+            const direct = parsed.searchParams.get("v");
+            if (direct) return direct;
+
+            const parts = parsed.pathname.split("/").filter(Boolean);
+            if (parts[0] === "embed" && parts[1]) return parts[1];
+            if (parts[0] === "shorts" && parts[1]) return parts[1];
+        }
+    } catch {
+        return "";
+    }
+
+    return "";
+}
+
+function normalizeVideoUrl(value) {
+    let raw = String(value || "").trim();
+    if (!raw) return "";
+
+    if (!/^https?:\/\//i.test(raw)) {
+        raw = `https://${raw}`;
+    }
+
+    try {
+        const parsed = new URL(raw);
+        const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+
+        if (host === "youtu.be" || host.endsWith("youtube.com")) {
+            const id = extractYoutubeVideoId(raw);
+            return id ? `https://www.youtube.com/embed/${id}` : "";
+        }
+
+        if (host === "vimeo.com" || host.endsWith("vimeo.com")) {
+            const parts = parsed.pathname.split("/").filter(Boolean);
+            const maybeId = parts[parts.length - 1] || "";
+            if (/^\d+$/.test(maybeId)) {
+                return `https://player.vimeo.com/video/${maybeId}`;
+            }
+        }
+
+        return raw;
+    } catch {
+        return "";
+    }
+}
+
+function getVideoCoverFromUrl(videoUrl) {
+    const id = extractYoutubeVideoId(videoUrl);
+    if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    return DEFAULT_GAME_COVER_PLACEHOLDER;
+}
+
+function getChoicePreviewMarkup(choice) {
+    const mediaType = String(choice.mediaType || "image") === "video" ? "video" : "image";
+    if (mediaType === "video") {
+        const src = String(choice.mediaSrc || "").trim();
+        if (src) {
+            return `<iframe class="mywc-choice-thumb is-video" src="${escapeHtml(src)}" title="${escapeHtml(choice.name)}" loading="lazy" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+        }
+    }
+
+    return `<img class="mywc-choice-thumb" src="${escapeHtml(choice.cover || DEFAULT_GAME_COVER_PLACEHOLDER)}" alt="${escapeHtml(choice.name)}" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'">`;
 }
 
 function syncMyWorldCupChoiceTypeUI() {
     const uploadTitle = document.getElementById("mywc-choice-upload-title");
     const uploadText = document.getElementById("mywc-choice-upload-text");
+    const uploadBox = document.getElementById("mywc-choice-upload-box");
     const uploadInput = document.getElementById("mywc-choice-upload");
+    const choiceCreate = document.querySelector(".mywc-choice-create");
+    const videoLinkForm = document.getElementById("mywc-video-link-form");
+    const videoLinkHelp = document.getElementById("mywc-video-link-help");
 
     document.querySelectorAll(".mywc-type-card").forEach((button) => {
         const nextType = button.getAttribute("data-choice-type");
@@ -3807,17 +3886,22 @@ function syncMyWorldCupChoiceTypeUI() {
     });
 
     if (uploadTitle) {
-        uploadTitle.textContent = myWcState.choiceType === "video" ? "Upload Videos" : "Upload Images";
+        uploadTitle.textContent = myWcState.choiceType === "video" ? "Video URL" : "Upload Images";
     }
 
     if (uploadText) {
         uploadText.textContent = myWcState.choiceType === "video"
-            ? "Drag and drop ou clique para upload de videos (12mb max)"
+            ? "Para videos, use URL + nome do participante."
             : "Drag and drop ou clique para upload de imagens (12mb max)";
     }
 
+    if (uploadBox) uploadBox.hidden = myWcState.choiceType === "video";
+    if (choiceCreate) choiceCreate.hidden = myWcState.choiceType === "video";
+    if (videoLinkForm) videoLinkForm.hidden = myWcState.choiceType !== "video";
+    if (videoLinkHelp) videoLinkHelp.hidden = myWcState.choiceType !== "video";
+
     if (uploadInput) {
-        uploadInput.accept = getMyWorldCupChoiceAccept();
+        uploadInput.accept = "image/*";
     }
 }
 
@@ -3918,10 +4002,7 @@ function renderMyWorldCupChoices() {
         empty.hidden = true;
         grid.innerHTML = pageChoices.map((choice) => {
             const ratios = getMyWorldCupRatios(choice);
-            const mediaType = String(choice.mediaType || "image") === "video" ? "video" : "image";
-            const preview = mediaType === "video"
-                ? `<video class="mywc-choice-thumb" src="${escapeHtml(choice.mediaSrc || "")}" muted preload="metadata"></video>`
-                : `<img class="mywc-choice-thumb" src="${escapeHtml(choice.cover || DEFAULT_GAME_COVER_PLACEHOLDER)}" alt="${escapeHtml(choice.name)}" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'">`;
+            const preview = getChoicePreviewMarkup(choice);
             return `
                 <article class="mywc-choice-card" data-choice-id="${choice.id}">
                     ${preview}
@@ -4191,11 +4272,11 @@ function renderMyWorldCups(forceListOnly) {
 }
 
 async function appendMyWorldCupChoicesFromFiles(fileList) {
-    const acceptVideos = myWcState.choiceType === "video";
-    const files = Array.from(fileList || []).filter((file) => {
-        if (acceptVideos) return file.type.startsWith("video/");
-        return file.type.startsWith("image/");
-    });
+    if (myWcState.choiceType === "video") {
+        return;
+    }
+
+    const files = Array.from(fileList || []).filter((file) => file.type.startsWith("image/"));
     if (!files.length) return;
 
     const appended = [];
@@ -4205,9 +4286,9 @@ async function appendMyWorldCupChoicesFromFiles(fileList) {
             appended.push(normalizeMyWorldCupChoice({
                 id: createMyWorldCupId("choice"),
                 name: String(file.name || "Imagem").replace(/\.[^/.]+$/, ""),
-                mediaType: acceptVideos ? "video" : "image",
+                mediaType: "image",
                 mediaSrc: dataUrl,
-                cover: acceptVideos ? DEFAULT_GAME_COVER_PLACEHOLDER : dataUrl
+                cover: dataUrl
             }));
         } catch (error) {
             console.warn("Falha ao processar arquivo da escolha.", error);
@@ -4239,6 +4320,9 @@ function bindMyWorldCupEvents() {
     const choiceUploadBox = document.getElementById("mywc-choice-upload-box");
     const choiceUploadBtn = document.getElementById("mywc-choice-upload-btn");
     const choiceUploadInput = document.getElementById("mywc-choice-upload");
+    const videoUrlInput = document.getElementById("mywc-video-url");
+    const videoNameInput = document.getElementById("mywc-video-name");
+    const videoAddBtn = document.getElementById("mywc-video-add-btn");
     const choiceSearchInput = document.getElementById("mywc-choice-search");
     const choiceSortSelect = document.getElementById("mywc-choice-sort");
     const choiceNameInput = document.getElementById("mywc-choice-name-input");
@@ -4454,6 +4538,48 @@ function bindMyWorldCupEvents() {
             if (event.key === "Enter") {
                 event.preventDefault();
                 addChoice();
+            }
+        });
+    }
+
+    if (videoAddBtn && videoUrlInput && videoNameInput) {
+        const addVideoChoice = () => {
+            const rawUrl = String(videoUrlInput.value || "").trim();
+            const nextName = String(videoNameInput.value || "").trim();
+            if (!rawUrl || !nextName) return;
+
+            const embedUrl = normalizeVideoUrl(rawUrl);
+            if (!embedUrl) return;
+
+            mutateSelectedMyWorldCup((draft) => {
+                draft.choices.unshift(normalizeMyWorldCupChoice({
+                    id: createMyWorldCupId("choice"),
+                    name: nextName,
+                    mediaType: "video",
+                    mediaSrc: embedUrl,
+                    cover: getVideoCoverFromUrl(embedUrl)
+                }));
+            });
+
+            videoUrlInput.value = "";
+            videoNameInput.value = "";
+            myWcState.choicePage = 1;
+            renderMyWorldCupChoices();
+            renderMyWorldCupCards();
+            renderWcGrid();
+        };
+
+        videoAddBtn.addEventListener("click", addVideoChoice);
+        videoUrlInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addVideoChoice();
+            }
+        });
+        videoNameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addVideoChoice();
             }
         });
     }

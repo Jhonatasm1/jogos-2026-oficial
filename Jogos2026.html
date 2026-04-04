@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Gaming Temple</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260404-yxt16">
+    <link rel="stylesheet" href="style.css?v=20260404-yxt17">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -660,6 +660,13 @@
                                 <button type="button" class="mywc-type-card" data-choice-type="video">Video</button>
                             </div>
 
+                            <div id="mywc-video-link-form" class="mywc-video-link-form" hidden>
+                                <input id="mywc-video-url" type="url" placeholder="YouTube URL">
+                                <input id="mywc-video-name" type="text" maxlength="120" placeholder="Nome do participante">
+                                <button id="mywc-video-add-btn" class="mywc-btn" type="button">+ Add</button>
+                            </div>
+                            <p id="mywc-video-link-help" class="mywc-video-link-help" hidden>Adicione URL do video e nome do participante.</p>
+
                             <h4 class="mywc-section-label" id="mywc-choice-upload-title">Upload Images</h4>
                             <div id="mywc-choice-upload-box" class="mywc-upload-box" role="button" tabindex="0">
                                 <p id="mywc-choice-upload-text">Drag and drop ou clique para upload de imagens (12mb max)</p>
@@ -899,7 +906,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260404-yxt16"></script>
+    <script src="script.js?v=20260404-yxt17"></script>
 </body>
 </html>
 

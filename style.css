@@ -3058,6 +3058,34 @@ body.modal-open {
     transform: translateY(-1px);
 }
 
+.mywc-video-link-form {
+    display: grid;
+    grid-template-columns: 1fr 280px auto;
+    gap: 0.55rem;
+}
+
+.mywc-video-link-form input {
+    width: 100%;
+    background: #2a2d35;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    color: #fff;
+    padding: 0.55rem 0.65rem;
+    font-family: "Manrope", sans-serif;
+    font-size: 0.95rem;
+}
+
+.mywc-video-link-form input:focus {
+    outline: none;
+    border-color: #f43622;
+    box-shadow: 0 0 0 2px rgba(244, 54, 34, 0.2);
+}
+
+.mywc-video-link-help {
+    color: #aeb7c9;
+    font-size: 0.84rem;
+}
+
 .mywc-upload-box {
     border: 1px dashed rgba(255, 255, 255, 0.2);
     border-radius: 10px;
@@ -3108,6 +3136,10 @@ body.modal-open {
     border-radius: 8px;
     object-fit: cover;
     background: #1f2330;
+}
+
+.mywc-choice-thumb.is-video {
+    border: 0;
 }
 
 .mywc-choice-name {
@@ -3274,6 +3306,10 @@ body.modal-open {
     }
 
     .mywc-choices-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .mywc-video-link-form {
         grid-template-columns: 1fr;
     }
 
