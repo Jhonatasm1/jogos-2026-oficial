@@ -2498,6 +2498,16 @@ body.modal-open {
     transform: scale(1.08);
 }
 
+.wc-size-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+    border-color: rgba(212, 168, 83, 0.2);
+    color: rgba(212, 168, 83, 0.45);
+    background: rgba(26, 28, 38, 0.45);
+    transform: none;
+    box-shadow: none;
+}
+
 /* ── Duel ── */
 .wc-duel-header {
     display: flex;
@@ -2682,6 +2692,593 @@ body.modal-open {
 .wc-champion-restart:hover {
     background: var(--gold);
     color: var(--bg-0);
+}
+
+/* ══════════════════════════════════════
+   My World Cups
+   ══════════════════════════════════════ */
+.mywc-shell {
+    display: grid;
+    gap: 1rem;
+}
+
+.mywc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.mywc-title {
+    font-family: "Syne", sans-serif;
+    font-size: 2.2rem;
+    line-height: 1.05;
+    color: #ffffff;
+}
+
+.mywc-subtitle {
+    color: #b3b8c4;
+    margin-top: 0.35rem;
+    font-size: 0.92rem;
+}
+
+.mywc-create-btn {
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f43622 0%, #ca1f10 100%);
+    color: #fff;
+    font-family: "Syne", sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(244, 54, 34, 0.25);
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.mywc-create-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+}
+
+.mywc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.mywc-card {
+    background: linear-gradient(180deg, rgba(22, 24, 33, 0.98), rgba(11, 13, 19, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.mywc-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(244, 54, 34, 0.7);
+}
+
+.mywc-card-top {
+    position: relative;
+}
+
+.mywc-card-cover {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+    background: #202533;
+}
+
+.mywc-visibility-badge {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #fff;
+    background: #0ed46f;
+    padding: 0.22rem 0.55rem;
+}
+
+.mywc-card-body {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.9rem;
+}
+
+.mywc-card-category {
+    color: #d8dbe4;
+    font-weight: 700;
+    font-size: 0.82rem;
+}
+
+.mywc-card-title {
+    color: #ffffff;
+    font-size: 1.22rem;
+    line-height: 1.25;
+}
+
+.mywc-card-description {
+    color: #8e95a4;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    min-height: 2.7em;
+}
+
+.mywc-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mywc-card-count {
+    color: #8992a5;
+    font-size: 0.78rem;
+}
+
+.mywc-card-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.mywc-card-btn {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(13, 16, 24, 0.7);
+    color: #dbe1ef;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.28rem 0.55rem;
+    cursor: pointer;
+}
+
+.mywc-card-btn:hover {
+    border-color: rgba(244, 54, 34, 0.75);
+    color: #fff;
+}
+
+.mywc-empty {
+    color: #95a0b5;
+    font-style: italic;
+}
+
+.mywc-editor {
+    background: rgba(7, 10, 16, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.mywc-editor-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.mywc-editor-head h3 {
+    color: #ffffff;
+    font-size: 2.1rem;
+    line-height: 1.1;
+}
+
+.mywc-back-btn {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #dde1ea;
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.mywc-back-btn:hover {
+    border-color: #f43622;
+    color: #fff;
+}
+
+.mywc-steps {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.mywc-step-separator {
+    color: #8b93a3;
+}
+
+.mywc-step-btn {
+    border: none;
+    background: transparent;
+    color: #d4dae8;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+}
+
+.mywc-step-btn:hover,
+.mywc-step-btn.active {
+    color: #f43622;
+}
+
+.mywc-step-panel {
+    display: none;
+    gap: 0.9rem;
+}
+
+.mywc-step-panel.active {
+    display: grid;
+}
+
+.mywc-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.mywc-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.mywc-field-full {
+    grid-column: 1 / -1;
+}
+
+.mywc-field span,
+.mywc-section-label {
+    color: #f0f3fb;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.mywc-field input,
+.mywc-field textarea,
+.mywc-field select,
+.mywc-choices-toolbar input,
+.mywc-choices-toolbar select,
+.mywc-choice-create input {
+    width: 100%;
+    background: #2a2d35;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    color: #fff;
+    padding: 0.55rem 0.65rem;
+    font-family: "Manrope", sans-serif;
+    font-size: 0.95rem;
+}
+
+.mywc-field textarea {
+    resize: vertical;
+}
+
+.mywc-field input:focus,
+.mywc-field textarea:focus,
+.mywc-field select:focus,
+.mywc-choices-toolbar input:focus,
+.mywc-choices-toolbar select:focus,
+.mywc-choice-create input:focus {
+    outline: none;
+    border-color: #f43622;
+    box-shadow: 0 0 0 2px rgba(244, 54, 34, 0.2);
+}
+
+.mywc-cover-stage {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 0.85rem;
+}
+
+.mywc-cover-drop {
+    min-height: 210px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: #2b2d35;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+}
+
+.mywc-cover-drop img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.mywc-cover-actions {
+    display: grid;
+    gap: 0.75rem;
+    align-content: start;
+}
+
+.mywc-btn {
+    border: 1px solid #f43622;
+    border-radius: 8px;
+    background: rgba(244, 54, 34, 0.12);
+    color: #fff;
+    padding: 0.52rem 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.mywc-btn:hover {
+    background: rgba(244, 54, 34, 0.2);
+}
+
+.mywc-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.mywc-type-card {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    background: rgba(10, 12, 18, 0.82);
+    color: #b8becf;
+    min-height: 120px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    cursor: default;
+}
+
+.mywc-type-card.is-active {
+    border-color: #f43622;
+    color: #f43622;
+}
+
+.mywc-upload-box {
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: #2b2d35;
+    min-height: 150px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    gap: 0.6rem;
+    padding: 1rem;
+}
+
+.mywc-upload-box p {
+    color: #e1e4ec;
+    font-size: 0.92rem;
+}
+
+.mywc-choices-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 0.75rem;
+}
+
+.mywc-choice-create {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.6rem;
+}
+
+.mywc-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.8rem;
+}
+
+.mywc-choice-card {
+    background: linear-gradient(180deg, rgba(40, 43, 53, 0.95), rgba(27, 30, 38, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.7rem;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.mywc-choice-thumb {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #1f2330;
+}
+
+.mywc-choice-name {
+    width: 100%;
+    background: rgba(10, 12, 18, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    padding: 0.45rem 0.55rem;
+    font-weight: 600;
+}
+
+.mywc-choice-metric {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.mywc-choice-metric span {
+    color: #a8b0c2;
+    font-size: 0.74rem;
+}
+
+.mywc-choice-track {
+    height: 14px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #323d56;
+}
+
+.mywc-choice-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #5f7ab0 0%, #3f4f75 100%);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    min-width: 3.6rem;
+}
+
+.mywc-choice-remove {
+    justify-self: end;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(10, 12, 18, 0.75);
+    color: #cfd6e4;
+    border-radius: 8px;
+    padding: 0.28rem 0.55rem;
+    font-size: 0.73rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.mywc-choice-remove:hover {
+    border-color: #f43622;
+    color: #fff;
+}
+
+.mywc-choice-empty {
+    color: #9ca5b8;
+    font-style: italic;
+}
+
+.mywc-choice-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+}
+
+.mywc-choice-pagination button {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #d9deeb;
+    border-radius: 6px;
+    padding: 0.22rem 0.55rem;
+    cursor: pointer;
+}
+
+.mywc-choice-pagination button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.mywc-choice-pagination span {
+    color: #c8cedd;
+    font-size: 0.9rem;
+}
+
+.mywc-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #f2f5fb;
+    font-weight: 700;
+}
+
+.mywc-check input {
+    width: 18px;
+    height: 18px;
+}
+
+.mywc-publish-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.mywc-publish-btn {
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f43622 0%, #ca1f10 100%);
+    color: #fff;
+    font-family: "Syne", sans-serif;
+    font-weight: 700;
+    padding: 0.75rem 1.35rem;
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+.mywc-feedback {
+    color: #9bc9a6;
+    font-size: 0.9rem;
+}
+
+.mywc-editor-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.mywc-nav-btn {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #d6dced;
+    border-radius: 10px;
+    padding: 0.6rem 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.mywc-nav-btn--primary {
+    border-color: #f43622;
+    background: rgba(244, 54, 34, 0.15);
+    color: #fff;
+}
+
+.mywc-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+    .mywc-title {
+        font-size: 1.7rem;
+    }
+
+    .mywc-editor-head h3 {
+        font-size: 1.7rem;
+    }
+
+    .mywc-cover-stage {
+        grid-template-columns: 1fr;
+    }
+
+    .mywc-choices-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .mywc-fields-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .mywc-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mywc-choice-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mywc-type-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mywc-choice-create {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Responsive */

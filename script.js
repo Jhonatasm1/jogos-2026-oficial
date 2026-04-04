@@ -1696,6 +1696,8 @@ function updateDashboards() {
     else if (activeTab === "plataforma") renderPlataforma();
     else if (activeTab === "avaliacao") renderAvaliacao();
     else if (activeTab === "user-ranking") renderUserRanking();
+    else if (activeTab === "world-cup") renderWorldCup();
+    else if (activeTab === "my-world-cups") renderMyWorldCups();
 }
 
 /* ====================== TIER LIST ====================== */
@@ -3151,7 +3153,7 @@ function switchTab(tabId) {
     targetContent.classList.add("active");
 
     if (dom.filtersTop) {
-        dom.filtersTop.hidden = tabId === "steam-library" || tabId === "add-your-game" || tabId === "world-cup";
+        dom.filtersTop.hidden = tabId === "steam-library" || tabId === "add-your-game" || tabId === "world-cup" || tabId === "my-world-cups";
     }
 
     if (tabId === "visao-geral") renderVisaoGeral();
@@ -3164,6 +3166,7 @@ function switchTab(tabId) {
     else if (tabId === "steam-library") renderSteamLibrary(steamState.library);
     else if (tabId === "add-your-game") renderManualGames(manualGameState.library);
     else if (tabId === "world-cup") renderWorldCup();
+    else if (tabId === "my-world-cups") renderMyWorldCups();
 }
 
 function bindEvents() {
@@ -3214,72 +3217,8 @@ function bindEvents() {
 }
 
 /* ====================== WORLD CUP ====================== */
-const ultimateGamesList = [
-  'A Plague Tale: Innocence', 'A Plague Tale: Requiem', 'A Short Hike', 'A Way Out', 
-  'Aeterna Lucis', 'Aeterna Noctis', 'Assassin\'s Creed Origins', 'Assassin\'s Creed Valhalla', 
-  'Assassin\'s Creed IV Black Flag', 'Assassin\'s Creed Odyssey', 'Assassin\'s Creed Shadows', 
-  'Assassin\'s Creed Unity', 'Invincible Presents: Atom Eve', 'Atomfall', 'Atomic Heart', 
-  'Avatar: The Burning Earth', 'Avowed', 'Escape the Backrooms', 'Balatro', 'Baldur\'s Gate 3', 
-  'Batman: Arkham Knight', 'Battlefield 1', 'Battletoads', 'Behind the Frame', 'Beyond Blue', 
-  'BioShock Remastered', 'BioShock 2 Remastered', 'BioShock Infinite', 'Black Myth: Wukong', 
-  'Blasphemous', 'Bloodborne', 'Bloodstained: Ritual of the Night', 'Bloons TD 6', 
-  'Borderlands 2', 'Bread & Fred', 'Brothers - A Tale of Two Sons', 'Call of Duty: Black Ops 6', 
-  'Call of Duty: Modern Warfare III', 'Carry The Glass', 'Castle Crashers', 
-  'Castlevania Anniversary Collection', 'Castlevania Bloodlines', 'Castlevania II Belmont\'s Revenge', 
-  'Castlevania II Simon\'s Quest', 'Castlevania III Dracula\'s Curse', 'Castlevania The Adventure', 
-  'Celeste', 'Cities: Skylines II', 'Sid Meier\'s Civilization VI', 'Clair Obscur: Expedition 33', 
-  'COCOON', 'Control Ultimate Edition', 'Counter-Strike 2', 'Crash Bandicoot 4: It\'s About Time', 
-  'Crash Bandicoot N. Sane Trilogy 1', 'Crash Bandicoot N. Sane Trilogy 2', 'Crash Bandicoot N. Sane Trilogy 3', 
-  'Cuphead', 'Cyberpunk 2077', 'DARK SOULS II', 'DARK SOULS III', 'DARK SOULS: REMASTERED', 
-  'Days Gone', 'Dead Cells', 'Dead Island 2', 'Dead Space', 'DEATH STRANDING DIRECTOR\'S CUT', 
-  'DEATHLOOP', 'Deliver At All Costs', 'Detroit: Become Human', 'Diablo IV', 'Disco Elysium', 
-  'Divinity: Original Sin 2', 'Doki Doki Literature Club Plus!', 'DOOM Eternal', 'DOOM: The Dark Ages', 
-  'Dragon Age: Inquisition', 'Dragon Age: The Veilguard', 'DREDGE', 'Dying Light 2', 'EA SPORTS FC 25', 
-  'ELDEN RING', 'ELDEN RING Nightreign', 'ELDEN RING Shadow of the Erdtree', 'ENSLAVED: Odyssey to the West', 
-  'Enter the Gungeon', 'Erica', 'Escape Academy', 'Fable Anniversary', 'Far Cry 5', 'Far Cry 6', 
-  'FAR: Changing Tides', 'Figment', 'Figment 2: Creed Valley', 'FINAL FANTASY VII REBIRTH', 
-  'FINAL FANTASY VII REMAKE INTERGRADE', 'FINAL FANTASY XVI', 'FBC: Firebreak', 'Firewatch', 
-  'Microsoft Flight Simulator', 'Forza Horizon 5', 'Gears 5', 'Ghost of Tsushima', 'Ghostrunner', 
-  'Ghostrunner 2', 'God of War II', 'God of War', 'God of War III', 'God of War Ragnarök', 
-  'God of War III Remastered', 'God of War Ragnarök Valhalla', 'GRIS', 'Grounded', 'Grounded 2', 
-  'Grand Theft Auto V', 'Grand Theft Auto: San Andreas', 'Grand Theft Auto VI', 'Halo Infinite', 
-  'Heavy Rain', 'Hela', 'Hellblade: Senua\'s Sacrifice', 'HELLDIVERS 2', 'Hidden Folks', 'Hollow Knight', 
-  'Horizon Forbidden West', 'Horizon Zero Dawn', 'IMMORTALITY', 'IMMORTALITY (NÃO COMPRADO)', 
-  'Indiana Jones and the Great Circle', 'Injustice 2', 'INSIDE', 'inZOI', 'It Takes Two', 'Jusant', 
-  'Just Die Already', 'Kena: Bridge of Spirits', 'Kingdom Come: Deliverance', 'Kingdom Come: Deliverance II', 
-  'Lies of P', 'Life is Strange', 'Life is Strange: True Colors', 'Like a Dragon Gaiden', 
-  'Like a Dragon: Pirate Yakuza in Hawaii', 'LIMBO', 'Little Nightmares', 'Little Nightmares II', 
-  'Lords of the Fallen', 'Lost Records: Bloom & Rage', 'Mandragora', 'Manor Lords', 
-  'MELTY BLOOD: TYPE LUMINA', 'MiSide', 'Monster Hunter: World', 'Monument Valley', 'Monument Valley 2', 
-  'Moonlighter', 'Mortal Kombat 1', 'Mortal Kombat: Shaolin Monks', 'Mortal Shell', 
-  'Need for Speed Underground 2', 'Need for Speed Unbound', 'NieR:Automata', 'Nine Sols', 
-  'NINJA GAIDEN: Master Collection', 'Nioh', 'Nioh 2', 'No Man\'s Sky', 'Nour: Play with Your Food', 
-  'Ori and the Blind Forest', 'Ori and the Will of the Wisps', 'Outbound', 'Outward', 'PANICORE', 
-  'Pathologic 3', 'Persona 3 Reload', 'Persona 4 Golden', 'Persona 5 Royal', 'Pilgrims', 
-  'Planet of Lana', 'Portal', 'Portal 2', 'PRAGMATA', 'Project Zomboid', 'Raft', 'Rain World', 
-  'Red Dead Redemption 2', 'REMATCH', 'REMNANT II', 'Resident Evil 3', 'Resident Evil Village', 
-  'Rise of the Tomb Raider', 'Salt and Sacrifice', 'Salt and Sanctuary', 'Sea of Thieves', 
-  'Sekiro: Shadows Die Twice', 'Senua\'s Saga: Hellblade II', 'Middle-earth: Shadow of Mordor', 
-  'Shadow of the Colossus', 'Shadow of the Tomb Raider', 'Sifu', 'SILENT HILL 2', 'SILENT HILL f', 
-  'Hollow Knight: Silksong', 'Snakebird', 'Somerville', 'Sons Of The Forest', 'South of Midnight', 
-  'Spelunky 2', 'Marvel\'s Spider-Man Remastered', 'Marvel\'s Spider-Man: Miles Morales', 'Split Fiction', 
-  'STAR WARS Jedi: Survivor', 'Starfield', 'Stranded: Alien Dawn', 'Stray', 'Super Castlevania IV', 
-  'Super Meat Boy', 'Sword of the Sea', 'The Alters', 'The Ascent', 'The Dark Pictures Anthology: House of Ashes', 
-  'Tom Clancy\'s The Division', 'Tom Clancy\'s The Division 2', 'The Elder Scrolls IV: Oblivion', 
-  'The Escapists 2', 'The Evil Within', 'The Evil Within 2', 'The First Descendant', 'The Last Guardian', 
-  'The Last of Us Part I', 'The Last of Us Part II', 'The Last of Us: Left Behind', 'The Long Dark', 
-  'The Outer Worlds', 'The Quarry', 'The Spectrum Retreat', 'The Stanley Parable: Ultra Deluxe', 
-  'The Surge', 'The Surge 2', 'The Witcher 3: Wild Hunt', 'To the Moon', 'Tomb Raider', 'Turn On The Light', 
-  'UNCHARTED 2', 'UNCHARTED 3', 'UNCHARTED: Legacy of Thieves Collection', 'UNCHARTED The Lost Legacy', 
-  'Unpacking', 'Unravel', 'Unravel Two', 'Until Dawn', 'Watch_Dogs 2', 'What Remains of Edith Finch', 
-  'World War Z: Aftermath', 'Wreckfest', 'WUCHANG: Fallen Feathers', 'Yakuza: Like a Dragon', 
-  'Castlevania: Symphony of the Night', 'CHRONO TRIGGER', 'DRAGON QUEST XI S', 'Fallout: New Vegas', 
-  'FINAL FANTASY VI', 'FTL: Faster Than Light', 'Genshin Impact', 'Hades', 'Half-Life 2', 
-  'Kerbal Space Program', 'Mass Effect 2', 'METAL GEAR SOLID 3: Snake Eater', 'Minecraft', 'Outer Wilds', 
-  'Returnal', 'Stardew Valley', 'Super Mario Galaxy', 'Super Mario World', 'Super Metroid', 
-  'Tetris Effect: Connected', 'The Elder Scrolls V: Skyrim', 'The Legend of Zelda: Breath of the Wild', 
-  'The Legend of Zelda: Ocarina of Time'
-];
+
+const ultimateGamesList = ['A Plague Tale: Innocence', 'A Plague Tale: Requiem', 'A Short Hike', 'A Way Out','Aeterna Lucis', 'Aeterna Noctis', 'Assassin\'s Creed Origins', 'Assassin\'s Creed Valhalla','Assassin\'s Creed IV Black Flag', 'Assassin\'s Creed Odyssey', 'Assassin\'s Creed Shadows','Assassin\'s Creed Unity', 'Invincible Presents: Atom Eve', 'Atomfall', 'Atomic Heart','Avatar: The Burning Earth', 'Avowed', 'Escape the Backrooms', 'Balatro', 'Baldur\'s Gate 3','Batman: Arkham Knight', 'Battlefield 1', 'Battletoads', 'Behind the Frame', 'Beyond Blue','BioShock Remastered', 'BioShock 2 Remastered', 'BioShock Infinite', 'Black Myth: Wukong','Blasphemous', 'Bloodborne', 'Bloodstained: Ritual of the Night', 'Bloons TD 6','Borderlands 2', 'Bread & Fred', 'Brothers - A Tale of Two Sons', 'Call of Duty: Black Ops 6','Call of Duty: Modern Warfare III', 'Carry The Glass', 'Castle Crashers','Castlevania Anniversary Collection', 'Castlevania Bloodlines', 'Castlevania II Belmont\'s Revenge','Castlevania II Simon\'s Quest', 'Castlevania III Dracula\'s Curse', 'Castlevania The Adventure','Celeste', 'Cities: Skylines II', 'Sid Meier\'s Civilization VI', 'Clair Obscur: Expedition 33','COCOON', 'Control Ultimate Edition', 'Counter-Strike 2', 'Crash Bandicoot 4: It\'s About Time','Crash Bandicoot N. Sane Trilogy 1', 'Crash Bandicoot N. Sane Trilogy 2', 'Crash Bandicoot N. Sane Trilogy 3','Cuphead', 'Cyberpunk 2077', 'DARK SOULS II', 'DARK SOULS III', 'DARK SOULS: REMASTERED','Days Gone', 'Dead Cells', 'Dead Island 2', 'Dead Space', 'DEATH STRANDING DIRECTOR\'S CUT','DEATHLOOP', 'Deliver At All Costs', 'Detroit: Become Human', 'Diablo IV', 'Disco Elysium','Divinity: Original Sin 2', 'Doki Doki Literature Club Plus!', 'DOOM Eternal', 'DOOM: The Dark Ages','Dragon Age: Inquisition', 'Dragon Age: The Veilguard', 'DREDGE', 'Dying Light 2', 'EA SPORTS FC 25','ELDEN RING', 'ELDEN RING Nightreign', 'ELDEN RING Shadow of the Erdtree', 'ENSLAVED: Odyssey to the West','Enter the Gungeon', 'Erica', 'Escape Academy', 'Fable Anniversary', 'Far Cry 5', 'Far Cry 6','FAR: Changing Tides', 'Figment', 'Figment 2: Creed Valley', 'FINAL FANTASY VII REBIRTH','FINAL FANTASY VII REMAKE INTERGRADE', 'FINAL FANTASY XVI', 'FBC: Firebreak', 'Firewatch','Microsoft Flight Simulator', 'Forza Horizon 5', 'Gears 5', 'Ghost of Tsushima', 'Ghostrunner','Ghostrunner 2', 'God of War II', 'God of War', 'God of War III', 'God of War Ragnarök','God of War III Remastered', 'God of War Ragnarök Valhalla', 'GRIS', 'Grounded', 'Grounded 2','Grand Theft Auto V', 'Grand Theft Auto: San Andreas', 'Grand Theft Auto VI', 'Halo Infinite','Heavy Rain', 'Hela', 'Hellblade: Senua\'s Sacrifice', 'HELLDIVERS 2', 'Hidden Folks', 'Hollow Knight','Horizon Forbidden West', 'Horizon Zero Dawn', 'IMMORTALITY', 'IMMORTALITY (NÃO COMPRADO)','Indiana Jones and the Great Circle', 'Injustice 2', 'INSIDE', 'inZOI', 'It Takes Two', 'Jusant','Just Die Already', 'Kena: Bridge of Spirits', 'Kingdom Come: Deliverance', 'Kingdom Come: Deliverance II','Lies of P', 'Life is Strange', 'Life is Strange: True Colors', 'Like a Dragon Gaiden', 'Like a Dragon: Pirate Yakuza in Hawaii', 'LIMBO', 'Little Nightmares', 'Little Nightmares II','Lords of the Fallen', 'Lost Records: Bloom & Rage', 'Mandragora', 'Manor Lords','MELTY BLOOD: TYPE LUMINA', 'MiSide', 'Monster Hunter: World', 'Monument Valley', 'Monument Valley 2','Moonlighter', 'Mortal Kombat 1', 'Mortal Kombat: Shaolin Monks', 'Mortal Shell','Need for Speed Underground 2', 'Need for Speed Unbound', 'NieR:Automata', 'Nine Sols','NINJA GAIDEN: Master Collection', 'Nioh', 'Nioh 2', 'No Man\'s Sky', 'Nour: Play with Your Food','Ori and the Blind Forest', 'Ori and the Will of the Wisps', 'Outbound', 'Outward', 'PANICORE','Pathologic 3', 'Persona 3 Reload', 'Persona 4 Golden', 'Persona 5 Royal', 'Pilgrims','Planet of Lana', 'Portal', 'Portal 2', 'PRAGMATA', 'Project Zomboid', 'Raft', 'Rain World','Red Dead Redemption 2', 'REMATCH', 'REMNANT II', 'Resident Evil 3', 'Resident Evil Village','Rise of the Tomb Raider', 'Salt and Sacrifice', 'Salt and Sanctuary', 'Sea of Thieves','Sekiro: Shadows Die Twice', 'Senua\'s Saga: Hellblade II', 'Middle-earth: Shadow of Mordor','Shadow of the Colossus', 'Shadow of the Tomb Raider', 'Sifu', 'SILENT HILL 2', 'SILENT HILL f','Hollow Knight: Silksong', 'Snakebird', 'Somerville', 'Sons Of The Forest', 'South of Midnight','Spelunky 2', 'Marvel\'s Spider-Man Remastered', 'Marvel\'s Spider-Man: Miles Morales', 'Split Fiction','STAR WARS Jedi: Survivor', 'Starfield', 'Stranded: Alien Dawn', 'Stray', 'Super Castlevania IV','Super Meat Boy', 'Sword of the Sea', 'The Alters', 'The Ascent', 'The Dark Pictures Anthology: House of Ashes','Tom Clancy\'s The Division', 'Tom Clancy\'s The Division 2', 'The Elder Scrolls IV: Oblivion','The Escapists 2', 'The Evil Within', 'The Evil Within 2', 'The First Descendant', 'The Last Guardian','The Last of Us Part I', 'The Last of Us Part II', 'The Last of Us: Left Behind', 'The Long Dark','The Outer Worlds', 'The Quarry', 'The Spectrum Retreat', 'The Stanley Parable: Ultra Deluxe','The Surge', 'The Surge 2', 'The Witcher 3: Wild Hunt', 'To the Moon', 'Tomb Raider', 'Turn On The Light','UNCHARTED 2', 'UNCHARTED 3', 'UNCHARTED: Legacy of Thieves Collection', 'UNCHARTED The Lost Legacy','Unpacking', 'Unravel', 'Unravel Two', 'Until Dawn', 'Watch_Dogs 2', 'What Remains of Edith Finch','World War Z: Aftermath', 'Wreckfest', 'WUCHANG: Fallen Feathers', 'Yakuza: Like a Dragon','Castlevania: Symphony of the Night', 'CHRONO TRIGGER', 'DRAGON QUEST XI S', 'Fallout: New Vegas','FINAL FANTASY VI', 'FTL: Faster Than Light', 'Genshin Impact', 'Hades', 'Half-Life 2','Kerbal Space Program', 'Mass Effect 2', 'METAL GEAR SOLID 3: Snake Eater', 'Minecraft', 'Outer Wilds','Returnal', 'Stardew Valley', 'Super Mario Galaxy', 'Super Mario World', 'Super Metroid','Tetris Effect: Connected', 'The Elder Scrolls V: Skyrim', 'The Legend of Zelda: Breath of the Wild','The Legend of Zelda: Ocarina of Time'];
 
 const wcCups = [
     {
@@ -3311,6 +3250,21 @@ const wcState = {
     activeCup: null,
     tournamentSize: 0,
     eliminations: new Map()
+};
+
+const MY_WC_STORAGE_KEY = "yxt_my_world_cups";
+const MY_WC_STEP_ORDER = ["cover", "choices", "publish"];
+const MY_WC_CHOICES_PER_PAGE = 8;
+
+const myWcState = {
+    loaded: false,
+    cups: [],
+    selectedCupId: null,
+    step: "cover",
+    choiceType: "image",
+    choiceSearch: "",
+    choiceSort: "win-ratio",
+    choicePage: 1
 };
 
 function shuffleArray(arr) {
@@ -3364,18 +3318,70 @@ function renderWorldCup() {
     renderLeagueTable();
 }
 
+function mapMyCupToPlayableCup(cup) {
+    const items = Array.isArray(cup?.choices)
+        ? cup.choices
+            .map((choice) => String(choice?.name || "").trim())
+            .filter(Boolean)
+        : [];
+
+    if (!items.length) return null;
+
+    return {
+        id: String(cup.id),
+        title: String(cup.title || "World Cup sem titulo"),
+        category: String(cup.category || "Custom"),
+        cover: String(cup.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
+        items
+    };
+}
+
+function getPlayableWorldCups() {
+    const customCups = myWcState.cups
+        .map(mapMyCupToPlayableCup)
+        .filter(Boolean);
+    return [...wcCups, ...customCups];
+}
+
+function syncWorldCupCategoryFilter(cups) {
+    const filter = document.getElementById("wc-category-filter");
+    if (!filter) return;
+
+    const categories = [...new Set(cups.map((cup) => String(cup.category || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+
+    const selected = filter.value;
+    filter.innerHTML = '<option value="">Todas</option>';
+    categories.forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        filter.appendChild(option);
+    });
+
+    filter.value = categories.includes(selected) ? selected : "";
+}
+
 function renderWcGrid() {
     const grid = document.getElementById("wc-grid");
     if (!grid) return;
 
+    const cups = getPlayableWorldCups();
+    syncWorldCupCategoryFilter(cups);
+
     const searchVal = (document.getElementById("wc-search")?.value || "").trim().toLowerCase();
     const catVal = document.getElementById("wc-category-filter")?.value || "";
 
-    const filtered = wcCups.filter(cup => {
+    const filtered = cups.filter(cup => {
         if (catVal && cup.category !== catVal) return false;
         if (searchVal && !cup.title.toLowerCase().includes(searchVal)) return false;
         return true;
     });
+
+    if (!filtered.length) {
+        grid.innerHTML = '<p class="wc-league-empty">Nenhuma copa encontrada para os filtros atuais.</p>';
+        return;
+    }
 
     grid.innerHTML = filtered.map(cup => `
         <div class="wc-cup-card" data-cup-id="${cup.id}">
@@ -3391,7 +3397,7 @@ function renderWcGrid() {
     grid.querySelectorAll(".wc-cup-card").forEach(card => {
         card.addEventListener("click", () => {
             const cupId = card.getAttribute("data-cup-id");
-            const cup = wcCups.find(c => c.id === cupId);
+            const cup = cups.find(c => c.id === cupId);
             if (cup) openWcSizeModal(cup);
         });
     });
@@ -3401,7 +3407,20 @@ function openWcSizeModal(cup) {
     wcState.activeCup = cup;
     const modal = document.getElementById("wc-modal-overlay");
     const title = document.getElementById("wc-modal-title");
+    const subtitle = document.querySelector(".wc-modal-subtitle");
+    const itemCount = Array.isArray(cup?.items) ? cup.items.length : 0;
+
+    document.querySelectorAll(".wc-size-btn").forEach((btn) => {
+        const size = Number(btn.getAttribute("data-size"));
+        btn.disabled = !Number.isFinite(size) || size > itemCount;
+    });
+
     if (title) title.textContent = cup.title;
+    if (subtitle) {
+        subtitle.textContent = itemCount >= 32
+            ? "Escolha o tamanho do chaveamento:"
+            : "Esta copa precisa de pelo menos 32 escolhas para iniciar o torneio.";
+    }
     if (modal) modal.style.display = "flex";
 }
 
@@ -3417,7 +3436,12 @@ function startWorldCup(size) {
     const cup = wcState.activeCup;
     if (!cup) return;
 
-    const shuffled = shuffleArray(cup.items).slice(0, size);
+    const pool = Array.isArray(cup.items)
+        ? cup.items.map((item) => String(item || "").trim()).filter(Boolean)
+        : [];
+    if (pool.length < size || size < 2) return;
+
+    const shuffled = shuffleArray(pool).slice(0, size);
     wcState.matchupsQueue = shuffled;
     wcState.winnersQueue = [];
     wcState.currentRound = shuffled.length;
@@ -3661,6 +3685,751 @@ function renderLeagueTable(data) {
     }).join("");
 }
 
+function createMyWorldCupId(prefix) {
+    const seed = Math.random().toString(36).slice(2, 10);
+    return `${prefix}-${Date.now().toString(36)}-${seed}`;
+}
+
+function createDefaultMyWorldCup() {
+    const timestamp = Date.now();
+    return {
+        id: createMyWorldCupId("cup"),
+        title: "Nova World Cup",
+        description: "",
+        cover: DEFAULT_GAME_COVER_PLACEHOLDER,
+        language: "English",
+        visibility: "Public",
+        category: "Jogos",
+        nsfw: false,
+        choices: [],
+        createdAt: timestamp,
+        updatedAt: timestamp
+    };
+}
+
+function normalizeMyWorldCupChoice(choice) {
+    return {
+        id: String(choice?.id || createMyWorldCupId("choice")),
+        name: String(choice?.name || "Nova escolha").trim() || "Nova escolha",
+        cover: String(choice?.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
+        wins: Math.max(0, Number(choice?.wins) || 0),
+        matches: Math.max(0, Number(choice?.matches) || 0),
+        championships: Math.max(0, Number(choice?.championships) || 0)
+    };
+}
+
+function normalizeMyWorldCup(cup) {
+    const createdAt = Number(cup?.createdAt) || Date.now();
+    const updatedAt = Number(cup?.updatedAt) || createdAt;
+    return {
+        id: String(cup?.id || createMyWorldCupId("cup")),
+        title: String(cup?.title || "Nova World Cup"),
+        description: String(cup?.description || ""),
+        cover: String(cup?.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
+        language: String(cup?.language || "English"),
+        visibility: String(cup?.visibility || "Public"),
+        category: String(cup?.category || "Jogos"),
+        nsfw: Boolean(cup?.nsfw),
+        choices: Array.isArray(cup?.choices) ? cup.choices.map(normalizeMyWorldCupChoice) : [],
+        createdAt,
+        updatedAt
+    };
+}
+
+function loadMyWorldCupsFromStorage() {
+    try {
+        const raw = localStorage.getItem(MY_WC_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(normalizeMyWorldCup);
+    } catch {
+        return [];
+    }
+}
+
+function saveMyWorldCupsToStorage() {
+    try {
+        localStorage.setItem(MY_WC_STORAGE_KEY, JSON.stringify(myWcState.cups));
+    } catch (error) {
+        console.warn("Nao foi possivel salvar My World Cups.", error);
+    }
+}
+
+function ensureMyWorldCupsLoaded() {
+    if (myWcState.loaded) return;
+    myWcState.cups = loadMyWorldCupsFromStorage();
+    myWcState.loaded = true;
+}
+
+function getSelectedMyWorldCup() {
+    return myWcState.cups.find((cup) => cup.id === myWcState.selectedCupId) || null;
+}
+
+function mutateSelectedMyWorldCup(mutator) {
+    const index = myWcState.cups.findIndex((cup) => cup.id === myWcState.selectedCupId);
+    if (index < 0) return null;
+
+    const draft = {
+        ...myWcState.cups[index],
+        choices: myWcState.cups[index].choices.map((choice) => ({ ...choice }))
+    };
+    mutator(draft);
+    draft.updatedAt = Date.now();
+    myWcState.cups[index] = normalizeMyWorldCup(draft);
+    saveMyWorldCupsToStorage();
+    return myWcState.cups[index];
+}
+
+function formatMyWorldCupStepLabel(step) {
+    if (!step) return "";
+    return step.charAt(0).toUpperCase() + step.slice(1);
+}
+
+function getMyWorldCupRatios(choice) {
+    const winRatio = choice.matches > 0 ? (choice.wins / choice.matches) * 100 : 0;
+    const championshipRatio = choice.matches > 0 ? (choice.championships / choice.matches) * 100 : 0;
+    return {
+        winRatio: Math.max(0, Math.min(100, winRatio)),
+        championshipRatio: Math.max(0, Math.min(100, championshipRatio))
+    };
+}
+
+function getVisibleMyWorldCupChoices(cup) {
+    const query = myWcState.choiceSearch;
+    const sortBy = myWcState.choiceSort;
+
+    const filtered = cup.choices.filter((choice) => {
+        if (!query) return true;
+        return normalizeText(choice.name).includes(normalizeText(query));
+    });
+
+    filtered.sort((a, b) => {
+        if (sortBy === "name-asc") {
+            return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+        }
+
+        const aRatios = getMyWorldCupRatios(a);
+        const bRatios = getMyWorldCupRatios(b);
+
+        if (sortBy === "championship-ratio") {
+            return bRatios.championshipRatio - aRatios.championshipRatio;
+        }
+
+        return bRatios.winRatio - aRatios.winRatio;
+    });
+
+    return filtered;
+}
+
+function updateMyWorldCupStepButtons() {
+    document.querySelectorAll(".mywc-step-btn").forEach((button) => {
+        const isActive = button.getAttribute("data-step") === myWcState.step;
+        button.classList.toggle("active", isActive);
+    });
+
+    document.querySelectorAll(".mywc-step-panel").forEach((panel) => {
+        const panelStep = panel.getAttribute("data-step-panel");
+        const isActive = panelStep === myWcState.step;
+        panel.hidden = !isActive;
+        panel.classList.toggle("active", isActive);
+    });
+
+    const prevBtn = document.getElementById("mywc-step-prev");
+    const nextBtn = document.getElementById("mywc-step-next");
+    const currentIndex = MY_WC_STEP_ORDER.indexOf(myWcState.step);
+    const prevStep = currentIndex > 0 ? MY_WC_STEP_ORDER[currentIndex - 1] : null;
+    const nextStep = currentIndex < MY_WC_STEP_ORDER.length - 1 ? MY_WC_STEP_ORDER[currentIndex + 1] : null;
+
+    if (prevBtn) {
+        prevBtn.disabled = !prevStep;
+        prevBtn.textContent = prevStep ? `< ${formatMyWorldCupStepLabel(prevStep)}` : "< Cover";
+    }
+
+    if (nextBtn) {
+        nextBtn.hidden = !nextStep;
+        nextBtn.disabled = !nextStep;
+        if (nextStep) nextBtn.textContent = `${formatMyWorldCupStepLabel(nextStep)} >`;
+    }
+}
+
+function setMyWorldCupStep(step) {
+    if (!MY_WC_STEP_ORDER.includes(step)) return;
+    myWcState.step = step;
+    updateMyWorldCupStepButtons();
+}
+
+function renderMyWorldCupChoices() {
+    const cup = getSelectedMyWorldCup();
+    const grid = document.getElementById("mywc-choice-grid");
+    const empty = document.getElementById("mywc-choice-empty");
+    const pageInfo = document.getElementById("mywc-choice-page-info");
+    const prevBtn = document.getElementById("mywc-choice-page-prev");
+    const nextBtn = document.getElementById("mywc-choice-page-next");
+
+    if (!cup || !grid || !empty || !pageInfo || !prevBtn || !nextBtn) return;
+
+    const filtered = getVisibleMyWorldCupChoices(cup);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / MY_WC_CHOICES_PER_PAGE));
+    myWcState.choicePage = clampNumber(myWcState.choicePage, 1, totalPages);
+
+    const start = (myWcState.choicePage - 1) * MY_WC_CHOICES_PER_PAGE;
+    const pageChoices = filtered.slice(start, start + MY_WC_CHOICES_PER_PAGE);
+
+    if (!pageChoices.length) {
+        grid.innerHTML = "";
+        empty.hidden = false;
+    } else {
+        empty.hidden = true;
+        grid.innerHTML = pageChoices.map((choice) => {
+            const ratios = getMyWorldCupRatios(choice);
+            return `
+                <article class="mywc-choice-card" data-choice-id="${choice.id}">
+                    <img class="mywc-choice-thumb" src="${escapeHtml(choice.cover || DEFAULT_GAME_COVER_PLACEHOLDER)}" alt="${escapeHtml(choice.name)}" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'">
+                    <input class="mywc-choice-name" type="text" value="${escapeHtml(choice.name)}" data-choice-name>
+                    <div class="mywc-choice-metric">
+                        <span>Championship Ratio</span>
+                        <div class="mywc-choice-track">
+                            <div class="mywc-choice-fill" style="width:${ratios.championshipRatio.toFixed(1)}%">${ratios.championshipRatio.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="mywc-choice-metric">
+                        <span>Win Ratio</span>
+                        <div class="mywc-choice-track">
+                            <div class="mywc-choice-fill" style="width:${ratios.winRatio.toFixed(1)}%">${ratios.winRatio.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <button class="mywc-choice-remove" type="button" data-choice-remove>Excluir</button>
+                </article>
+            `;
+        }).join("");
+    }
+
+    pageInfo.textContent = `${myWcState.choicePage} / ${totalPages}`;
+    prevBtn.disabled = myWcState.choicePage <= 1;
+    nextBtn.disabled = myWcState.choicePage >= totalPages;
+
+    grid.querySelectorAll("[data-choice-name]").forEach((input) => {
+        input.addEventListener("change", (event) => {
+            const card = event.target.closest(".mywc-choice-card");
+            const choiceId = card?.getAttribute("data-choice-id");
+            if (!choiceId) return;
+
+            const nextName = String(event.target.value || "").trim() || "Nova escolha";
+            mutateSelectedMyWorldCup((draft) => {
+                const choice = draft.choices.find((item) => item.id === choiceId);
+                if (choice) choice.name = nextName;
+            });
+
+            renderMyWorldCupChoices();
+            renderWcGrid();
+        });
+    });
+
+    grid.querySelectorAll("[data-choice-remove]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+            const card = event.target.closest(".mywc-choice-card");
+            const choiceId = card?.getAttribute("data-choice-id");
+            if (!choiceId) return;
+
+            mutateSelectedMyWorldCup((draft) => {
+                draft.choices = draft.choices.filter((choice) => choice.id !== choiceId);
+            });
+
+            renderMyWorldCupChoices();
+            renderMyWorldCupCards();
+            renderWcGrid();
+        });
+    });
+}
+
+function syncMyWorldCupEditorFields() {
+    const cup = getSelectedMyWorldCup();
+    if (!cup) return;
+
+    const heading = document.getElementById("mywc-editor-heading");
+    const titleInput = document.getElementById("mywc-cover-title");
+    const descInput = document.getElementById("mywc-cover-description");
+    const coverUrlInput = document.getElementById("mywc-cover-url");
+    const coverPreview = document.getElementById("mywc-cover-preview");
+    const choiceSearchInput = document.getElementById("mywc-choice-search");
+    const choiceSortSelect = document.getElementById("mywc-choice-sort");
+    const languageSelect = document.getElementById("mywc-publish-language");
+    const visibilitySelect = document.getElementById("mywc-publish-visibility");
+    const categorySelect = document.getElementById("mywc-publish-category");
+    const nsfwInput = document.getElementById("mywc-publish-nsfw");
+
+    if (heading) heading.textContent = "Edit Worldcup";
+    if (titleInput) titleInput.value = cup.title;
+    if (descInput) descInput.value = cup.description;
+    if (coverUrlInput) {
+        coverUrlInput.value = cup.cover.startsWith("http") ? cup.cover : "";
+    }
+    if (coverPreview) {
+        coverPreview.src = cup.cover || DEFAULT_GAME_COVER_PLACEHOLDER;
+    }
+    if (choiceSearchInput) choiceSearchInput.value = myWcState.choiceSearch;
+    if (choiceSortSelect) choiceSortSelect.value = myWcState.choiceSort;
+    if (languageSelect) languageSelect.value = cup.language || "English";
+    if (visibilitySelect) visibilitySelect.value = cup.visibility || "Public";
+    if (categorySelect) categorySelect.value = cup.category || "Jogos";
+    if (nsfwInput) nsfwInput.checked = Boolean(cup.nsfw);
+
+    renderMyWorldCupChoices();
+    updateMyWorldCupStepButtons();
+}
+
+function openMyWorldCupEditor(cupId) {
+    const cup = myWcState.cups.find((entry) => entry.id === String(cupId));
+    if (!cup) return;
+
+    const view = document.getElementById("mywc-view");
+    const editor = document.getElementById("mywc-editor");
+    const feedback = document.getElementById("mywc-feedback");
+
+    myWcState.selectedCupId = cup.id;
+    myWcState.step = "cover";
+    myWcState.choiceSearch = "";
+    myWcState.choiceSort = "win-ratio";
+    myWcState.choicePage = 1;
+
+    if (feedback) feedback.textContent = "";
+    if (view) view.hidden = true;
+    if (editor) editor.hidden = false;
+
+    syncMyWorldCupEditorFields();
+}
+
+function closeMyWorldCupEditor() {
+    const view = document.getElementById("mywc-view");
+    const editor = document.getElementById("mywc-editor");
+    const feedback = document.getElementById("mywc-feedback");
+
+    myWcState.selectedCupId = null;
+    myWcState.step = "cover";
+    myWcState.choiceSearch = "";
+    myWcState.choiceSort = "win-ratio";
+    myWcState.choicePage = 1;
+
+    if (feedback) feedback.textContent = "";
+    if (editor) editor.hidden = true;
+    if (view) view.hidden = false;
+}
+
+function truncateMyWorldCupText(value, maxLength) {
+    const text = String(value || "").trim();
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength - 3)}...`;
+}
+
+function renderMyWorldCupCards() {
+    const grid = document.getElementById("mywc-grid");
+    const empty = document.getElementById("mywc-empty");
+    if (!grid || !empty) return;
+
+    const cups = [...myWcState.cups]
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+    if (!cups.length) {
+        grid.innerHTML = "";
+        empty.hidden = false;
+        return;
+    }
+
+    empty.hidden = true;
+    grid.innerHTML = cups.map((cup) => `
+        <article class="mywc-card" data-cup-id="${cup.id}">
+            <div class="mywc-card-top">
+                <img class="mywc-card-cover" src="${escapeHtml(cup.cover || DEFAULT_GAME_COVER_PLACEHOLDER)}" alt="${escapeHtml(cup.title)}" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'">
+                <span class="mywc-visibility-badge">${escapeHtml(cup.visibility || "Public")}</span>
+            </div>
+            <div class="mywc-card-body">
+                <span class="mywc-card-category">${escapeHtml(cup.category || "Custom")}</span>
+                <h4 class="mywc-card-title">${escapeHtml(truncateMyWorldCupText(cup.title, 56))}</h4>
+                <p class="mywc-card-description">${escapeHtml(truncateMyWorldCupText(cup.description || "Sem descricao.", 115))}</p>
+                <div class="mywc-card-footer">
+                    <span class="mywc-card-count">${cup.choices.length} escolhas</span>
+                    <div class="mywc-card-actions">
+                        <button type="button" class="mywc-card-btn" data-action="edit">Editar</button>
+                        <button type="button" class="mywc-card-btn" data-action="copy">Duplicar</button>
+                        <button type="button" class="mywc-card-btn" data-action="delete">Excluir</button>
+                    </div>
+                </div>
+            </div>
+        </article>
+    `).join("");
+
+    grid.querySelectorAll(".mywc-card").forEach((card) => {
+        card.addEventListener("click", () => {
+            const cupId = card.getAttribute("data-cup-id");
+            if (cupId) openMyWorldCupEditor(cupId);
+        });
+    });
+
+    grid.querySelectorAll(".mywc-card-btn").forEach((button) => {
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+
+            const action = button.getAttribute("data-action");
+            const card = button.closest(".mywc-card");
+            const cupId = card?.getAttribute("data-cup-id");
+            if (!cupId) return;
+
+            if (action === "edit") {
+                openMyWorldCupEditor(cupId);
+                return;
+            }
+
+            if (action === "copy") {
+                const source = myWcState.cups.find((cup) => cup.id === cupId);
+                if (!source) return;
+
+                const timestamp = Date.now();
+                const duplicate = normalizeMyWorldCup({
+                    ...source,
+                    id: createMyWorldCupId("cup"),
+                    title: `${source.title} (copia)`,
+                    createdAt: timestamp,
+                    updatedAt: timestamp,
+                    choices: source.choices.map((choice) => ({
+                        ...choice,
+                        id: createMyWorldCupId("choice")
+                    }))
+                });
+
+                myWcState.cups.unshift(duplicate);
+                saveMyWorldCupsToStorage();
+                renderMyWorldCupCards();
+                renderWcGrid();
+                return;
+            }
+
+            if (action === "delete") {
+                const shouldDelete = window.confirm("Deseja realmente excluir esta World Cup?");
+                if (!shouldDelete) return;
+
+                myWcState.cups = myWcState.cups.filter((cup) => cup.id !== cupId);
+                saveMyWorldCupsToStorage();
+
+                if (myWcState.selectedCupId === cupId) closeMyWorldCupEditor();
+                renderMyWorldCupCards();
+                renderWcGrid();
+            }
+        });
+    });
+}
+
+function renderMyWorldCups() {
+    ensureMyWorldCupsLoaded();
+    renderMyWorldCupCards();
+
+    const editor = document.getElementById("mywc-editor");
+    const view = document.getElementById("mywc-view");
+
+    if (myWcState.selectedCupId && getSelectedMyWorldCup()) {
+        if (editor) editor.hidden = false;
+        if (view) view.hidden = true;
+        syncMyWorldCupEditorFields();
+    } else {
+        if (editor) editor.hidden = true;
+        if (view) view.hidden = false;
+    }
+}
+
+async function appendMyWorldCupChoicesFromFiles(fileList) {
+    const files = Array.from(fileList || []).filter((file) => file.type.startsWith("image/"));
+    if (!files.length) return;
+
+    const appended = [];
+    for (const file of files) {
+        try {
+            const dataUrl = await readFileAsDataUrl(file);
+            appended.push(normalizeMyWorldCupChoice({
+                id: createMyWorldCupId("choice"),
+                name: String(file.name || "Imagem").replace(/\.[^/.]+$/, ""),
+                cover: dataUrl
+            }));
+        } catch (error) {
+            console.warn("Falha ao processar imagem da escolha.", error);
+        }
+    }
+
+    if (!appended.length) return;
+
+    mutateSelectedMyWorldCup((draft) => {
+        draft.choices = [...appended, ...draft.choices];
+    });
+
+    myWcState.choicePage = 1;
+    renderMyWorldCupChoices();
+    renderMyWorldCupCards();
+    renderWcGrid();
+}
+
+function bindMyWorldCupEvents() {
+    const createBtn = document.getElementById("mywc-create-btn");
+    const editorBackBtn = document.getElementById("mywc-editor-back");
+    const coverTitleInput = document.getElementById("mywc-cover-title");
+    const coverDescriptionInput = document.getElementById("mywc-cover-description");
+    const coverUploadBtn = document.getElementById("mywc-cover-upload-btn");
+    const coverUploadInput = document.getElementById("mywc-cover-upload");
+    const coverUrlInput = document.getElementById("mywc-cover-url");
+    const choiceUploadBox = document.getElementById("mywc-choice-upload-box");
+    const choiceUploadBtn = document.getElementById("mywc-choice-upload-btn");
+    const choiceUploadInput = document.getElementById("mywc-choice-upload");
+    const choiceSearchInput = document.getElementById("mywc-choice-search");
+    const choiceSortSelect = document.getElementById("mywc-choice-sort");
+    const choiceNameInput = document.getElementById("mywc-choice-name-input");
+    const choiceAddBtn = document.getElementById("mywc-choice-add-btn");
+    const choicePrevBtn = document.getElementById("mywc-choice-page-prev");
+    const choiceNextBtn = document.getElementById("mywc-choice-page-next");
+    const languageSelect = document.getElementById("mywc-publish-language");
+    const visibilitySelect = document.getElementById("mywc-publish-visibility");
+    const categorySelect = document.getElementById("mywc-publish-category");
+    const nsfwInput = document.getElementById("mywc-publish-nsfw");
+    const publishBtn = document.getElementById("mywc-publish-btn");
+    const feedback = document.getElementById("mywc-feedback");
+    const stepPrevBtn = document.getElementById("mywc-step-prev");
+    const stepNextBtn = document.getElementById("mywc-step-next");
+
+    document.querySelectorAll(".mywc-step-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+            const step = button.getAttribute("data-step");
+            if (step) setMyWorldCupStep(step);
+        });
+    });
+
+    if (createBtn) {
+        createBtn.addEventListener("click", () => {
+            const cup = createDefaultMyWorldCup();
+            myWcState.cups.unshift(cup);
+            saveMyWorldCupsToStorage();
+            renderMyWorldCupCards();
+            renderWcGrid();
+            openMyWorldCupEditor(cup.id);
+        });
+    }
+
+    if (editorBackBtn) {
+        editorBackBtn.addEventListener("click", () => {
+            closeMyWorldCupEditor();
+            renderMyWorldCupCards();
+        });
+    }
+
+    if (stepPrevBtn) {
+        stepPrevBtn.addEventListener("click", () => {
+            const currentIndex = MY_WC_STEP_ORDER.indexOf(myWcState.step);
+            if (currentIndex > 0) setMyWorldCupStep(MY_WC_STEP_ORDER[currentIndex - 1]);
+        });
+    }
+
+    if (stepNextBtn) {
+        stepNextBtn.addEventListener("click", () => {
+            const currentIndex = MY_WC_STEP_ORDER.indexOf(myWcState.step);
+            if (currentIndex < MY_WC_STEP_ORDER.length - 1) {
+                setMyWorldCupStep(MY_WC_STEP_ORDER[currentIndex + 1]);
+            }
+        });
+    }
+
+    if (coverTitleInput) {
+        coverTitleInput.addEventListener("input", (event) => {
+            mutateSelectedMyWorldCup((draft) => {
+                draft.title = String(event.target.value || "").trim() || "Nova World Cup";
+            });
+            renderMyWorldCupCards();
+            renderWcGrid();
+        });
+    }
+
+    if (coverDescriptionInput) {
+        coverDescriptionInput.addEventListener("input", (event) => {
+            mutateSelectedMyWorldCup((draft) => {
+                draft.description = String(event.target.value || "");
+            });
+            renderMyWorldCupCards();
+        });
+    }
+
+    if (coverUploadBtn && coverUploadInput) {
+        coverUploadBtn.addEventListener("click", () => {
+            coverUploadInput.click();
+        });
+    }
+
+    if (coverUploadInput) {
+        coverUploadInput.addEventListener("change", async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            const dataUrl = await readFileAsDataUrl(file);
+            mutateSelectedMyWorldCup((draft) => {
+                draft.cover = dataUrl;
+            });
+
+            syncMyWorldCupEditorFields();
+            renderMyWorldCupCards();
+            renderWcGrid();
+            coverUploadInput.value = "";
+        });
+    }
+
+    if (coverUrlInput) {
+        coverUrlInput.addEventListener("change", (event) => {
+            const nextCover = String(event.target.value || "").trim();
+            mutateSelectedMyWorldCup((draft) => {
+                draft.cover = nextCover || DEFAULT_GAME_COVER_PLACEHOLDER;
+            });
+            syncMyWorldCupEditorFields();
+            renderMyWorldCupCards();
+            renderWcGrid();
+        });
+    }
+
+    if (choiceUploadBtn && choiceUploadInput) {
+        choiceUploadBtn.addEventListener("click", () => {
+            choiceUploadInput.click();
+        });
+    }
+
+    if (choiceUploadBox && choiceUploadInput) {
+        choiceUploadBox.addEventListener("click", () => {
+            choiceUploadInput.click();
+        });
+
+        choiceUploadBox.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                choiceUploadInput.click();
+            }
+        });
+
+        choiceUploadBox.addEventListener("dragover", (event) => {
+            event.preventDefault();
+        });
+
+        choiceUploadBox.addEventListener("drop", async (event) => {
+            event.preventDefault();
+            await appendMyWorldCupChoicesFromFiles(event.dataTransfer?.files || []);
+        });
+    }
+
+    if (choiceUploadInput) {
+        choiceUploadInput.addEventListener("change", async (event) => {
+            await appendMyWorldCupChoicesFromFiles(event.target.files || []);
+            choiceUploadInput.value = "";
+        });
+    }
+
+    if (choiceSearchInput) {
+        choiceSearchInput.addEventListener("input", (event) => {
+            myWcState.choiceSearch = String(event.target.value || "").trim();
+            myWcState.choicePage = 1;
+            renderMyWorldCupChoices();
+        });
+    }
+
+    if (choiceSortSelect) {
+        choiceSortSelect.addEventListener("change", (event) => {
+            myWcState.choiceSort = String(event.target.value || "win-ratio");
+            myWcState.choicePage = 1;
+            renderMyWorldCupChoices();
+        });
+    }
+
+    if (choiceAddBtn && choiceNameInput) {
+        const addChoice = () => {
+            const nextName = String(choiceNameInput.value || "").trim();
+            if (!nextName) return;
+
+            mutateSelectedMyWorldCup((draft) => {
+                draft.choices.unshift(normalizeMyWorldCupChoice({
+                    id: createMyWorldCupId("choice"),
+                    name: nextName,
+                    cover: DEFAULT_GAME_COVER_PLACEHOLDER
+                }));
+            });
+
+            choiceNameInput.value = "";
+            myWcState.choicePage = 1;
+            renderMyWorldCupChoices();
+            renderMyWorldCupCards();
+            renderWcGrid();
+        };
+
+        choiceAddBtn.addEventListener("click", addChoice);
+        choiceNameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addChoice();
+            }
+        });
+    }
+
+    if (choicePrevBtn) {
+        choicePrevBtn.addEventListener("click", () => {
+            myWcState.choicePage = Math.max(1, myWcState.choicePage - 1);
+            renderMyWorldCupChoices();
+        });
+    }
+
+    if (choiceNextBtn) {
+        choiceNextBtn.addEventListener("click", () => {
+            myWcState.choicePage += 1;
+            renderMyWorldCupChoices();
+        });
+    }
+
+    if (languageSelect) {
+        languageSelect.addEventListener("change", (event) => {
+            mutateSelectedMyWorldCup((draft) => {
+                draft.language = String(event.target.value || "English");
+            });
+        });
+    }
+
+    if (visibilitySelect) {
+        visibilitySelect.addEventListener("change", (event) => {
+            mutateSelectedMyWorldCup((draft) => {
+                draft.visibility = String(event.target.value || "Public");
+            });
+            renderMyWorldCupCards();
+        });
+    }
+
+    if (categorySelect) {
+        categorySelect.addEventListener("change", (event) => {
+            mutateSelectedMyWorldCup((draft) => {
+                draft.category = String(event.target.value || "Jogos");
+            });
+            renderMyWorldCupCards();
+            renderWcGrid();
+        });
+    }
+
+    if (nsfwInput) {
+        nsfwInput.addEventListener("change", (event) => {
+            mutateSelectedMyWorldCup((draft) => {
+                draft.nsfw = Boolean(event.target.checked);
+            });
+        });
+    }
+
+    if (publishBtn) {
+        publishBtn.addEventListener("click", () => {
+            mutateSelectedMyWorldCup((draft) => {
+                draft.updatedAt = Date.now();
+            });
+            renderMyWorldCupCards();
+            renderWcGrid();
+            if (feedback) {
+                feedback.textContent = "World Cup publicada localmente com sucesso.";
+            }
+        });
+    }
+}
+
 /* ── Events ── */
 
 function bindWorldCupEvents() {
@@ -3691,11 +4460,14 @@ function bindWorldCupEvents() {
 }
 
 function init() {
+    ensureMyWorldCupsLoaded();
     bindEvents();
     bindSteamEvents();
     bindWorldCupEvents();
+    bindMyWorldCupEvents();
     initializeSteamLibraryFromStorage();
     initializeManualGamesFromStorage();
+    renderMyWorldCupCards();
     if (dom.filtersTop) dom.filtersTop.hidden = false;
     updateDashboards();
 }

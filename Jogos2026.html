@@ -33,6 +33,7 @@
             <button class="tab-btn" data-tab="steam-library">Biblioteca Steam</button>
             <button class="tab-btn" data-tab="add-your-game">Add Your Game</button>
             <button class="tab-btn" data-tab="world-cup">World Cup</button>
+            <button class="tab-btn" data-tab="my-world-cups">My World Cups</button>
         </nav>
 
         <div class="filters-container" id="filters-top">
@@ -590,6 +591,153 @@
 
                         <!-- Champion -->
                         <div class="wc-champion" id="wc-champion" hidden></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- My World Cups -->
+            <section class="tab-content" id="my-world-cups">
+                <div class="mywc-shell">
+                    <div class="mywc-header">
+                        <div>
+                            <h2 class="mywc-title">My World Cups</h2>
+                            <p class="mywc-subtitle">Gerencie suas copas criadas e edite cada uma clicando no card.</p>
+                        </div>
+                        <button id="mywc-create-btn" class="mywc-create-btn" type="button">Nova World Cup</button>
+                    </div>
+
+                    <div id="mywc-view" class="mywc-view">
+                        <div id="mywc-grid" class="mywc-grid"></div>
+                        <p id="mywc-empty" class="mywc-empty" hidden>Voce ainda nao criou nenhuma World Cup.</p>
+                    </div>
+
+                    <div id="mywc-editor" class="mywc-editor" hidden>
+                        <div class="mywc-editor-head">
+                            <h3 id="mywc-editor-heading">Edit Worldcup</h3>
+                            <button id="mywc-editor-back" class="mywc-back-btn" type="button">&lt; My World Cups</button>
+                        </div>
+
+                        <nav class="mywc-steps" aria-label="Etapas de edicao da world cup">
+                            <button type="button" class="mywc-step-btn active" data-step="cover">Cover</button>
+                            <span class="mywc-step-separator">|</span>
+                            <button type="button" class="mywc-step-btn" data-step="choices">Choices</button>
+                            <span class="mywc-step-separator">|</span>
+                            <button type="button" class="mywc-step-btn" data-step="publish">Publish</button>
+                        </nav>
+
+                        <section class="mywc-step-panel active" data-step-panel="cover">
+                            <div class="mywc-fields-grid">
+                                <label class="mywc-field">
+                                    <span>Title</span>
+                                    <input id="mywc-cover-title" type="text" maxlength="140" placeholder="Titulo da sua World Cup">
+                                </label>
+                                <label class="mywc-field mywc-field-full">
+                                    <span>Description</span>
+                                    <textarea id="mywc-cover-description" rows="4" placeholder="Descricao da sua World Cup"></textarea>
+                                </label>
+                            </div>
+
+                            <h4 class="mywc-section-label">Cover Image</h4>
+                            <div class="mywc-cover-stage">
+                                <div class="mywc-cover-drop">
+                                    <img id="mywc-cover-preview" alt="Preview da capa" src="">
+                                </div>
+                                <div class="mywc-cover-actions">
+                                    <button id="mywc-cover-upload-btn" class="mywc-btn" type="button">Upload Cover</button>
+                                    <input id="mywc-cover-upload" type="file" accept="image/*" hidden>
+                                    <label class="mywc-field">
+                                        <span>Cover URL (opcional)</span>
+                                        <input id="mywc-cover-url" type="url" placeholder="https://...">
+                                    </label>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="mywc-step-panel" data-step-panel="choices" hidden>
+                            <h4 class="mywc-section-label">Type</h4>
+                            <div class="mywc-type-grid">
+                                <button type="button" class="mywc-type-card is-active" data-choice-type="image">Image</button>
+                                <button type="button" class="mywc-type-card" data-choice-type="video" disabled>Video</button>
+                            </div>
+
+                            <h4 class="mywc-section-label">Upload Images</h4>
+                            <div id="mywc-choice-upload-box" class="mywc-upload-box" role="button" tabindex="0">
+                                <p>Drag and drop ou clique para upload de imagens (12mb max)</p>
+                                <button id="mywc-choice-upload-btn" class="mywc-btn" type="button">Selecionar imagens</button>
+                                <input id="mywc-choice-upload" type="file" accept="image/*" multiple hidden>
+                            </div>
+
+                            <h4 class="mywc-section-label">Choices</h4>
+                            <div class="mywc-choices-toolbar">
+                                <input id="mywc-choice-search" type="search" placeholder="Search by name">
+                                <select id="mywc-choice-sort">
+                                    <option value="win-ratio">Sort by Win Ratio</option>
+                                    <option value="championship-ratio">Sort by Championship Ratio</option>
+                                    <option value="name-asc">Sort by Name</option>
+                                </select>
+                            </div>
+                            <div class="mywc-choice-create">
+                                <input id="mywc-choice-name-input" type="text" maxlength="120" placeholder="Nome da escolha">
+                                <button id="mywc-choice-add-btn" class="mywc-btn" type="button">Adicionar</button>
+                            </div>
+
+                            <div id="mywc-choice-grid" class="mywc-choice-grid"></div>
+                            <p id="mywc-choice-empty" class="mywc-choice-empty" hidden>Nenhuma escolha encontrada para os filtros atuais.</p>
+
+                            <div class="mywc-choice-pagination">
+                                <button id="mywc-choice-page-prev" type="button">&lt;</button>
+                                <span id="mywc-choice-page-info">1 / 1</span>
+                                <button id="mywc-choice-page-next" type="button">&gt;</button>
+                            </div>
+                        </section>
+
+                        <section class="mywc-step-panel" data-step-panel="publish" hidden>
+                            <div class="mywc-fields-grid">
+                                <label class="mywc-field">
+                                    <span>Language</span>
+                                    <select id="mywc-publish-language">
+                                        <option value="English">English</option>
+                                        <option value="Portugues">Portugues</option>
+                                        <option value="Espanol">Espanol</option>
+                                    </select>
+                                </label>
+
+                                <label class="mywc-field">
+                                    <span>Visibility</span>
+                                    <select id="mywc-publish-visibility">
+                                        <option value="Public">Public</option>
+                                        <option value="Private">Private</option>
+                                        <option value="Unlisted">Unlisted</option>
+                                    </select>
+                                </label>
+
+                                <label class="mywc-field">
+                                    <span>Category</span>
+                                    <select id="mywc-publish-category">
+                                        <option value="Jogos">Jogos</option>
+                                        <option value="Anime">Anime</option>
+                                        <option value="Filmes">Filmes</option>
+                                        <option value="Series">Series</option>
+                                        <option value="Musicas">Musicas</option>
+                                    </select>
+                                </label>
+
+                                <label class="mywc-check">
+                                    <input id="mywc-publish-nsfw" type="checkbox">
+                                    <span>NSFW</span>
+                                </label>
+                            </div>
+
+                            <div class="mywc-publish-actions">
+                                <button id="mywc-publish-btn" class="mywc-publish-btn" type="button">Publish</button>
+                                <p id="mywc-feedback" class="mywc-feedback" aria-live="polite"></p>
+                            </div>
+                        </section>
+
+                        <div class="mywc-editor-actions">
+                            <button id="mywc-step-prev" class="mywc-nav-btn" type="button">&lt; Cover</button>
+                            <button id="mywc-step-next" class="mywc-nav-btn mywc-nav-btn--primary" type="button">Choices &gt;</button>
+                        </div>
                     </div>
                 </div>
             </section>
