@@ -3492,6 +3492,106 @@ async function showChampion(name) {
     wcState.running = false;
 }
 
+/* ── League ── */
+
+function loadLeagueData() {
+    try {
+        const raw = localStorage.getItem(LEAGUE_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveLeagueData(data) {
+    localStorage.setItem(LEAGUE_STORAGE_KEY, JSON.stringify(data));
+}
+
+function getScoreForPlacement(tournamentSize, eliminatedAtRound) {
+    const scoring = LEAGUE_SCORING_SYSTEM[tournamentSize];
+    if (!scoring) return 0;
+
+    if (eliminatedAtRound === "champion") return scoring.champion || 0;
+
+    const round = Number(eliminatedAtRound);
+    if (round === tournamentSize) return 0;
+
+    let totalPoints = scoring.base || 0;
+    const thresholds = Object.keys(scoring)
+        .filter(k => k !== "base" && k !== "champion")
+        .map(k => ({ key: k, cutoff: Number(k.replace("top", "")) }))
+        .sort((a, b) => b.cutoff - a.cutoff);
+
+    for (const t of thresholds) {
+        if (round <= t.cutoff) {
+            totalPoints += scoring[t.key] || 0;
+        }
+    }
+
+    return totalPoints;
+}
+
+function processLeagueAfterTournament(championName) {
+    const size = wcState.tournamentSize;
+    if (!LEAGUE_SCORING_SYSTEM[size]) return;
+
+    const league = loadLeagueData();
+    const leagueMap = new Map(league.map(e => [e.name, e]));
+
+    wcState.eliminations.forEach((eliminatedAtRound, gameName) => {
+        const pts = getScoreForPlacement(size, eliminatedAtRound);
+        if (pts <= 0) return;
+        const existing = leagueMap.get(gameName);
+        if (existing) {
+            existing.points += pts;
+        } else {
+            leagueMap.set(gameName, { name: gameName, points: pts, titles: 0 });
+        }
+    });
+
+    const champPts = getScoreForPlacement(size, "champion");
+    const champEntry = leagueMap.get(championName);
+    if (champEntry) {
+        champEntry.points += champPts;
+        champEntry.titles += 1;
+    } else {
+        leagueMap.set(championName, { name: championName, points: champPts, titles: 1 });
+    }
+
+    const sorted = [...leagueMap.values()].sort((a, b) => b.points - a.points || b.titles - a.titles);
+    saveLeagueData(sorted);
+    renderLeagueTable(sorted);
+}
+
+function renderLeagueTable(data) {
+    const tbody = document.getElementById("wc-league-tbody");
+    const emptyMsg = document.getElementById("wc-league-empty");
+    if (!tbody) return;
+
+    const league = data || loadLeagueData();
+
+    if (!league.length) {
+        tbody.innerHTML = "";
+        if (emptyMsg) emptyMsg.hidden = false;
+        return;
+    }
+
+    if (emptyMsg) emptyMsg.hidden = true;
+
+    tbody.innerHTML = league.map((entry, i) => {
+        const pos = i + 1;
+        const rowClass = pos <= 3 ? ` class="wc-row--${pos}"` : "";
+        return `<tr${rowClass}>
+            <td>${pos}</td>
+            <td title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</td>
+            <td>${entry.points}</td>
+            <td>${entry.titles || 0}</td>
+        </tr>`;
+    }).join("");
+}
+
 /* ── Events ── */
 
 function bindWorldCupEvents() {
