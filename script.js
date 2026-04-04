@@ -3297,6 +3297,7 @@ function renderWorldCup() {
     }
 
     renderWcGrid();
+    renderLeagueTable();
 }
 
 function renderWcGrid() {
