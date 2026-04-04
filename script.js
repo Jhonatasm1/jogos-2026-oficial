@@ -2889,7 +2889,10 @@ async function fetchSteamLibrary() {
             return;
         }
 
-        const existingByAppId = new Map(steamState.library.map((game) => [String(game.appid), game]));
+        const isSameUser = steamState.steamId === steamId;
+        const existingByAppId = isSameUser
+            ? new Map(steamState.library.map((game) => [String(game.appid), game]))
+            : new Map();
 
         steamState.library = games.map((game) => normalizeSteamGame(
             game,
