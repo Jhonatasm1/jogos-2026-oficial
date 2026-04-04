@@ -3359,6 +3359,8 @@ function startWorldCup(size) {
     wcState.matchIndex = 0;
     wcState.totalMatchesInRound = shuffled.length / 2;
     wcState.running = true;
+    wcState.tournamentSize = size;
+    wcState.eliminations = new Map();
 
     const showcase = document.getElementById("wc-showcase");
     const modal = document.getElementById("wc-modal-overlay");
