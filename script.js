@@ -3163,6 +3163,7 @@ function switchTab(tabId) {
     else if (tabId === "user-ranking") renderUserRanking();
     else if (tabId === "steam-library") renderSteamLibrary(steamState.library);
     else if (tabId === "add-your-game") renderManualGames(manualGameState.library);
+    else if (tabId === "world-cup") renderWorldCup();
 }
 
 function bindEvents() {
