@@ -310,6 +310,19 @@ function getFilteredLibrary() {
 function updateFilterSelects() {
     const library = getLibrary();
 
+    if (dom.filterStatus) {
+        const values = [...new Set(library.map(g => (g.metadata?.status || "").trim()).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+        dom.filterStatus.innerHTML = '<option value="">Todos<\/option>';
+        values.forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v;
+            opt.textContent = v;
+            dom.filterStatus.appendChild(opt);
+        });
+        dom.filterStatus.value = state.overviewFilters.status || "";
+    }
+
     if (dom.filterPlataforma) {
         const values = [...new Set(library.map(g => (g.metadata?.plataforma || "").trim()).filter(Boolean))]
             .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
