@@ -3151,7 +3151,7 @@ function switchTab(tabId) {
     targetContent.classList.add("active");
 
     if (dom.filtersTop) {
-        dom.filtersTop.hidden = tabId === "steam-library" || tabId === "add-your-game";
+        dom.filtersTop.hidden = tabId === "steam-library" || tabId === "add-your-game" || tabId === "world-cup";
     }
 
     if (tabId === "visao-geral") renderVisaoGeral();
