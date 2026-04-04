@@ -3355,7 +3355,7 @@ function startWorldCup(size) {
     const champion = document.getElementById("wc-champion");
 
     if (showcase) showcase.hidden = true;
-    if (modal) modal.hidden = true;
+    if (modal) modal.style.display = "none";
     if (duel) duel.hidden = false;
     if (champion) { champion.hidden = true; champion.innerHTML = ""; }
 
