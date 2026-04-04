@@ -2826,6 +2826,8 @@ body.modal-open {
 .mywc-card-actions {
     display: flex;
     gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .mywc-card-btn {
@@ -2833,10 +2835,11 @@ body.modal-open {
     background: rgba(13, 16, 24, 0.7);
     color: #dbe1ef;
     border-radius: 8px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    padding: 0.28rem 0.55rem;
+    padding: 0.28rem 0.52rem;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .mywc-card-btn:hover {
@@ -2988,6 +2991,12 @@ body.modal-open {
     display: grid;
     place-items: center;
     overflow: hidden;
+    cursor: pointer;
+}
+
+.mywc-cover-drop:focus-visible {
+    outline: 2px solid rgba(244, 54, 34, 0.75);
+    outline-offset: 2px;
 }
 
 .mywc-cover-drop img {
@@ -3031,12 +3040,18 @@ body.modal-open {
     min-height: 120px;
     font-size: 1.25rem;
     font-weight: 800;
-    cursor: default;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .mywc-type-card.is-active {
     border-color: #f43622;
     color: #f43622;
+}
+
+.mywc-type-card:hover {
+    border-color: rgba(244, 54, 34, 0.6);
+    transform: translateY(-1px);
 }
 
 .mywc-upload-box {

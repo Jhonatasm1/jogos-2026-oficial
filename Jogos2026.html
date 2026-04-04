@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Gaming Temple</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260403-yxt15">
+    <link rel="stylesheet" href="style.css?v=20260404-yxt16">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -601,9 +601,9 @@
                     <div class="mywc-header">
                         <div>
                             <h2 class="mywc-title">My World Cups</h2>
-                            <p class="mywc-subtitle">Gerencie suas copas criadas e edite cada uma clicando no card.</p>
+                            <p class="mywc-subtitle">Veja suas copas criadas e clique em editar no card para ajustar os dados.</p>
                         </div>
-                        <button id="mywc-create-btn" class="mywc-create-btn" type="button">Nova World Cup</button>
+                        <button id="mywc-create-btn" class="mywc-create-btn" type="button">Crie sua Copa do Mundo</button>
                     </div>
 
                     <div id="mywc-view" class="mywc-view">
@@ -613,7 +613,7 @@
 
                     <div id="mywc-editor" class="mywc-editor" hidden>
                         <div class="mywc-editor-head">
-                            <h3 id="mywc-editor-heading">Edit Worldcup</h3>
+                            <h3 id="mywc-editor-heading">Edit World Cup</h3>
                             <button id="mywc-editor-back" class="mywc-back-btn" type="button">&lt; My World Cups</button>
                         </div>
 
@@ -639,7 +639,7 @@
 
                             <h4 class="mywc-section-label">Cover Image</h4>
                             <div class="mywc-cover-stage">
-                                <div class="mywc-cover-drop">
+                                <div id="mywc-cover-drop" class="mywc-cover-drop" role="button" tabindex="0">
                                     <img id="mywc-cover-preview" alt="Preview da capa" src="">
                                 </div>
                                 <div class="mywc-cover-actions">
@@ -657,13 +657,13 @@
                             <h4 class="mywc-section-label">Type</h4>
                             <div class="mywc-type-grid">
                                 <button type="button" class="mywc-type-card is-active" data-choice-type="image">Image</button>
-                                <button type="button" class="mywc-type-card" data-choice-type="video" disabled>Video</button>
+                                <button type="button" class="mywc-type-card" data-choice-type="video">Video</button>
                             </div>
 
-                            <h4 class="mywc-section-label">Upload Images</h4>
+                            <h4 class="mywc-section-label" id="mywc-choice-upload-title">Upload Images</h4>
                             <div id="mywc-choice-upload-box" class="mywc-upload-box" role="button" tabindex="0">
-                                <p>Drag and drop ou clique para upload de imagens (12mb max)</p>
-                                <button id="mywc-choice-upload-btn" class="mywc-btn" type="button">Selecionar imagens</button>
+                                <p id="mywc-choice-upload-text">Drag and drop ou clique para upload de imagens (12mb max)</p>
+                                <button id="mywc-choice-upload-btn" class="mywc-btn" type="button">Selecionar arquivos</button>
                                 <input id="mywc-choice-upload" type="file" accept="image/*" multiple hidden>
                             </div>
 
@@ -714,17 +714,15 @@
                                 <label class="mywc-field">
                                     <span>Category</span>
                                     <select id="mywc-publish-category">
-                                        <option value="Jogos">Jogos</option>
-                                        <option value="Anime">Anime</option>
-                                        <option value="Filmes">Filmes</option>
-                                        <option value="Series">Series</option>
-                                        <option value="Musicas">Musicas</option>
+                                        <option value="trilhas sonoras">trilhas sonoras</option>
+                                        <option value="jogos">jogos</option>
+                                        <option value="gêneros">gêneros</option>
+                                        <option value="developers">developers</option>
+                                        <option value="dificuldade">dificuldade</option>
+                                        <option value="imersão">imersão</option>
+                                        <option value="mundo aberto">mundo aberto</option>
+                                        <option value="outra">outra</option>
                                     </select>
-                                </label>
-
-                                <label class="mywc-check">
-                                    <input id="mywc-publish-nsfw" type="checkbox">
-                                    <span>NSFW</span>
                                 </label>
                             </div>
 
@@ -901,7 +899,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260403-yxt15"></script>
+    <script src="script.js?v=20260404-yxt16"></script>
 </body>
 </html>
 
