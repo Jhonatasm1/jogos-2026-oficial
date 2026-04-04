@@ -3326,12 +3326,12 @@ function openWcSizeModal(cup) {
     const modal = document.getElementById("wc-modal-overlay");
     const title = document.getElementById("wc-modal-title");
     if (title) title.textContent = cup.title;
-    if (modal) modal.hidden = false;
+    if (modal) modal.style.display = "flex";
 }
 
 function closeWcSizeModal() {
     const modal = document.getElementById("wc-modal-overlay");
-    if (modal) modal.hidden = true;
+    if (modal) modal.style.display = "none";
     wcState.activeCup = null;
 }
 
