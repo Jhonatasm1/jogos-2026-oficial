@@ -3474,6 +3474,8 @@ async function showChampion(name) {
 
     if (duel) duel.hidden = true;
 
+    processLeagueAfterTournament(name);
+
     const cover = await fetchWcCover(name);
 
     if (champion) {
