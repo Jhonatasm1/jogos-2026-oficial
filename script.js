@@ -3231,6 +3231,10 @@ const wcCups = [
 ];
 
 const LEAGUE_SCORING_SYSTEM = {
+    2:   { champion: 1 },
+    4:   { top2: 1, champion: 2 },
+    8:   { top4: 1, top2: 2, champion: 2 },
+    16:  { base: 1, top4: 1, top2: 2, champion: 2 },
     32:  { base: 1, top4: 2, top2: 3, champion: 3 },
     64:  { base: 1, top8: 2, top4: 3, top2: 4, champion: 4 },
     128: { base: 1, top16: 2, top8: 3, top4: 4, top2: 5, champion: 5 },
