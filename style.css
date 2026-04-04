@@ -2686,6 +2686,15 @@ body.modal-open {
 
 /* Responsive */
 @media (max-width: 700px) {
+    .wc-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .wc-sidebar {
+        position: static;
+        max-height: 300px;
+    }
+
     .wc-arena {
         flex-direction: column;
         gap: 0;
