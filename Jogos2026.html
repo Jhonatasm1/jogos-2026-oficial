@@ -526,48 +526,72 @@
 
             <!-- World Cup -->
             <section class="tab-content" id="world-cup">
-                <!-- Vitrine -->
-                <div class="wc-showcase" id="wc-showcase">
-                    <h2 class="wc-title">World Cup</h2>
-                    <div class="wc-toolbar">
-                        <input type="text" class="wc-search" id="wc-search" placeholder="Pesquisar copas..." />
-                        <select class="wc-filter" id="wc-category-filter">
-                            <option value="">Todas</option>
-                            <option value="Jogos">Jogos</option>
-                        </select>
-                    </div>
-                    <div class="wc-grid" id="wc-grid"></div>
-                </div>
+                <div class="wc-layout">
+                    <!-- Sidebar: The Games League -->
+                    <aside class="wc-sidebar">
+                        <h3 class="wc-league-title">The Games League</h3>
+                        <div class="wc-league-table-wrap">
+                            <table class="wc-league-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Jogo</th>
+                                        <th>Pts</th>
+                                        <th>T&iacute;t.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wc-league-tbody"></tbody>
+                            </table>
+                        </div>
+                        <p class="wc-league-empty" id="wc-league-empty">Nenhum torneio finalizado ainda.</p>
+                    </aside>
 
-                <!-- Duel Arena -->
-                <div class="wc-duel" id="wc-duel" hidden>
-                    <div class="wc-duel-header">
-                        <button class="wc-back-btn" id="wc-back-btn">&larr; Voltar</button>
-                        <p class="wc-round-info" id="wc-round-info"></p>
-                    </div>
-                    <div class="wc-arena">
-                        <div class="wc-card wc-card--left" id="wc-card-left" role="button" tabindex="0">
-                            <div class="wc-card-img-wrap">
-                                <img class="wc-card-img" id="wc-img-left" src="" alt="" />
+                    <!-- Main content -->
+                    <div class="wc-main">
+                        <!-- Vitrine -->
+                        <div class="wc-showcase" id="wc-showcase">
+                            <h2 class="wc-title">World Cup</h2>
+                            <div class="wc-toolbar">
+                                <input type="text" class="wc-search" id="wc-search" placeholder="Pesquisar copas..." />
+                                <select class="wc-filter" id="wc-category-filter">
+                                    <option value="">Todas</option>
+                                    <option value="Jogos">Jogos</option>
+                                </select>
                             </div>
-                            <div class="wc-card-bar wc-bar--left">
-                                <span class="wc-card-name" id="wc-name-left">...</span>
+                            <div class="wc-grid" id="wc-grid"></div>
+                        </div>
+
+                        <!-- Duel Arena -->
+                        <div class="wc-duel" id="wc-duel" hidden>
+                            <div class="wc-duel-header">
+                                <button class="wc-back-btn" id="wc-back-btn">&larr; Voltar</button>
+                                <p class="wc-round-info" id="wc-round-info"></p>
+                            </div>
+                            <div class="wc-arena">
+                                <div class="wc-card wc-card--left" id="wc-card-left" role="button" tabindex="0">
+                                    <div class="wc-card-img-wrap">
+                                        <img class="wc-card-img" id="wc-img-left" src="" alt="" />
+                                    </div>
+                                    <div class="wc-card-bar wc-bar--left">
+                                        <span class="wc-card-name" id="wc-name-left">...</span>
+                                    </div>
+                                </div>
+                                <div class="wc-vs">VS</div>
+                                <div class="wc-card wc-card--right" id="wc-card-right" role="button" tabindex="0">
+                                    <div class="wc-card-img-wrap">
+                                        <img class="wc-card-img" id="wc-img-right" src="" alt="" />
+                                    </div>
+                                    <div class="wc-card-bar wc-bar--right">
+                                        <span class="wc-card-name" id="wc-name-right">...</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="wc-vs">VS</div>
-                        <div class="wc-card wc-card--right" id="wc-card-right" role="button" tabindex="0">
-                            <div class="wc-card-img-wrap">
-                                <img class="wc-card-img" id="wc-img-right" src="" alt="" />
-                            </div>
-                            <div class="wc-card-bar wc-bar--right">
-                                <span class="wc-card-name" id="wc-name-right">...</span>
-                            </div>
-                        </div>
+
+                        <!-- Champion -->
+                        <div class="wc-champion" id="wc-champion" hidden></div>
                     </div>
                 </div>
-
-                <!-- Champion -->
-                <div class="wc-champion" id="wc-champion" hidden></div>
             </section>
         </div>
     </main>
