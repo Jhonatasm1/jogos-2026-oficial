@@ -3282,7 +3282,7 @@ function renderWorldCup() {
         if (showcase) showcase.hidden = false;
         if (duel) duel.hidden = true;
         if (champion) { champion.hidden = true; champion.innerHTML = ""; }
-        if (modal) modal.hidden = true;
+        if (modal) modal.style.display = "none";
     }
 
     renderWcGrid();
