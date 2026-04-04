@@ -523,6 +523,28 @@
                 </div>
                 <div class="steam-results" id="manual-games-results"></div>
             </section>
+
+            <!-- World Cup -->
+            <section class="tab-content" id="world-cup">
+                <div class="wc-header">
+                    <h2 class="wc-title">World Cup</h2>
+                    <p class="wc-round-info" id="wc-round-info">Escolha seu lado. Apenas um jogo sobrevive.</p>
+                    <button class="wc-start-btn" id="wc-start-btn">Iniciar Torneio</button>
+                    <button class="wc-restart-btn" id="wc-restart-btn" hidden>Reiniciar</button>
+                </div>
+                <div class="wc-arena" id="wc-arena" hidden>
+                    <div class="wc-side wc-side--left" id="wc-side-left" role="button" tabindex="0">
+                        <div class="wc-side-overlay"></div>
+                        <span class="wc-side-name" id="wc-name-left">...</span>
+                    </div>
+                    <div class="wc-vs">VS</div>
+                    <div class="wc-side wc-side--right" id="wc-side-right" role="button" tabindex="0">
+                        <div class="wc-side-overlay"></div>
+                        <span class="wc-side-name" id="wc-name-right">...</span>
+                    </div>
+                </div>
+                <div class="wc-champion" id="wc-champion" hidden></div>
+            </section>
         </div>
     </main>
 
