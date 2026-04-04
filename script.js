@@ -3442,10 +3442,11 @@ async function showNextMatchup() {
 
     preloadNextMatchup();
 
-    const pick = (winner, winnerId, loserId) => {
+    const pick = (winner, loser, winnerId, loserId) => {
         document.getElementById(winnerId).classList.add("wc-card--picked");
         document.getElementById(loserId).classList.add("wc-card--lost");
         wcState.winnersQueue.push(winner);
+        wcState.eliminations.set(loser, wcState.currentRound);
         wcState.matchIndex++;
         setTimeout(() => showNextMatchup(), 550);
     };
@@ -3453,12 +3454,12 @@ async function showNextMatchup() {
     const onClickLeft = () => {
         cardLeft.removeEventListener("click", onClickLeft);
         cardRight.removeEventListener("click", onClickRight);
-        pick(left, "wc-card-left", "wc-card-right");
+        pick(left, right, "wc-card-left", "wc-card-right");
     };
     const onClickRight = () => {
         cardLeft.removeEventListener("click", onClickLeft);
         cardRight.removeEventListener("click", onClickRight);
-        pick(right, "wc-card-right", "wc-card-left");
+        pick(right, left, "wc-card-right", "wc-card-left");
     };
 
     cardLeft.addEventListener("click", onClickLeft);
