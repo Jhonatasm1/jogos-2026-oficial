@@ -3227,6 +3227,15 @@ const wcCups = [
     }
 ];
 
+const LEAGUE_SCORING_SYSTEM = {
+    32:  { base: 1, top4: 2, top2: 3, champion: 3 },
+    64:  { base: 1, top8: 2, top4: 3, top2: 4, champion: 4 },
+    128: { base: 1, top16: 2, top8: 3, top4: 4, top2: 5, champion: 5 },
+    256: { base: 1, top32: 2, top16: 3, top8: 5, top4: 6, top2: 7, champion: 7 }
+};
+
+const LEAGUE_STORAGE_KEY = "yxt_games_league";
+
 const wcState = {
     currentRound: 0,
     matchupsQueue: [],
@@ -3235,7 +3244,9 @@ const wcState = {
     totalMatchesInRound: 0,
     running: false,
     coverCache: new Map(),
-    activeCup: null
+    activeCup: null,
+    tournamentSize: 0,
+    eliminations: new Map()
 };
 
 function shuffleArray(arr) {
