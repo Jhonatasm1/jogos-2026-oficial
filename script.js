@@ -3395,6 +3395,7 @@ function bindWorldCupEvents() {
 function init() {
     bindEvents();
     bindSteamEvents();
+    bindWorldCupEvents();
     initializeSteamLibraryFromStorage();
     initializeManualGamesFromStorage();
     if (dom.filtersTop) dom.filtersTop.hidden = false;
