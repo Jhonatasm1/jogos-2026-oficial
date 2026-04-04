@@ -3516,10 +3516,10 @@ function getScoreForPlacement(tournamentSize, eliminatedAtRound) {
     const scoring = LEAGUE_SCORING_SYSTEM[tournamentSize];
     if (!scoring) return 0;
 
-    if (eliminatedAtRound === "champion") return scoring.champion || 0;
+    const isChampion = eliminatedAtRound === "champion";
+    const round = isChampion ? 1 : Number(eliminatedAtRound);
 
-    const round = Number(eliminatedAtRound);
-    if (round === tournamentSize) return 0;
+    if (!isChampion && round === tournamentSize) return 0;
 
     let totalPoints = scoring.base || 0;
     const thresholds = Object.keys(scoring)
@@ -3532,6 +3532,8 @@ function getScoreForPlacement(tournamentSize, eliminatedAtRound) {
             totalPoints += scoring[t.key] || 0;
         }
     }
+
+    if (isChampion) totalPoints += scoring.champion || 0;
 
     return totalPoints;
 }
