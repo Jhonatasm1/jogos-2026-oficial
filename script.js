@@ -3424,6 +3424,8 @@ function mapMyCupToPlayableCup(cup) {
 
     return {
         id: String(cup.id),
+        sourceType: "custom",
+        sourceCupId: String(cup.id),
         title: String(cup.title || "World Cup sem titulo"),
         category: String(cup.category || "Custom"),
         cover: String(cup.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
@@ -3432,10 +3434,16 @@ function mapMyCupToPlayableCup(cup) {
 }
 
 function getPlayableWorldCups() {
+    const baseCups = wcCups.map((cup) => ({
+        ...cup,
+        sourceType: "global",
+        sourceCupId: null
+    }));
+
     const customCups = myWcState.cups
         .map(mapMyCupToPlayableCup)
         .filter(Boolean);
-    return [...wcCups, ...customCups];
+    return [...baseCups, ...customCups];
 }
 
 function syncWorldCupCategoryFilter(cups) {
@@ -3723,9 +3731,79 @@ function getScoreForPlacement(tournamentSize, eliminatedAtRound) {
     return totalPoints;
 }
 
+function sortLeagueEntries(entries) {
+    return [...entries].sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.titles !== a.titles) return b.titles - a.titles;
+        return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+    });
+}
+
+function isGlobalLeagueCup(cup) {
+    return String(cup?.id || "") === "best-games";
+}
+
+function updateCustomCupLeagueStats(cupId, championName) {
+    const cupIndex = myWcState.cups.findIndex((cup) => cup.id === String(cupId));
+    if (cupIndex < 0) return;
+
+    const cup = normalizeMyWorldCup(myWcState.cups[cupIndex]);
+    const leaderboardMap = new Map(
+        (cup.stats?.leaderboard || []).map((entry) => [entry.name, normalizeMyWorldCupLeagueEntry(entry)])
+    );
+
+    wcState.eliminations.forEach((eliminatedAtRound, participantName) => {
+        const pts = getScoreForPlacement(wcState.tournamentSize, eliminatedAtRound);
+        if (pts <= 0) return;
+
+        const existing = leaderboardMap.get(participantName);
+        if (existing) {
+            existing.points += pts;
+        } else {
+            leaderboardMap.set(participantName, { name: participantName, points: pts, titles: 0 });
+        }
+    });
+
+    const championPts = getScoreForPlacement(wcState.tournamentSize, "champion");
+    const championEntry = leaderboardMap.get(championName);
+    if (championEntry) {
+        championEntry.points += championPts;
+        championEntry.titles += 1;
+    } else {
+        leaderboardMap.set(championName, { name: championName, points: championPts, titles: 1 });
+    }
+
+    const sortedLeaderboard = sortLeagueEntries([...leaderboardMap.values()]);
+
+    const updatedCup = normalizeMyWorldCup({
+        ...cup,
+        stats: {
+            plays: (Number(cup.stats?.plays) || 0) + 1,
+            leaderboard: sortedLeaderboard
+        },
+        updatedAt: Date.now()
+    });
+
+    myWcState.cups[cupIndex] = updatedCup;
+    if (myWcState.selectedCupId === updatedCup.id && myWcState.draftCup) {
+        myWcState.draftCup = normalizeMyWorldCup(updatedCup);
+    }
+
+    saveMyWorldCupsToStorage();
+}
+
 function processLeagueAfterTournament(championName) {
     const size = wcState.tournamentSize;
     if (!LEAGUE_SCORING_SYSTEM[size]) return;
+
+    const activeCup = wcState.activeCup;
+    if (activeCup && !isGlobalLeagueCup(activeCup)) {
+        const customCupId = String(activeCup.sourceCupId || "").trim();
+        if (customCupId) {
+            updateCustomCupLeagueStats(customCupId, championName);
+        }
+        return;
+    }
 
     const league = loadLeagueData();
     const leagueMap = new Map(league.map(e => [e.name, e]));
@@ -3750,7 +3828,7 @@ function processLeagueAfterTournament(championName) {
         leagueMap.set(championName, { name: championName, points: champPts, titles: 1 });
     }
 
-    const sorted = [...leagueMap.values()].sort((a, b) => b.points - a.points || b.titles - a.titles);
+    const sorted = sortLeagueEntries([...leagueMap.values()]);
     saveLeagueData(sorted);
     renderLeagueTable(sorted);
 }
@@ -3798,8 +3876,20 @@ function createDefaultMyWorldCup() {
         visibility: "Public",
         category: "jogos",
         choices: [],
+        stats: {
+            plays: 0,
+            leaderboard: []
+        },
         createdAt: timestamp,
         updatedAt: timestamp
+    };
+}
+
+function normalizeMyWorldCupLeagueEntry(entry) {
+    return {
+        name: String(entry?.name || "").trim(),
+        points: Math.max(0, Number(entry?.points) || 0),
+        titles: Math.max(0, Number(entry?.titles) || 0)
     };
 }
 
@@ -3825,6 +3915,13 @@ function normalizeMyWorldCupChoice(choice) {
 function normalizeMyWorldCup(cup) {
     const createdAt = Number(cup?.createdAt) || Date.now();
     const updatedAt = Number(cup?.updatedAt) || createdAt;
+    const rawStats = cup?.stats && typeof cup.stats === "object" ? cup.stats : {};
+    const leaderboard = Array.isArray(rawStats.leaderboard)
+        ? rawStats.leaderboard
+            .map(normalizeMyWorldCupLeagueEntry)
+            .filter((entry) => Boolean(entry.name))
+        : [];
+
     return {
         id: String(cup?.id || createMyWorldCupId("cup")),
         title: String(cup?.title || "Nova World Cup"),
@@ -3834,6 +3931,10 @@ function normalizeMyWorldCup(cup) {
         visibility: String(cup?.visibility || "Public"),
         category: String(cup?.category || "jogos"),
         choices: Array.isArray(cup?.choices) ? cup.choices.map(normalizeMyWorldCupChoice) : [],
+        stats: {
+            plays: Math.max(0, Number(rawStats.plays) || 0),
+            leaderboard
+        },
         createdAt,
         updatedAt
     };
@@ -4289,9 +4390,10 @@ function renderMyWorldCupCards() {
                 <h4 class="mywc-card-title">${escapeHtml(truncateMyWorldCupText(cup.title, 56))}</h4>
                 <p class="mywc-card-description">${escapeHtml(truncateMyWorldCupText(cup.description || "Sem descricao.", 115))}</p>
                 <div class="mywc-card-footer">
-                    <span class="mywc-card-count">${cup.choices.length} escolhas</span>
+                    <span class="mywc-card-count">${cup.choices.length} escolhas · ${Number(cup.stats?.plays || 0)} jogadas</span>
                     <div class="mywc-card-actions">
                         <button type="button" class="mywc-card-btn" data-action="edit">Editar copa do mundo</button>
+                        <button type="button" class="mywc-card-btn" data-action="ranking">Ver ranking</button>
                         <button type="button" class="mywc-card-btn" data-action="copy">Duplicar</button>
                         <button type="button" class="mywc-card-btn" data-action="delete">Excluir</button>
                     </div>
@@ -4314,6 +4416,11 @@ function renderMyWorldCupCards() {
                 return;
             }
 
+            if (action === "ranking") {
+                openMyWorldCupRankingModal(cupId);
+                return;
+            }
+
             if (action === "copy") {
                 const source = myWcState.cups.find((cup) => cup.id === cupId);
                 if (!source) return;
@@ -4325,6 +4432,10 @@ function renderMyWorldCupCards() {
                     title: `${source.title} (copia)`,
                     createdAt: timestamp,
                     updatedAt: timestamp,
+                    stats: {
+                        plays: 0,
+                        leaderboard: []
+                    },
                     choices: source.choices.map((choice) => ({
                         ...choice,
                         id: createMyWorldCupId("choice")
@@ -4351,6 +4462,51 @@ function renderMyWorldCupCards() {
             }
         });
     });
+}
+
+function closeMyWorldCupRankingModal() {
+    const overlay = document.getElementById("mywc-ranking-overlay");
+    if (overlay) overlay.hidden = true;
+}
+
+function openMyWorldCupRankingModal(cupId) {
+    const overlay = document.getElementById("mywc-ranking-overlay");
+    const titleEl = document.getElementById("mywc-ranking-title");
+    const coverEl = document.getElementById("mywc-ranking-cover");
+    const descEl = document.getElementById("mywc-ranking-description");
+    const playsEl = document.getElementById("mywc-ranking-plays");
+    const tbody = document.getElementById("mywc-ranking-tbody");
+    const empty = document.getElementById("mywc-ranking-empty");
+
+    const cup = myWcState.cups.find((entry) => entry.id === String(cupId));
+    if (!cup || !overlay || !titleEl || !coverEl || !descEl || !playsEl || !tbody || !empty) return;
+
+    const normalizedCup = normalizeMyWorldCup(cup);
+    const plays = Number(normalizedCup.stats?.plays || 0);
+    const leaderboard = sortLeagueEntries(normalizedCup.stats?.leaderboard || []);
+
+    titleEl.textContent = normalizedCup.title || "World Cup";
+    descEl.textContent = normalizedCup.description || "Sem descricao.";
+    playsEl.textContent = `${plays} vez(es) jogada(s)`;
+    coverEl.src = normalizedCup.cover || DEFAULT_GAME_COVER_PLACEHOLDER;
+    coverEl.alt = normalizedCup.title || "Capa da copa";
+
+    if (!leaderboard.length) {
+        tbody.innerHTML = "";
+        empty.hidden = false;
+    } else {
+        empty.hidden = true;
+        tbody.innerHTML = leaderboard.map((entry, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</td>
+                <td>${entry.points}</td>
+                <td>${entry.titles}</td>
+            </tr>
+        `).join("");
+    }
+
+    overlay.hidden = false;
 }
 
 function renderMyWorldCups(forceListOnly) {
@@ -4446,6 +4602,8 @@ function bindMyWorldCupEvents() {
     const feedback = document.getElementById("mywc-feedback");
     const stepPrevBtn = document.getElementById("mywc-step-prev");
     const stepNextBtn = document.getElementById("mywc-step-next");
+    const rankingOverlay = document.getElementById("mywc-ranking-overlay");
+    const rankingCloseBtn = document.getElementById("mywc-ranking-close");
 
     const openCoverPicker = () => {
         if (coverUploadInput) coverUploadInput.click();
@@ -4487,6 +4645,16 @@ function bindMyWorldCupEvents() {
 
             if (feedback) feedback.textContent = "";
             renderMyWorldCups();
+        });
+    }
+
+    if (rankingCloseBtn) {
+        rankingCloseBtn.addEventListener("click", closeMyWorldCupRankingModal);
+    }
+
+    if (rankingOverlay) {
+        rankingOverlay.addEventListener("click", (event) => {
+            if (event.target === rankingOverlay) closeMyWorldCupRankingModal();
         });
     }
 

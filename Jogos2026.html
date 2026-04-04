@@ -768,6 +768,34 @@
         </div>
     </div>
 
+    <div class="mywc-ranking-overlay" id="mywc-ranking-overlay" hidden>
+        <div class="mywc-ranking-modal" role="dialog" aria-modal="true" aria-labelledby="mywc-ranking-title">
+            <button class="mywc-ranking-close" id="mywc-ranking-close" type="button" aria-label="Fechar ranking">x</button>
+            <div class="mywc-ranking-head">
+                <h3 id="mywc-ranking-title" class="mywc-ranking-title">Ranking da Copa</h3>
+                <p id="mywc-ranking-plays" class="mywc-ranking-plays">0 vez(es) jogada(s)</p>
+            </div>
+            <div class="mywc-ranking-summary">
+                <img id="mywc-ranking-cover" class="mywc-ranking-cover" src="" alt="Capa da copa">
+                <p id="mywc-ranking-description" class="mywc-ranking-description"></p>
+            </div>
+            <div class="mywc-ranking-table-wrap">
+                <table class="mywc-ranking-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Participante</th>
+                            <th>Pontos</th>
+                            <th>Titulos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mywc-ranking-tbody"></tbody>
+                </table>
+                <p id="mywc-ranking-empty" class="mywc-ranking-empty" hidden>Nenhuma partida registrada para esta copa.</p>
+            </div>
+        </div>
+    </div>
+
     <div class="steam-modal-overlay" id="steam-modal-overlay" aria-hidden="true">
         <div class="steam-modal" role="dialog" aria-modal="true" aria-labelledby="steam-modal-title">
             <button class="steam-modal-close" id="steam-modal-close" type="button" aria-label="Fechar modal">x</button>
@@ -910,7 +938,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260404-yxt19"></script>
+    <script src="script.js?v=20260404-yxt20"></script>
 </body>
 </html>
 
