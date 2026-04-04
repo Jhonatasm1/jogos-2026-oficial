@@ -3297,11 +3297,94 @@ async function fetchWcCover(gameName) {
     }
 }
 
+function normalizeWcTournamentEntry(entry) {
+    if (typeof entry === "string") {
+        const name = String(entry || "").trim();
+        if (!name) return null;
+        return {
+            id: createMyWorldCupId("wc-entry"),
+            name,
+            mediaType: "image",
+            mediaSrc: "",
+            cover: ""
+        };
+    }
+
+    if (!entry || typeof entry !== "object") return null;
+
+    const mediaType = String(entry.mediaType || "image") === "video" ? "video" : "image";
+    const name = String(entry.name || "").trim();
+    if (!name) return null;
+
+    const mediaSrc = mediaType === "video"
+        ? normalizeVideoUrl(entry.mediaSrc || entry.cover || "")
+        : "";
+    const cover = mediaType === "video"
+        ? String(entry.cover || getVideoCoverFromUrl(mediaSrc) || DEFAULT_GAME_COVER_PLACEHOLDER)
+        : String(entry.cover || "").trim();
+
+    return {
+        id: String(entry.id || createMyWorldCupId("wc-entry")),
+        name,
+        mediaType,
+        mediaSrc,
+        cover
+    };
+}
+
+async function resolveWcEntryCover(entry) {
+    const normalized = normalizeWcTournamentEntry(entry);
+    if (!normalized) return DEFAULT_GAME_COVER_PLACEHOLDER;
+
+    if (normalized.mediaType === "video") {
+        return normalized.cover || getVideoCoverFromUrl(normalized.mediaSrc) || DEFAULT_GAME_COVER_PLACEHOLDER;
+    }
+
+    if (normalized.cover && normalized.cover !== DEFAULT_GAME_COVER_PLACEHOLDER) {
+        return normalized.cover;
+    }
+
+    if (!normalized.name) return DEFAULT_GAME_COVER_PLACEHOLDER;
+    const fetched = await fetchWcCover(normalized.name);
+    return fetched || DEFAULT_GAME_COVER_PLACEHOLDER;
+}
+
+function preloadWcEntryCover(entry) {
+    const normalized = normalizeWcTournamentEntry(entry);
+    if (!normalized || normalized.mediaType !== "image") return;
+    if (!normalized.name) return;
+    if (normalized.cover && normalized.cover !== DEFAULT_GAME_COVER_PLACEHOLDER) return;
+
+    fetchWcCover(normalized.name)
+        .then((coverUrl) => {
+            if (entry && typeof entry === "object") {
+                entry.cover = coverUrl || DEFAULT_GAME_COVER_PLACEHOLDER;
+            }
+        })
+        .catch(() => {
+            // Keep default placeholder if preloading fails.
+        });
+}
+
+function renderWcCardMedia(cardElement, entry, coverUrl) {
+    const wrap = cardElement?.querySelector(".wc-card-img-wrap");
+    const normalized = normalizeWcTournamentEntry(entry);
+    if (!wrap || !normalized) return;
+
+    if (normalized.mediaType === "video" && normalized.mediaSrc) {
+        wrap.innerHTML = `<iframe class="wc-card-video" src="${escapeHtml(normalized.mediaSrc)}" title="${escapeHtml(normalized.name)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+        return;
+    }
+
+    const src = coverUrl || normalized.cover || DEFAULT_GAME_COVER_PLACEHOLDER;
+    wrap.innerHTML = `<img class="wc-card-img" src="${escapeHtml(src)}" alt="${escapeHtml(normalized.name)}" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'" />`;
+}
+
 function preloadNextMatchup() {
     const queue = wcState.matchupsQueue;
     if (queue.length >= 2) {
-        fetchWcCover(queue[0]);
-        fetchWcCover(queue[1]);
+        preloadWcEntryCover(queue[0]);
+        preloadWcEntryCover(queue[1]);
     }
 }
 
@@ -3327,7 +3410,13 @@ function renderWorldCup() {
 function mapMyCupToPlayableCup(cup) {
     const items = Array.isArray(cup?.choices)
         ? cup.choices
-            .map((choice) => String(choice?.name || "").trim())
+            .map((choice) => normalizeWcTournamentEntry({
+                id: choice?.id,
+                name: choice?.name,
+                mediaType: choice?.mediaType,
+                mediaSrc: choice?.mediaSrc,
+                cover: choice?.cover
+            }))
             .filter(Boolean)
         : [];
 
@@ -3443,7 +3532,7 @@ function startWorldCup(size) {
     if (!cup) return;
 
     const pool = Array.isArray(cup.items)
-        ? cup.items.map((item) => String(item || "").trim()).filter(Boolean)
+        ? cup.items.map((item) => normalizeWcTournamentEntry(item)).filter(Boolean)
         : [];
     if (pool.length < size || size < 2) return;
 
@@ -3506,15 +3595,15 @@ async function showNextMatchup() {
         wcState.matchIndex = 0;
     }
 
-    const left = wcState.matchupsQueue.shift();
-    const right = wcState.matchupsQueue.shift();
+    const left = normalizeWcTournamentEntry(wcState.matchupsQueue.shift());
+    const right = normalizeWcTournamentEntry(wcState.matchupsQueue.shift());
+
+    if (!left || !right) return;
 
     updateRoundInfo();
 
     const cardLeft = document.getElementById("wc-card-left");
     const cardRight = document.getElementById("wc-card-right");
-    const imgLeft = document.getElementById("wc-img-left");
-    const imgRight = document.getElementById("wc-img-right");
     const nameLeft = document.getElementById("wc-name-left");
     const nameRight = document.getElementById("wc-name-right");
 
@@ -3522,20 +3611,19 @@ async function showNextMatchup() {
 
     cardLeft.className = "wc-card wc-card--left";
     cardRight.className = "wc-card wc-card--right";
-    imgLeft.src = DEFAULT_GAME_COVER_PLACEHOLDER;
-    imgRight.src = DEFAULT_GAME_COVER_PLACEHOLDER;
-    nameLeft.textContent = left;
-    nameRight.textContent = right;
+    if (nameLeft) nameLeft.textContent = left.name;
+    if (nameRight) nameRight.textContent = right.name;
 
     const [coverLeft, coverRight] = await Promise.all([
-        fetchWcCover(left),
-        fetchWcCover(right)
+        resolveWcEntryCover(left),
+        resolveWcEntryCover(right)
     ]);
 
-    imgLeft.src = coverLeft;
-    imgRight.src = coverRight;
-    imgLeft.alt = left;
-    imgRight.alt = right;
+    left.cover = coverLeft;
+    right.cover = coverRight;
+
+    renderWcCardMedia(cardLeft, left, coverLeft);
+    renderWcCardMedia(cardRight, right, coverRight);
 
     preloadNextMatchup();
 
@@ -3543,7 +3631,7 @@ async function showNextMatchup() {
         document.getElementById(winnerId).classList.add("wc-card--picked");
         document.getElementById(loserId).classList.add("wc-card--lost");
         wcState.winnersQueue.push(winner);
-        wcState.eliminations.set(loser, wcState.currentRound);
+        wcState.eliminations.set(loser.name, wcState.currentRound);
         wcState.matchIndex++;
         setTimeout(() => showNextMatchup(), 550);
     };
@@ -3564,23 +3652,26 @@ async function showNextMatchup() {
 }
 
 async function showChampion(name) {
+    const championEntry = normalizeWcTournamentEntry(name);
+    if (!championEntry) return;
+
     const duel = document.getElementById("wc-duel");
     const champion = document.getElementById("wc-champion");
 
     if (duel) duel.hidden = true;
 
-    processLeagueAfterTournament(name);
+    processLeagueAfterTournament(championEntry.name);
 
-    const cover = await fetchWcCover(name);
+    const cover = await resolveWcEntryCover(championEntry);
 
     if (champion) {
         champion.hidden = false;
         champion.innerHTML = `
             <p class="wc-champion-label">O GRANDE CAMPE&Atilde;O</p>
             <img class="wc-champion-img" src="${cover}"
-                 alt="${escapeHtml(name)}"
+                 alt="${escapeHtml(championEntry.name)}"
                  onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'" />
-            <h2 class="wc-champion-name">${escapeHtml(name)}</h2>
+            <h2 class="wc-champion-name">${escapeHtml(championEntry.name)}</h2>
             <button class="wc-champion-restart" id="wc-champion-restart">Voltar &agrave; Vitrine</button>
         `;
         document.getElementById("wc-champion-restart")?.addEventListener("click", stopWorldCup);
