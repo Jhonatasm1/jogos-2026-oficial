@@ -526,23 +526,62 @@
 
             <!-- World Cup -->
             <section class="tab-content" id="world-cup">
-                <div class="wc-header">
+                <!-- Vitrine -->
+                <div class="wc-showcase" id="wc-showcase">
                     <h2 class="wc-title">World Cup</h2>
-                    <p class="wc-round-info" id="wc-round-info">Escolha seu lado. Apenas um jogo sobrevive.</p>
-                    <button class="wc-start-btn" id="wc-start-btn">Iniciar Torneio</button>
-                    <button class="wc-restart-btn" id="wc-restart-btn" hidden>Reiniciar</button>
-                </div>
-                <div class="wc-arena" id="wc-arena" hidden>
-                    <div class="wc-side wc-side--left" id="wc-side-left" role="button" tabindex="0">
-                        <div class="wc-side-overlay"></div>
-                        <span class="wc-side-name" id="wc-name-left">...</span>
+                    <div class="wc-toolbar">
+                        <input type="text" class="wc-search" id="wc-search" placeholder="Pesquisar copas..." />
+                        <select class="wc-filter" id="wc-category-filter">
+                            <option value="">Todas</option>
+                            <option value="Jogos">Jogos</option>
+                        </select>
                     </div>
-                    <div class="wc-vs">VS</div>
-                    <div class="wc-side wc-side--right" id="wc-side-right" role="button" tabindex="0">
-                        <div class="wc-side-overlay"></div>
-                        <span class="wc-side-name" id="wc-name-right">...</span>
+                    <div class="wc-grid" id="wc-grid"></div>
+                </div>
+
+                <!-- Size Modal -->
+                <div class="wc-modal-overlay" id="wc-modal-overlay" hidden>
+                    <div class="wc-modal">
+                        <button class="wc-modal-close" id="wc-modal-close" type="button">&times;</button>
+                        <h3 class="wc-modal-title" id="wc-modal-title">Os Melhores Jogos de Todos os Tempos</h3>
+                        <p class="wc-modal-subtitle">Escolha o tamanho do chaveamento:</p>
+                        <div class="wc-size-options">
+                            <button class="wc-size-btn" data-size="32">32</button>
+                            <button class="wc-size-btn" data-size="64">64</button>
+                            <button class="wc-size-btn" data-size="128">128</button>
+                            <button class="wc-size-btn" data-size="256">256</button>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Duel Arena -->
+                <div class="wc-duel" id="wc-duel" hidden>
+                    <div class="wc-duel-header">
+                        <button class="wc-back-btn" id="wc-back-btn">&larr; Voltar</button>
+                        <p class="wc-round-info" id="wc-round-info"></p>
+                    </div>
+                    <div class="wc-arena">
+                        <div class="wc-card wc-card--left" id="wc-card-left" role="button" tabindex="0">
+                            <div class="wc-card-img-wrap">
+                                <img class="wc-card-img" id="wc-img-left" src="" alt="" />
+                            </div>
+                            <div class="wc-card-bar wc-bar--left">
+                                <span class="wc-card-name" id="wc-name-left">...</span>
+                            </div>
+                        </div>
+                        <div class="wc-vs">VS</div>
+                        <div class="wc-card wc-card--right" id="wc-card-right" role="button" tabindex="0">
+                            <div class="wc-card-img-wrap">
+                                <img class="wc-card-img" id="wc-img-right" src="" alt="" />
+                            </div>
+                            <div class="wc-card-bar wc-bar--right">
+                                <span class="wc-card-name" id="wc-name-right">...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Champion -->
                 <div class="wc-champion" id="wc-champion" hidden></div>
             </section>
         </div>
