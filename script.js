@@ -3881,6 +3881,21 @@ function mutateSelectedMyWorldCup(mutator) {
     mutator(draft);
     draft.updatedAt = Date.now();
     myWcState.draftCup = normalizeMyWorldCup(draft);
+
+    const index = myWcState.selectedCupId
+        ? myWcState.cups.findIndex((cup) => cup.id === myWcState.selectedCupId)
+        : -1;
+
+    if (index >= 0) {
+        myWcState.cups[index] = normalizeMyWorldCup({
+            ...myWcState.draftCup,
+            createdAt: myWcState.cups[index].createdAt || myWcState.draftCup.createdAt,
+            updatedAt: Date.now()
+        });
+        saveMyWorldCupsToStorage();
+        myWcState.draftCup = normalizeMyWorldCup(myWcState.cups[index]);
+    }
+
     return myWcState.draftCup;
 }
 
@@ -4454,8 +4469,15 @@ function bindMyWorldCupEvents() {
 
     if (createBtn) {
         createBtn.addEventListener("click", () => {
-            myWcState.selectedCupId = null;
-            myWcState.draftCup = createDefaultMyWorldCup();
+            const createdCup = createDefaultMyWorldCup();
+            myWcState.cups.unshift(createdCup);
+            saveMyWorldCupsToStorage();
+
+            myWcState.selectedCupId = createdCup.id;
+            myWcState.draftCup = normalizeMyWorldCup({
+                ...createdCup,
+                choices: createdCup.choices.map((choice) => ({ ...choice }))
+            });
             myWcState.draftMode = "create";
             myWcState.choiceType = "image";
             myWcState.step = "cover";
