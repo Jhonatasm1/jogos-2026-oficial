@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Game of Us - Ranking Oficial</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260331-05">
+    <title>Your Gaming Temple</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260403-yxt15">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
     <header>
-        <h1>The Game of Us</h1>
+        <h1>Your Gaming Temple</h1>
         <div class="status-info">
             <p id="status-atualizacao">Carregando...</p>
             <p id="ultima-atualizacao"></p>
@@ -22,30 +23,33 @@
 
     <main>
         <nav class="tabs-nav">
-            <button class="tab-btn active" data-tab="visao-geral">Vis�o Geral</button>
+            <button class="tab-btn active" data-tab="bi-gamer">BI Gamer</button>
+            <button class="tab-btn" data-tab="visao-geral">Status</button>
             <button class="tab-btn" data-tab="tempo-jogo">Tempo de Jogo</button>
             <button class="tab-btn" data-tab="dificuldade">Dificuldade</button>
             <button class="tab-btn" data-tab="plataforma">Plataforma</button>
-            <button class="tab-btn" data-tab="avaliacao">Avalia��o Pessoal</button>
-            <button class="tab-btn" data-tab="tabela">Tabela Completa</button>
+            <button class="tab-btn" data-tab="avaliacao">Avalia&ccedil;&atilde;o Pessoal</button>
+            <button class="tab-btn" data-tab="user-ranking">Classifica&ccedil;&atilde;o do Usu&aacute;rio</button>
+            <button class="tab-btn" data-tab="steam-library">Biblioteca Steam</button>
+            <button class="tab-btn" data-tab="add-your-game">Add Your Game</button>
         </nav>
 
         <div class="filters-container" id="filters-top">
             <label>Plataforma:<select id="filter-plataforma"></select></label>
             <label>Multiplayer:<select id="filter-multiplayer"></select></label>
-            <label>Ano de Conclus�o:<select id="filter-ano-conclusao"></select></label>
+            <label>Ano de Conclus&atilde;o:<select id="filter-ano-conclusao"></select></label>
         </div>
 
         <div class="tabs-container">
-            <!-- Vis�o Geral -->
-            <section class="tab-content active" id="visao-geral">
+            <!-- Visao Geral -->
+            <section class="tab-content" id="visao-geral">
                 <div class="stats-grid">
                     <div class="stat-card">
                         <span class="stat-label">Total de Jogos</span>
                         <span class="stat-value" id="total-jogos">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Conclu�dos</span>
+                        <span class="stat-label">Conclu&iacute;dos</span>
                         <span class="stat-value" id="total-concluidos">-</span>
                     </div>
                     <div class="stat-card">
@@ -67,6 +71,117 @@
                 </div>
             </section>
 
+            <!-- BI Gamer -->
+            <section class="tab-content active" id="bi-gamer">
+                <div class="bi-layout">
+                    <aside class="bi-sidepanel">
+                        <h3 class="bi-title">BI Gamer</h3>
+                        <p class="bi-subtitle">Vis&atilde;o executiva do backlog e progresso.</p>
+                        <div class="bi-side-metrics">
+                            <div class="bi-mini-card">
+                                <span>Total</span>
+                                <strong id="bi-total">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Conclu&iacute;dos</span>
+                                <strong id="bi-concluidos">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Jogando</span>
+                                <strong id="bi-jogando">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Pendentes</span>
+                                <strong id="bi-pendentes">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Total de horas jogadas</span>
+                                <strong id="bi-horas-jogadas">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Total de horas pendentes</span>
+                                <strong id="bi-horas-pendentes">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>M&eacute;dia de tempo de gameplay</span>
+                                <strong id="bi-media-gameplay">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>M&eacute;dia dos jogos zerados</span>
+                                <strong id="bi-media-zerados">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Jogo solo mais jogado</span>
+                                <strong id="bi-solo-mais-jogado">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Dificuldade mais comum</span>
+                                <strong id="bi-dif-comum">-</strong>
+                            </div>
+                            <div class="bi-mini-card">
+                                <span>Dificuldade com mais horas</span>
+                                <strong id="bi-dif-horas">-</strong>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="bi-mainboard">
+                        <div class="bi-kpi-grid">
+                            <article class="bi-kpi">
+                                <p>Taxa de conclus&atilde;o</p>
+                                <h4 id="bi-taxa-conclusao">-</h4>
+                            </article>
+                            <article class="bi-kpi">
+                                <p>Nota m&eacute;dia pessoal</p>
+                                <h4 id="bi-nota-media">-</h4>
+                            </article>
+                            <article class="bi-kpi">
+                                <p>Top plataforma</p>
+                                <h4 id="bi-top-plataforma">-</h4>
+                            </article>
+                            <article class="bi-kpi">
+                                <p>Modo dominante</p>
+                                <h4 id="bi-top-multi">-</h4>
+                            </article>
+                        </div>
+
+                        <div class="bi-charts-row">
+                            <div class="chart-container bi-chart">
+                                <canvas id="chart-bi-plataforma"></canvas>
+                            </div>
+                            <div class="bi-list-card">
+                                <h4>Top 8 por tempo</h4>
+                                <div id="bi-top-jogos" class="bi-top-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="bi-tier-block" id="bi-tier-block">
+                            <div class="bi-tier-header">
+                                <div>
+                                    <input id="bi-tier-title-input" class="bi-tier-title-input" type="text" value="MAKE YOUR TIERLIST" aria-label="Titulo da Tier List">
+                                </div>
+                                <button id="bi-tier-export-png" class="bi-export-btn" type="button">Exportar PNG</button>
+                                <label class="bi-upload-btn" for="bi-tier-upload">Upload de Imagens</label>
+                                <input id="bi-tier-upload" type="file" accept="image/*" multiple hidden>
+                            </div>
+
+                            <div class="bi-tier-board-wrap" id="bi-tier-board-wrap">
+                                <div class="bi-tier-board" id="bi-tier-board"></div>
+                                <div class="bi-tier-resizer" id="bi-tier-resizer" title="Arraste para redimensionar a coluna dos tiers" aria-label="Redimensionar coluna dos tiers" role="slider"></div>
+                            </div>
+
+                            <div class="bi-tier-footer">
+                                <div class="bi-tier-trash" id="bi-tier-trash">Lixeira (solte aqui para excluir)</div>
+                                <div class="bi-tier-pool-wrap">
+                                    <h5>Imagens Disponiveis</h5>
+                                    <div class="bi-tier-pool" id="bi-tier-pool"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Tempo de Jogo -->
             <section class="tab-content" id="tempo-jogo">
                 <div class="stats-grid">
@@ -79,11 +194,11 @@
                         <span class="stat-value" id="total-horas-pendentes">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">M�dia de Tempo de Gameplay</span>
+                        <span class="stat-label">M&eacute;dia de Tempo de Gameplay</span>
                         <span class="stat-value" id="media-gameplay">-</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">M�dia dos Jogos Zerados</span>
+                        <span class="stat-label">M&eacute;dia dos Jogos Zerados</span>
                         <span class="stat-value" id="media-zerados">-</span>
                     </div>
                     <div class="stat-card">
@@ -128,44 +243,430 @@
                     </div>
                 </div>
 
-                <div class="hardcore-showcase">
-                    <div class="hardcore-banner" id="banner-sekiro">
-                        <div class="hardcore-title">N�vel<br>Sekiro</div>
-                        <div class="hardcore-games" id="list-sekiro"></div>
+                <div class="dif-showcase">
+                    <div class="dif-row">
+                        <div class="dif-banner" id="banner-sekiro">
+                            <div class="dif-banner-title">N&iacute;vel<br>Sekiro</div>
+                        </div>
+                        <div class="dif-games-panel" id="panel-sekiro">
+                            <h4 class="dif-panel-heading">Jogos N&iacute;vel Sekiro</h4>
+                            <div class="dif-games-list" id="list-sekiro"></div>
+                        </div>
                     </div>
-                    <div class="hardcore-banner" id="banner-trabalhoso">
-                        <div class="hardcore-title">Realmente<br>Trabalhoso</div>
-                        <div class="hardcore-games" id="list-trabalhoso"></div>
+                    <div class="dif-row">
+                        <div class="dif-banner" id="banner-trabalhoso">
+                            <div class="dif-banner-title">Realmente<br>Trabalhoso</div>
+                        </div>
+                        <div class="dif-games-panel" id="panel-trabalhoso">
+                            <h4 class="dif-panel-heading">Jogos Realmente Trabalhosos</h4>
+                            <div class="dif-games-list" id="list-trabalhoso"></div>
+                        </div>
+                    </div>
+                    <div class="dif-row">
+                        <div class="dif-banner" id="banner-esforco">
+                            <div class="dif-banner-title">Precisa de<br>um Esfor&ccedil;o</div>
+                        </div>
+                        <div class="dif-games-panel" id="panel-esforco">
+                            <h4 class="dif-panel-heading">Jogos que Precisam de Esfor&ccedil;o</h4>
+                            <div class="dif-games-list" id="list-esforco"></div>
+                        </div>
+                    </div>
+                    <div class="dif-row">
+                        <div class="dif-banner" id="banner-medio">
+                            <div class="dif-banner-title">M&eacute;dio</div>
+                        </div>
+                        <div class="dif-games-panel" id="panel-medio">
+                            <h4 class="dif-panel-heading">Jogos de Dificuldade M&eacute;dia</h4>
+                            <div class="dif-games-list" id="list-medio"></div>
+                        </div>
+                    </div>
+                    <div class="dif-row">
+                        <div class="dif-banner" id="banner-mamao">
+                            <div class="dif-banner-title">Mam&atilde;o<br>com A&ccedil;&uacute;car</div>
+                        </div>
+                        <div class="dif-games-panel" id="panel-mamao">
+                            <h4 class="dif-panel-heading">Jogos Mam&atilde;o com A&ccedil;&uacute;car</h4>
+                            <div class="dif-games-list" id="list-mamao"></div>
+                        </div>
+                    </div>
+                    <div class="dif-row">
+                        <div class="dif-banner" id="banner-cerebro">
+                            <div class="dif-banner-title">Basta ter<br>C&eacute;rebro</div>
+                        </div>
+                        <div class="dif-games-panel" id="panel-cerebro">
+                            <h4 class="dif-panel-heading">Jogos Basta ter C&eacute;rebro</h4>
+                            <div class="dif-games-list" id="list-cerebro"></div>
+                        </div>
                     </div>
                 </div>
 
-                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Todos os N�veis de Dificuldade</h3>
+                <h3 style="margin-top: 1.5rem; text-align: center; color: var(--text-light);">Todos os N&iacute;veis de Dificuldade</h3>
                 <div class="grid-container" id="grid-dificuldade" style="margin-top: 1rem;"></div>
             </section>
 
             <!-- Plataforma -->
             <section class="tab-content" id="plataforma">
-                <div class="grid-container" id="grid-plataforma"></div>
-            </section>
+                <div class="platform-layout">
+                    <aside class="platform-sidepanel">
+                        <h3 class="platform-title">Plataforma</h3>
+                        <p class="platform-subtitle">Distribui&ccedil;&atilde;o dos jogos por ecossistema.</p>
+                        <div class="platform-side-metrics">
+                            <div class="platform-mini-card">
+                                <span>Total de jogos no recorte</span>
+                                <strong id="pl-total-jogos">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataformas ativas</span>
+                                <strong id="pl-total-plataformas">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataforma l&iacute;der</span>
+                                <strong id="pl-lider">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Maior participa&ccedil;&atilde;o</span>
+                                <strong id="pl-lider-percent">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>M&eacute;dia jogos/plataforma</span>
+                                <strong id="pl-media-jogos">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataformas com 1 jogo</span>
+                                <strong id="pl-singletons">-</strong>
+                            </div>
+                            <div class="platform-mini-card">
+                                <span>Plataforma com mais horas</span>
+                                <strong id="pl-horas-top">-</strong>
+                            </div>
+                        </div>
+                    </aside>
 
-            <!-- Avalia��o Pessoal -->
-            <section class="tab-content" id="avaliacao">
-                <div class="list-container" id="lista-avaliacao"></div>
-            </section>
+                    <div class="platform-mainboard">
+                        <div class="platform-kpi-grid">
+                            <article class="platform-kpi">
+                                <p>Top 1</p>
+                                <h4 id="pl-kpi-top">-</h4>
+                            </article>
+                            <article class="platform-kpi">
+                                <p>Horas na l&iacute;der</p>
+                                <h4 id="pl-kpi-horas">-</h4>
+                            </article>
+                            <article class="platform-kpi">
+                                <p>Concentra&ccedil;&atilde;o Top 3</p>
+                                <h4 id="pl-kpi-top3">-</h4>
+                            </article>
+                        </div>
 
-            <!-- Tabela Completa -->
-            <section class="tab-content" id="tabela">
-                <div class="table-container">
-                    <table>
-                        <thead id="cabecalho-tabela"></thead>
-                        <tbody id="corpo-tabela"></tbody>
-                    </table>
+                        <div class="platform-charts-row">
+                            <div class="chart-container platform-chart">
+                                <canvas id="chart-plataforma-distribuicao"></canvas>
+                            </div>
+                            <div class="platform-list-card">
+                                <h4>Ranking de Plataformas</h4>
+                                <div class="platform-rank-list" id="grid-plataforma"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </section>
+
+            <!-- Avaliacao Pessoal -->
+            <section class="tab-content" id="avaliacao">
+                <div class="rating-layout">
+                    <aside class="rating-sidepanel">
+                        <h3 class="rating-title">Avaliacao Pessoal</h3>
+                        <p class="rating-subtitle">Ranking por criterio pessoal, do melhor para o pior.</p>
+                        <div class="rating-side-metrics">
+                            <div class="rating-mini-card">
+                                <span>Jogos avaliados</span>
+                                <strong id="av-total-jogos">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Nota media (escala convertida)</span>
+                                <strong id="av-nota-media">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Melhor faixa atual</span>
+                                <strong id="av-melhor-faixa">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Faixa dominante</span>
+                                <strong id="av-faixa-dominante">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Jogos de excelencia (>=9)</span>
+                                <strong id="av-jogos-excelencia">-</strong>
+                            </div>
+                            <div class="rating-mini-card">
+                                <span>Jogos fracos (<=3,5)</span>
+                                <strong id="av-jogos-fracos">-</strong>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="rating-mainboard">
+                        <div class="rating-kpi-grid">
+                            <article class="rating-kpi">
+                                <p>Jogo Top 1</p>
+                                <h4 id="av-kpi-top1">-</h4>
+                            </article>
+                            <article class="rating-kpi">
+                                <p>Cobertura de avaliacoes</p>
+                                <h4 id="av-kpi-cobertura">-</h4>
+                            </article>
+                            <article class="rating-kpi">
+                                <p>Variacao geral</p>
+                                <h4 id="av-kpi-variacao">-</h4>
+                            </article>
+                        </div>
+
+                        <div class="rating-charts-row">
+                            <div class="chart-container rating-chart">
+                                <canvas id="chart-avaliacao-distribuicao"></canvas>
+                            </div>
+                            <div class="rating-list-card">
+                                <h4>Ranking de Jogos por Avaliacao</h4>
+                                <div class="rating-rank-list" id="lista-avaliacao"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Classificacao do Usuario -->
+            <section class="tab-content" id="user-ranking">
+                <div class="user-ranking-layout">
+                    <aside class="user-ranking-sidepanel">
+                        <h3 class="user-ranking-title">Classifica&ccedil;&atilde;o do Usu&aacute;rio</h3>
+                        <p class="user-ranking-subtitle">Gamifica&ccedil;&atilde;o e percentis com base no seu tempo e na m&eacute;dia global simulada.</p>
+                        <div class="user-ranking-side-metrics">
+                            <div class="user-ranking-mini-card">
+                                <span>Jogos analisados</span>
+                                <strong id="ur-total-jogos">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Percentil m&eacute;dio</span>
+                                <strong id="ur-percentil-medio">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Jogos no Top 20%</span>
+                                <strong id="ur-jogos-top20">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Maior vantagem</span>
+                                <strong id="ur-mais-rapido">-</strong>
+                            </div>
+                            <div class="user-ranking-mini-card">
+                                <span>Maior desafio</span>
+                                <strong id="ur-mais-lento">-</strong>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="user-ranking-mainboard">
+                        <div class="user-ranking-kpi-grid">
+                            <article class="user-ranking-kpi">
+                                <p>Melhor posi&ccedil;&atilde;o</p>
+                                <h4 id="ur-kpi-melhor">-</h4>
+                            </article>
+                            <article class="user-ranking-kpi">
+                                <p>Desempenho m&eacute;dio</p>
+                                <h4 id="ur-kpi-media">-</h4>
+                            </article>
+                            <article class="user-ranking-kpi">
+                                <p>Recado da temporada</p>
+                                <h4 id="ur-kpi-impacto">-</h4>
+                            </article>
+                        </div>
+
+                        <div class="user-ranking-grid" id="user-ranking-grid"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Biblioteca Steam -->
+            <section class="tab-content" id="steam-library">
+                <div class="steam-header">
+                    <h3 class="steam-title">Biblioteca Steam</h3>
+                    <p class="steam-subtitle">Sincronize sua biblioteca Steam para ver seus jogos e horas jogadas.</p>
+                    <div class="steam-input-group">
+                        <input type="text" id="steam-id-input" placeholder="Digite seu SteamID64" />
+                        <button id="steam-sync-btn">Sincronizar Steam</button>
+                        <button id="export-backup-btn">Exportar Backup</button>
+                        <button id="import-backup-btn">Importar Backup</button>
+                        <input type="file" id="import-backup-input" accept=".json" hidden>
+                    </div>
+                    <p class="steam-status" id="steam-status"></p>
+                </div>
+                <div class="steam-results" id="steam-results"></div>
+            </section>
+
+            <!-- Add Your Game -->
+            <section class="tab-content" id="add-your-game">
+                <div class="steam-header">
+                    <h3 class="steam-title">Add Your Game</h3>
+                    <p class="steam-subtitle">Adicione jogos manualmente e edite a ficha como na Biblioteca Steam.</p>
+                    <div class="steam-input-group manual-input-group">
+                        <input type="text" id="manual-game-name" placeholder="Nome do jogo" />
+                        <input type="number" id="manual-game-hours" min="0" step="0.1" placeholder="Horas jogadas" />
+                        <input type="text" id="manual-game-appid" placeholder="Steam AppID (opcional)" />
+                        <button type="button" id="manual-cover-picker-btn">Escolher imagem</button>
+                        <input type="file" id="manual-cover-input" accept="image/*" hidden>
+                        <input type="url" id="manual-game-cover-url" placeholder="URL da capa (opcional)" />
+                        <button type="button" id="manual-add-game-btn">Adicionar jogo</button>
+                    </div>
+                    <p class="steam-status" id="manual-status"></p>
+                    <p class="manual-note">Se informar um AppID válido, a capa vem automaticamente da Steam. Você também pode trocar a imagem depois na ficha.</p>
+                </div>
+                <div class="steam-results" id="manual-games-results"></div>
             </section>
         </div>
     </main>
 
-    <script src="script.js?v=20260331-10"></script>
+    <div class="steam-modal-overlay" id="steam-modal-overlay" aria-hidden="true">
+        <div class="steam-modal" role="dialog" aria-modal="true" aria-labelledby="steam-modal-title">
+            <button class="steam-modal-close" id="steam-modal-close" type="button" aria-label="Fechar modal">x</button>
+            <div class="steam-modal-head">
+                <h3 class="steam-modal-title" id="steam-modal-title">Ficha do Jogo</h3>
+                <p class="steam-modal-subtitle">Enriqueca os dados da biblioteca para alimentar os graficos de BI.</p>
+            </div>
+
+            <div class="steam-modal-summary">
+                <div>
+                    <span class="steam-modal-label">Jogo</span>
+                    <strong id="steam-modal-game-name">-</strong>
+                </div>
+                <div>
+                    <span class="steam-modal-label">Horas Jogadas</span>
+                    <strong id="steam-modal-game-hours">-</strong>
+                </div>
+            </div>
+
+            <div class="steam-modal-cover">
+                <div class="steam-modal-cover-preview-wrap">
+                    <img id="meta-cover-preview" alt="Pré-visualização da capa do jogo" src="">
+                </div>
+                <div class="steam-modal-cover-fields">
+                    <label>
+                        <span>Steam AppID</span>
+                        <input id="meta-appid" name="appid" type="text" placeholder="Opcional">
+                    </label>
+
+                    <label>
+                        <span>Capa por URL</span>
+                        <input id="meta-cover-url" type="url" placeholder="Cole a URL da imagem">
+                    </label>
+
+                    <label>
+                        <span>Capa por arquivo</span>
+                        <input id="meta-cover-file" type="file" accept="image/*">
+                    </label>
+
+                    <div class="steam-modal-cover-actions">
+                        <button type="button" class="steam-btn-secondary" id="meta-cover-clear">Remover capa personalizada</button>
+                    </div>
+                </div>
+            </div>
+
+            <form class="steam-modal-form" id="steam-metadata-form">
+                <label>
+                    <span>Horas Jogadas</span>
+                    <input id="meta-playtime-hours" name="playtimeHours" type="number" min="0" step="0.1" placeholder="Ex.: 55">
+                </label>
+
+                <label>
+                    <span>Status</span>
+                    <select id="meta-status" name="status">
+                        <option value="">Selecione</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Jogando">Jogando</option>
+                        <option value="Concluido">Concluido</option>
+                        <option value="Pausado">Pausado</option>
+                        <option value="Dropado">Dropado</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Avaliacao Pessoal</span>
+                    <input id="meta-avaliacao" name="avaliacao" type="number" min="1" max="10" step="0.5" placeholder="Ex.: 8.5">
+                </label>
+
+                <label>
+                    <span>Multiplayer</span>
+                    <select id="meta-multiplayer" name="multiplayer">
+                        <option value="">Selecione</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Nao">Nao</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Prioridade</span>
+                    <select id="meta-prioridade" name="prioridade">
+                        <option value="">Selecione</option>
+                        <option value="Baixa">Baixa</option>
+                        <option value="Media">Media</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Ano de Conclusao</span>
+                    <input id="meta-ano-conclusao" name="anoConclusao" type="number" min="1980" max="2100" placeholder="Ex.: 2026">
+                </label>
+
+                <label>
+                    <span>Plataforma</span>
+                    <select id="meta-plataforma" name="plataforma">
+                        <option value="Steam">Steam</option>
+                        <option value="PS">PS</option>
+                        <option value="Xbox">Xbox</option>
+                        <option value="Epic">Epic</option>
+                        <option value="Switch">Switch</option>
+                        <option value="PC">PC</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Expectativa de Horas</span>
+                    <input id="meta-expectativa-horas" name="expectativaHoras" type="number" min="0" step="1" placeholder="Ex.: 40">
+                </label>
+
+                <label>
+                    <span>Dificuldade</span>
+                    <select id="meta-dificuldade" name="dificuldade">
+                        <option value="">Selecione</option>
+                        <option value="Mamao com acucar">Mamao com acucar</option>
+                        <option value="Basta ter cerebro">Basta ter cerebro</option>
+                        <option value="Medio">Medio</option>
+                        <option value="Precisa de esforco">Precisa de esforco</option>
+                        <option value="Realmente trabalhoso">Realmente trabalhoso</option>
+                        <option value="Nivel Sekiro">Nivel Sekiro</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Ano de Lancamento</span>
+                    <input id="meta-ano-lancamento" name="anoLancamento" type="number" min="1970" max="2100" placeholder="Ex.: 2018">
+                </label>
+
+                <label class="steam-modal-form-full">
+                    <span>Comentarios</span>
+                    <textarea id="meta-comentarios" name="comentarios" rows="4" placeholder="Observacoes sobre gameplay, backlog e objetivos."></textarea>
+                </label>
+
+                <div class="steam-modal-actions steam-modal-form-full">
+                    <button type="button" class="steam-btn-danger" id="steam-modal-delete">Remover jogo</button>
+                    <button type="button" class="steam-btn-secondary" id="steam-modal-cancel">Cancelar</button>
+                    <button type="submit" class="steam-btn-primary">Salvar Metadados</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js?v=20260403-yxt15"></script>
 </body>
 </html>
 
