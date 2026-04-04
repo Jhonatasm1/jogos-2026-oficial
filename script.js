@@ -3213,6 +3213,185 @@ function bindEvents() {
     });
 }
 
+/* ====================== WORLD CUP ====================== */
+
+const ultimateGamesList = ['A PLAGUE TALE: INNOCENCE','A PLAGUE TALE: REQUIEM','A SHORT HIKE','A WAY OUT','AETERNA LUCIS','AETERNA NOCTIS','ASSASSIN\'S CREED ORIGINS','ASSASSIN\'S CREED VALHALLA','ASSASSINS CREED BLACK FLAG','ASSASSINS CREED ODYSSEY','ASSASSINS CREED SHADOWS','ASSASSINS CREED UNITY','ATOM EVE','ATOMFALL','ATOMIC HEART','AVATAR THE BURNING EARTH','AVOWED','BACKROOM','BALATRO','BARDUR\'S GATE 3','BATMAN ARKHAM KNIGHT','BATTLEFIELD 1','BATTLETOADS','BEHIND THE FRAME','BEYOND BLUE','BIOSHOCK','BIOSHOCK 2','BIOSHOCK INFINITE','BLACK MITH WUKONG','BLASPHEMOUS','BLOODBRONE','BLOODSTAINED','BLOONS 6','BORDERLANDS 2','BREAD AND FRED','BROTHERS A TALE OF TWO SOULS','CALL OF DUTY BLACK OPS 6','CALL OF DUTY MODERN WARFARE 3','CARRY THE GLASS','CASTLE CRASHERS','CASTLEVANIA','CASTLEVANIA BLOODLINES','CASTLEVANIA II BELMONT\'S REVENGE','CASTLEVANIA II SIMON\'S QUEST','CASTLEVANIA III DRACULA\'S CURSE','CASTLEVANIA THE ADVENTURE','CELESTE','CITIES SKYLINES II','CIVILIZATION VI','CLAIR OBSCUR: EXPEDITION 33','COCOON','CONTROL','COUNTER STRIKE 2','CRASH BANDICOOT 4','CRASH N SANE TRILOGY 1','CRASH N SANE TRILOGY 2','CRASH N SANE TRILOGY 3','CUPHEAD','CYBERPUNK','DARK SOULS 2','DARK SOULS 3','DARK SOULS REMASTERED','DAYS GONE','DEAD CELLS','DEAD ISLAND 2','DEAD SPACE','DEATH STRANDING','DEATHLOOP','DELIVER AT ALL COSTS','DETROIT BECOME HUMAN','DIABLO IV','DISCO ELYSIUM','DIVINITY ORIGINAL SIN 2','DOKI DOKI LITERATURE CLUB PLUS!','DOOM ETERNAL','DOOM THE DARK AGES','DRAGON AGE INQUISITION','DRAGON AGE THE VEILGUARD','DREDGE','DYING LIGHT 2','EAFC 25','ELDEN RING','ELDEN RING NIGHTREIGN','ELDEN RING SHADOW OF THE ERDTREE','ENSLAVED','ENTER THE DUNGEON','ERICA','ESCAPE ACADEMY','FABLE','FAR CRY 5','FAR CRY 6','FAR: CHANGING TIDES','FIGMENT','FIGMENT 2','FINAL FANTASY VII REBIRTH','FINAL FANTASY VII REMAKE','FINAL FANTASY XVI','FIREBREAK','FIREWATCH','FLIGHT SIMULATOR','FORZA HORIZON 5','GEARS','GHOST OF TSUSHIMA','GHOSTRUNNER','GHOSTRUNNER 2','GOD OF WAR 2','GOD OF WAR 2018','GOD OF WAR 3','GOD OF WAR RAGNAROK','GOF OF WAR 3 REMASTERED','GOW RAGNAROK DLC VALHALLA','GRIS','GROUNDED','GROUNDED 2','GTA 5','GTA SAN ANDREAS','GTA VI','HALO INFINITE','HEAVY RAIN','HELA','HELLBLADE: SENUAS\'S SACRIFICE','HELLDIVERS 2','HIDDEN FOLKS','HOLLOW KNIGHT','HORIZON FORBIDDEN WEST','HORIZON ZERO DAWN','IMMORTALITY','IMMORTALITY (NÃO COMPRADO)','INDIANA JONES','INJUSTICE 2','INSIDE','INZOI','IT TAKES TWO','JUSANT','JUST DIE ALREADY','KENA','KINGDOM COME DELIVERANCE','KINGDOM COME DELIVERANCE II','LIES OF P','LIFE IS STRANGE','LIFE IS STRANGE TRUE COLORS','LIKE A DRAGON GAIDEN','LIKE A DRAGON: PIRATE YAKUZA','LIMBO','LITTLE NIGHTMARES','LITTLE NIGHTMARES 2','LORDS OF THE FALLEN','LOST RECORDS','MANDRAGORA','MANOR LORDS','MELTY BLOOD: TYPE LUMINA','MISIDE','MONSTER HUNTER WORLD','MONUMENT VALLEY','MONUMENT VALLEY 2','MOONLIGHTER','MORTAL KOMBAT 1','MORTAL KOMBAT SHAOLIN MONKS','MORTAL SHEEL','NEED FOR SPEED UNDERGROUND 2','NEED FOR SPEES UNBOUND','NIER: AUTOMATA','NINE SOLS','NINJA GAIDEN 4','NIOH','NIOH 2','NO MAN\'S SKY','NOUR: PLAY WITH YOUR FOOD','ORI AND THE BLIND FOREST','ORI AND THE WILL OF THE WISPS','OUTBOUND','OUTWARD','PANICORE','PATHOLOGIC 3','PERSONA 3 RELOAD','PERSONA 4 GOLDEN','PERSONA 5','PILGRIMS','PLANET OF LANA','PORTAL','PORTAL 2','PRAGMATA','PROJECT ZOMBOID','RAFT','RAIN WORLD','RED DEAD REDEMPTION 2','REMATCH','REMNANT 2','RESIDENT EVIL 3 REMAKE','RESIDENT EVIL VILLAGE','RISE OF THE TOMB RAIDER','SALT AND SACRIFICE','SALT AND SANCTUARY','SEA OF THIEVES','SEKIRO','SENUA\'S SAGA HELLBLADE 2','SHADOW OF MORDOR','SHADOW OF THE COLOSSUS','SHADOW OF THE TOMB RAIDER','SIFU','SILENT HILL 2 REMAKE','SILENT HILL f','SILKSONG','SNAKEBIRD','SOMERVILLE','SONS OF THE FOREST','SOUTH OF MIDNIGHT','SPELUNK 2','SPIDER MAN','SPIDER MAN MILES MORALES','SPLIT FICTION','STAR WARS JEDI: SURVIVOR','STARFIELD','STRANDED: ALIEN DAWN','STRAY','SUPER CASTLEVANIA IV','SUPER MEAT BOY','SWORD OF THE SEA','THE ALTERS','THE ASCENT','THE DARK PICTURES: HOUSE OF ASHES','THE DIVISION','THE DIVISION 2','THE ELDER SCROLLS IV: OBLIVION','THE ESCAPISTS 2','THE EVIL WITHIN','THE EVIL WITHIN 2','THE FIRST DESCENDANT','THE LAST GUARDIAN','THE LAST OF US','THE LAST OF US PART 2','THE LAST OF US: LEFT BEHIND','THE LONG DARK','THE OUTER WORLDS','THE QUARRY','THE SPECTRUM RETREAT','THE STANLEY PARABLE','THE SURGE','THE SURGE 2','THE WITCHER 3','TO THE MOON','TOMB RAIDER','TURN ON THE LIGHT','UNCHARTED 2','UNCHARTED 3','UNCHARTED 4','UNCHARTED THE LOST LEGACY','UNPACKING','UNRAVEL','UNRAVEL TWO','UNTIL DAWN','WATCH DOGS 2','WHAT REMAINS OF EDITH FINCH','WORLD WAR Z AFTERMATH','WRECKFEST','WUCHANG: FALLEN FEATHERS','YAKUZA: LIKE A DRAGON','CASTLEVANIA: SYMPHONY OF THE NIGHT','CHRONO TRIGGER','DRAGON QUEST XI: ECHOES OF AN ELUSIVE AGE','FALLOUT: NEW VEGAS','FINAL FANTASY VI','FTL: FASTER THAN LIGHT','GENSHIN IMPACT','HADES','HALF-LIFE 2','KERBAL SPACE PROGRAM','MASS EFFECT 2','METAL GEAR SOLID 3: SNAKE EATER','MINECRAFT','OUTER WILDS','RETURNAL','STARDEW VALLEY','SUPER MARIO GALAXY','SUPER MARIO WORLD','SUPER METROID','TETRIS','THE ELDER SCROLLS V: SKYRIM','THE LEGEND OF ZELDA: BREATH OF THE WILD','THE LEGEND OF ZELDA: OCARINA OF TIME'];
+
+const wcState = {
+    currentRound: 256,
+    matchupsQueue: [],
+    winnersQueue: [],
+    matchIndex: 0,
+    totalMatchesInRound: 128,
+    running: false,
+    coverCache: new Map()
+};
+
+function shuffleArray(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+async function fetchWcCover(gameName) {
+    if (wcState.coverCache.has(gameName)) return wcState.coverCache.get(gameName);
+    try {
+        const result = await searchSteamGameByName(gameName);
+        const url = result && result.appid
+            ? `https://cdn.akamai.steamstatic.com/steam/apps/${result.appid}/header.jpg`
+            : DEFAULT_GAME_COVER_PLACEHOLDER;
+        wcState.coverCache.set(gameName, url);
+        return url;
+    } catch {
+        wcState.coverCache.set(gameName, DEFAULT_GAME_COVER_PLACEHOLDER);
+        return DEFAULT_GAME_COVER_PLACEHOLDER;
+    }
+}
+
+function renderWorldCup() {
+    const startBtn = document.getElementById("wc-start-btn");
+    const restartBtn = document.getElementById("wc-restart-btn");
+    if (!wcState.running) {
+        if (startBtn) startBtn.hidden = false;
+        if (restartBtn) restartBtn.hidden = true;
+    }
+}
+
+function startWorldCup() {
+    wcState.matchupsQueue = shuffleArray(ultimateGamesList);
+    wcState.winnersQueue = [];
+    wcState.currentRound = wcState.matchupsQueue.length;
+    wcState.matchIndex = 0;
+    wcState.totalMatchesInRound = wcState.currentRound / 2;
+    wcState.running = true;
+
+    const startBtn = document.getElementById("wc-start-btn");
+    const restartBtn = document.getElementById("wc-restart-btn");
+    const arena = document.getElementById("wc-arena");
+    const champion = document.getElementById("wc-champion");
+
+    if (startBtn) startBtn.hidden = true;
+    if (restartBtn) restartBtn.hidden = false;
+    if (arena) arena.hidden = false;
+    if (champion) { champion.hidden = true; champion.innerHTML = ""; }
+
+    showNextMatchup();
+}
+
+function updateRoundInfo() {
+    const el = document.getElementById("wc-round-info");
+    if (!el) return;
+
+    if (wcState.currentRound === 2) {
+        el.textContent = `GRANDE FINAL - Duelo ${wcState.matchIndex + 1}/1`;
+    } else if (wcState.currentRound === 4) {
+        el.textContent = `Semifinal - Duelo ${wcState.matchIndex + 1}/${wcState.totalMatchesInRound}`;
+    } else if (wcState.currentRound === 8) {
+        el.textContent = `Quartas de Final - Duelo ${wcState.matchIndex + 1}/${wcState.totalMatchesInRound}`;
+    } else {
+        el.textContent = `Fase de ${wcState.currentRound} - Duelo ${wcState.matchIndex + 1}/${wcState.totalMatchesInRound}`;
+    }
+}
+
+async function showNextMatchup() {
+    if (wcState.matchupsQueue.length < 2) {
+        if (wcState.winnersQueue.length === 1) {
+            showChampion(wcState.winnersQueue[0]);
+            return;
+        }
+        wcState.matchupsQueue = wcState.winnersQueue;
+        wcState.winnersQueue = [];
+        wcState.currentRound = wcState.matchupsQueue.length;
+        wcState.totalMatchesInRound = wcState.currentRound / 2;
+        wcState.matchIndex = 0;
+    }
+
+    const left = wcState.matchupsQueue.shift();
+    const right = wcState.matchupsQueue.shift();
+
+    updateRoundInfo();
+
+    const sideLeft = document.getElementById("wc-side-left");
+    const sideRight = document.getElementById("wc-side-right");
+    const nameLeft = document.getElementById("wc-name-left");
+    const nameRight = document.getElementById("wc-name-right");
+
+    if (!sideLeft || !sideRight) return;
+
+    sideLeft.className = "wc-side wc-side--left";
+    sideRight.className = "wc-side wc-side--right";
+    sideLeft.style.backgroundImage = `url('${DEFAULT_GAME_COVER_PLACEHOLDER}')`;
+    sideRight.style.backgroundImage = `url('${DEFAULT_GAME_COVER_PLACEHOLDER}')`;
+    nameLeft.textContent = left;
+    nameRight.textContent = right;
+
+    const [coverLeft, coverRight] = await Promise.all([
+        fetchWcCover(left),
+        fetchWcCover(right)
+    ]);
+
+    sideLeft.style.backgroundImage = `url('${coverLeft}')`;
+    sideRight.style.backgroundImage = `url('${coverRight}')`;
+
+    const pick = (winner, loser, winnerId, loserId) => {
+        document.getElementById(winnerId).classList.add("wc-side--picked");
+        document.getElementById(loserId).classList.add("wc-side--lost");
+        wcState.winnersQueue.push(winner);
+        wcState.matchIndex++;
+
+        setTimeout(() => showNextMatchup(), 550);
+    };
+
+    const onClickLeft = () => {
+        sideLeft.removeEventListener("click", onClickLeft);
+        sideRight.removeEventListener("click", onClickRight);
+        pick(left, right, "wc-side-left", "wc-side-right");
+    };
+    const onClickRight = () => {
+        sideLeft.removeEventListener("click", onClickLeft);
+        sideRight.removeEventListener("click", onClickRight);
+        pick(right, left, "wc-side-right", "wc-side-left");
+    };
+
+    sideLeft.addEventListener("click", onClickLeft);
+    sideRight.addEventListener("click", onClickRight);
+}
+
+async function showChampion(name) {
+    const arena = document.getElementById("wc-arena");
+    const champion = document.getElementById("wc-champion");
+    const info = document.getElementById("wc-round-info");
+
+    if (arena) arena.hidden = true;
+    if (info) info.textContent = "Torneio encerrado!";
+
+    const cover = await fetchWcCover(name);
+
+    if (champion) {
+        champion.hidden = false;
+        champion.innerHTML = `
+            <p class="wc-champion-label">O GRANDE CAMPE&Atilde;O</p>
+            <img class="wc-champion-img" src="${cover}"
+                 alt="${escapeHtml(name)}"
+                 onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'" />
+            <h2 class="wc-champion-name">${escapeHtml(name)}</h2>
+        `;
+    }
+
+    wcState.running = false;
+}
+
+function bindWorldCupEvents() {
+    const startBtn = document.getElementById("wc-start-btn");
+    const restartBtn = document.getElementById("wc-restart-btn");
+
+    if (startBtn) startBtn.addEventListener("click", startWorldCup);
+    if (restartBtn) restartBtn.addEventListener("click", startWorldCup);
+}
+
 function init() {
     bindEvents();
     bindSteamEvents();
