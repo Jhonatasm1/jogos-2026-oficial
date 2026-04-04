@@ -37,6 +37,7 @@ const DEFAULT_STEAM_METADATA = {
 
 const state = {
     overviewFilters: {
+        status: "",
         plataforma: "",
         multiplayer: "",
         anoConclusao: ""
