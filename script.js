@@ -14,8 +14,8 @@ const AVALIACAO_SCALE = [
     { key: "decepcionante", label: "Decepcionante", score: 2, color: "#ef9ea5" }
 ];
 
-const STEAM_API_BASE = "https://yxt-backend.onrender.com/steam-library/";
-const STEAM_SEARCH_API_BASE = "https://yxt-backend.onrender.com/steam-search";
+const STEAM_API_BASE = "http://localhost:5000/steam-library/";
+const STEAM_SEARCH_API_BASE = "http://localhost:5000/steam-search";
 const STEAM_LIBRARY_STORAGE_KEY = "yxt_library";
 const STEAM_LIBRARY_STEAM_ID_KEY = "yxt_library_steam_id";
 const MANUAL_GAME_STORAGE_KEY = "yxt_manual_games";
