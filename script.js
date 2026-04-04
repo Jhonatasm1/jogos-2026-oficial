@@ -3166,6 +3166,14 @@ function switchTab(tabId) {
 }
 
 function bindEvents() {
+    if (dom.filterStatus) {
+        dom.filterStatus.addEventListener("change", (event) => {
+            state.overviewFilters.status = event.target.value;
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
+            switchTab(activeTab);
+        });
+    }
+
     if (dom.filterPlataforma) {
         dom.filterPlataforma.addEventListener("change", (event) => {
             state.overviewFilters.plataforma = event.target.value;
