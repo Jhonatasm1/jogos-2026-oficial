@@ -3336,7 +3336,7 @@ async function showNextMatchup() {
     sideLeft.style.backgroundImage = `url('${coverLeft}')`;
     sideRight.style.backgroundImage = `url('${coverRight}')`;
 
-    const pick = (winner, loser, winnerId, loserId) => {
+    const pick = (winner, winnerId, loserId) => {
         document.getElementById(winnerId).classList.add("wc-side--picked");
         document.getElementById(loserId).classList.add("wc-side--lost");
         wcState.winnersQueue.push(winner);
@@ -3348,12 +3348,12 @@ async function showNextMatchup() {
     const onClickLeft = () => {
         sideLeft.removeEventListener("click", onClickLeft);
         sideRight.removeEventListener("click", onClickRight);
-        pick(left, right, "wc-side-left", "wc-side-right");
+        pick(left, "wc-side-left", "wc-side-right");
     };
     const onClickRight = () => {
         sideLeft.removeEventListener("click", onClickLeft);
         sideRight.removeEventListener("click", onClickRight);
-        pick(right, left, "wc-side-right", "wc-side-left");
+        pick(right, "wc-side-right", "wc-side-left");
     };
 
     sideLeft.addEventListener("click", onClickLeft);
