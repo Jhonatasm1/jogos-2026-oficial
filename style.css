@@ -2312,6 +2312,8 @@ body.modal-open {
     animation: fadeIn 0.2s ease;
 }
 
+.wc-modal-overlay[hidden] { display: none; }
+
 .wc-modal {
     background: var(--bg-1);
     border: 1px solid var(--gold-border);
