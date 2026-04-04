@@ -2404,6 +2404,8 @@ body.modal-open {
 
 .wc-cup-card-body {
     padding: 0.85rem 1rem;
+    display: grid;
+    gap: 0.45rem;
 }
 
 .wc-cup-card-title {
@@ -2417,6 +2419,28 @@ body.modal-open {
 .wc-cup-card-meta {
     font-size: 0.8rem;
     color: var(--fg-muted);
+}
+
+.wc-cup-card-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.wc-cup-card-btn {
+    border: 1px solid var(--gold-border);
+    background: rgba(212, 168, 83, 0.12);
+    color: var(--gold-bright);
+    border-radius: 8px;
+    padding: 0.28rem 0.62rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.wc-cup-card-btn:hover {
+    border-color: var(--gold);
+    background: rgba(212, 168, 83, 0.22);
+    color: #fff3cc;
 }
 
 /* ── Size Modal ── */

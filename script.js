@@ -3242,6 +3242,8 @@ const LEAGUE_SCORING_SYSTEM = {
 };
 
 const LEAGUE_STORAGE_KEY = "yxt_games_league";
+const WC_PUBLIC_STATS_KEY = "yxt_wc_public_stats";
+const LEGACY_LEAGUE_EXCLUDED_NAMES = new Set(["une vie a t'aimer"]);
 
 const wcState = {
     currentRound: 0,
@@ -3493,16 +3495,53 @@ function renderWcGrid() {
             <div class="wc-cup-card-body">
                 <h4 class="wc-cup-card-title">${escapeHtml(cup.title)}</h4>
                 <span class="wc-cup-card-meta">${cup.category} &middot; ${cup.items.length} itens</span>
+                <div class="wc-cup-card-actions">
+                    <button type="button" class="wc-cup-card-btn" data-action="ranking">Ver ranking</button>
+                </div>
             </div>
         </div>
     `).join("");
 
     grid.querySelectorAll(".wc-cup-card").forEach(card => {
-        card.addEventListener("click", () => {
+        card.addEventListener("click", (event) => {
             const cupId = card.getAttribute("data-cup-id");
             const cup = cups.find(c => c.id === cupId);
-            if (cup) openWcSizeModal(cup);
+            if (!cup) return;
+
+            const rankingBtn = event.target.closest('.wc-cup-card-btn[data-action="ranking"]');
+            if (rankingBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                openWorldCupRankingModal(cup);
+                return;
+            }
+
+            openWcSizeModal(cup);
         });
+    });
+}
+
+function openWorldCupRankingModal(cup) {
+    if (!cup) return;
+
+    if (String(cup.sourceType || "") === "custom") {
+        const customCupId = String(cup.sourceCupId || cup.id || "");
+        if (customCupId) {
+            openMyWorldCupRankingModal(customCupId);
+        }
+        return;
+    }
+
+    const league = isGlobalLeagueCup(cup) ? loadLeagueData() : [];
+    const fallbackPlays = league.reduce((acc, entry) => acc + Math.max(0, Number(entry?.titles) || 0), 0);
+    const plays = Math.max(getPublicWorldCupPlays(cup.id), fallbackPlays);
+
+    setCupRankingModalData({
+        title: String(cup.title || "World Cup"),
+        cover: String(cup.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
+        description: String(cup.description || "Copa publica para duelos da comunidade.").trim() || "Copa publica para duelos da comunidade.",
+        plays,
+        leaderboard: league
     });
 }
 
@@ -3690,12 +3729,72 @@ async function showChampion(name) {
 
 /* ── League ── */
 
+function normalizeLeagueNameKey(value) {
+    return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[’`]/g, "'")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function sanitizeLeagueEntries(entries) {
+    return (Array.isArray(entries) ? entries : [])
+        .map((entry) => ({
+            name: String(entry?.name || "").trim(),
+            points: Math.max(0, Number(entry?.points) || 0),
+            titles: Math.max(0, Number(entry?.titles) || 0)
+        }))
+        .filter((entry) => Boolean(entry.name))
+        .filter((entry) => !LEGACY_LEAGUE_EXCLUDED_NAMES.has(normalizeLeagueNameKey(entry.name)));
+}
+
+function loadPublicWorldCupStats() {
+    try {
+        const raw = localStorage.getItem(WC_PUBLIC_STATS_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function savePublicWorldCupStats(stats) {
+    localStorage.setItem(WC_PUBLIC_STATS_KEY, JSON.stringify(stats));
+}
+
+function getPublicWorldCupPlays(cupId) {
+    const key = String(cupId || "");
+    if (!key) return 0;
+
+    const stats = loadPublicWorldCupStats();
+    return Math.max(0, Number(stats?.[key]?.plays) || 0);
+}
+
+function incrementPublicWorldCupPlays(cupId) {
+    const key = String(cupId || "");
+    if (!key) return;
+
+    const stats = loadPublicWorldCupStats();
+    const current = Math.max(0, Number(stats?.[key]?.plays) || 0);
+    stats[key] = { plays: current + 1 };
+    savePublicWorldCupStats(stats);
+}
+
 function loadLeagueData() {
     try {
         const raw = localStorage.getItem(LEAGUE_STORAGE_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
+        const cleaned = sortLeagueEntries(sanitizeLeagueEntries(parsed));
+
+        if (!Array.isArray(parsed) || JSON.stringify(cleaned) !== JSON.stringify(parsed)) {
+            saveLeagueData(cleaned);
+        }
+
+        return cleaned;
     } catch {
         return [];
     }
@@ -3830,6 +3929,7 @@ function processLeagueAfterTournament(championName) {
 
     const sorted = sortLeagueEntries([...leagueMap.values()]);
     saveLeagueData(sorted);
+    incrementPublicWorldCupPlays(activeCup?.id || "best-games");
     renderLeagueTable(sorted);
 }
 
@@ -4469,7 +4569,7 @@ function closeMyWorldCupRankingModal() {
     if (overlay) overlay.hidden = true;
 }
 
-function openMyWorldCupRankingModal(cupId) {
+function setCupRankingModalData(payload) {
     const overlay = document.getElementById("mywc-ranking-overlay");
     const titleEl = document.getElementById("mywc-ranking-title");
     const coverEl = document.getElementById("mywc-ranking-cover");
@@ -4478,18 +4578,19 @@ function openMyWorldCupRankingModal(cupId) {
     const tbody = document.getElementById("mywc-ranking-tbody");
     const empty = document.getElementById("mywc-ranking-empty");
 
-    const cup = myWcState.cups.find((entry) => entry.id === String(cupId));
-    if (!cup || !overlay || !titleEl || !coverEl || !descEl || !playsEl || !tbody || !empty) return;
+    if (!overlay || !titleEl || !coverEl || !descEl || !playsEl || !tbody || !empty) return;
 
-    const normalizedCup = normalizeMyWorldCup(cup);
-    const plays = Number(normalizedCup.stats?.plays || 0);
-    const leaderboard = sortLeagueEntries(normalizedCup.stats?.leaderboard || []);
+    const title = String(payload?.title || "World Cup");
+    const description = String(payload?.description || "Sem descricao.").trim() || "Sem descricao.";
+    const cover = String(payload?.cover || DEFAULT_GAME_COVER_PLACEHOLDER);
+    const plays = Math.max(0, Number(payload?.plays) || 0);
+    const leaderboard = sortLeagueEntries(Array.isArray(payload?.leaderboard) ? payload.leaderboard : []);
 
-    titleEl.textContent = normalizedCup.title || "World Cup";
-    descEl.textContent = normalizedCup.description || "Sem descricao.";
+    titleEl.textContent = title;
+    descEl.textContent = description;
     playsEl.textContent = `${plays} vez(es) jogada(s)`;
-    coverEl.src = normalizedCup.cover || DEFAULT_GAME_COVER_PLACEHOLDER;
-    coverEl.alt = normalizedCup.title || "Capa da copa";
+    coverEl.src = cover;
+    coverEl.alt = title || "Capa da copa";
 
     if (!leaderboard.length) {
         tbody.innerHTML = "";
@@ -4500,13 +4601,27 @@ function openMyWorldCupRankingModal(cupId) {
             <tr>
                 <td>${index + 1}</td>
                 <td title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</td>
-                <td>${entry.points}</td>
-                <td>${entry.titles}</td>
+                <td>${Math.max(0, Number(entry.points) || 0)}</td>
+                <td>${Math.max(0, Number(entry.titles) || 0)}</td>
             </tr>
         `).join("");
     }
 
     overlay.hidden = false;
+}
+
+function openMyWorldCupRankingModal(cupId) {
+    const cup = myWcState.cups.find((entry) => entry.id === String(cupId));
+    if (!cup) return;
+
+    const normalizedCup = normalizeMyWorldCup(cup);
+    setCupRankingModalData({
+        title: normalizedCup.title,
+        cover: normalizedCup.cover,
+        description: normalizedCup.description || "Sem descricao.",
+        plays: Number(normalizedCup.stats?.plays || 0),
+        leaderboard: normalizedCup.stats?.leaderboard || []
+    });
 }
 
 function renderMyWorldCups(forceListOnly) {
