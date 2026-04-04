@@ -2210,147 +2210,299 @@ body.modal-open {
    World Cup
    ══════════════════════════════════════ */
 
-.wc-header {
-    text-align: center;
-    margin-bottom: 1.5rem;
-}
-
+/* ── Showcase (Vitrine) ── */
 .wc-title {
     font-family: "Cinzel", serif;
     font-size: 2rem;
     font-weight: 900;
     color: var(--gold-bright);
     text-shadow: 0 0 18px rgba(212, 168, 83, 0.35);
+    margin: 0 0 1.25rem;
+    text-align: center;
+}
+
+.wc-toolbar {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.wc-search {
+    flex: 1;
+    min-width: 180px;
+    padding: 0.6rem 1rem;
+    background: var(--bg-2);
+    border: 1px solid var(--gold-border);
+    border-radius: 6px;
+    color: var(--fg-base);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.wc-search:focus { border-color: var(--gold); }
+.wc-search::placeholder { color: var(--fg-muted); }
+
+.wc-filter {
+    padding: 0.6rem 1rem;
+    background: var(--bg-2);
+    border: 1px solid var(--gold-border);
+    border-radius: 6px;
+    color: var(--fg-base);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.wc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.wc-cup-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.wc-cup-card:hover {
+    transform: translateY(-4px) scale(1.015);
+    border-color: var(--gold);
+    box-shadow: 0 6px 30px var(--gold-glow), 0 0 0 1px var(--gold-border);
+}
+
+.wc-cup-card-img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+}
+
+.wc-cup-card-body {
+    padding: 0.85rem 1rem;
+}
+
+.wc-cup-card-title {
+    font-family: "Syne", sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-light);
     margin: 0 0 0.25rem;
 }
 
-.wc-round-info {
-    color: var(--fg-muted);
-    font-size: 1rem;
-    margin: 0 0 1rem;
-}
-
-.wc-start-btn,
-.wc-restart-btn {
-    padding: 0.7rem 2rem;
-    font-family: "Syne", sans-serif;
-    font-weight: 700;
-    font-size: 0.95rem;
-    border: 2px solid var(--gold);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--gold);
-    cursor: pointer;
-    transition: all 0.25s ease;
-}
-
-.wc-start-btn:hover,
-.wc-restart-btn:hover {
-    background: var(--gold);
-    color: var(--bg-0);
-}
-
-.wc-restart-btn {
-    margin-left: 0.75rem;
-    border-color: var(--fg-muted);
+.wc-cup-card-meta {
+    font-size: 0.8rem;
     color: var(--fg-muted);
 }
 
-.wc-restart-btn:hover {
-    border-color: var(--gold);
-    background: var(--gold);
-    color: var(--bg-0);
-}
-
-/* Arena */
-.wc-arena {
-    position: relative;
-    display: flex;
-    width: 100%;
-    min-height: 70vh;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid var(--gold-border);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-}
-
-.wc-side {
-    flex: 1;
-    position: relative;
+/* ── Size Modal ── */
+.wc-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
     justify-content: center;
-    background-size: cover;
-    background-position: center;
-    cursor: pointer;
-    transition: flex 0.4s ease, filter 0.3s ease;
-    overflow: hidden;
+    animation: fadeIn 0.2s ease;
 }
 
-.wc-side-overlay {
-    position: absolute;
-    inset: 0;
-    transition: background 0.3s ease;
-}
-
-.wc-side--left .wc-side-overlay {
-    background: linear-gradient(135deg, rgba(26, 159, 218, 0.55) 0%, rgba(8, 9, 13, 0.70) 100%);
-}
-
-.wc-side--right .wc-side-overlay {
-    background: linear-gradient(225deg, rgba(212, 168, 83, 0.55) 0%, rgba(8, 9, 13, 0.70) 100%);
-}
-
-.wc-side:hover .wc-side-overlay {
-    background: rgba(8, 9, 13, 0.30) !important;
-}
-
-.wc-side:hover {
-    flex: 1.25;
-}
-
-.wc-side:not(:hover) {
-    flex: 0.85;
-}
-
-.wc-arena:not(:hover) .wc-side {
-    flex: 1;
-}
-
-.wc-side-name {
+.wc-modal {
+    background: var(--bg-1);
+    border: 1px solid var(--gold-border);
+    border-radius: 14px;
+    padding: 2.5rem 2rem;
+    max-width: 440px;
+    width: 90%;
+    text-align: center;
     position: relative;
-    z-index: 2;
+    box-shadow: 0 12px 60px rgba(0, 0, 0, 0.6);
+}
+
+.wc-modal-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: var(--fg-muted);
+    font-size: 1.6rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.wc-modal-close:hover { color: var(--text-light); }
+
+.wc-modal-title {
     font-family: "Cinzel", serif;
     font-weight: 700;
-    font-size: clamp(1.2rem, 3vw, 2.2rem);
-    color: #fff;
+    font-size: 1.25rem;
+    color: var(--gold-bright);
+    margin: 0 0 0.35rem;
+}
+
+.wc-modal-subtitle {
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    margin: 0 0 1.5rem;
+}
+
+.wc-size-options {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.wc-size-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    border: 2px solid var(--gold-border);
+    background: var(--bg-2);
+    color: var(--gold);
+    font-family: "Cinzel", serif;
+    font-weight: 900;
+    font-size: 1.35rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wc-size-btn:hover {
+    border-color: var(--gold);
+    background: var(--gold);
+    color: var(--bg-0);
+    box-shadow: 0 0 20px var(--gold-glow);
+    transform: scale(1.08);
+}
+
+/* ── Duel ── */
+.wc-duel-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.wc-back-btn {
+    position: absolute;
+    left: 0;
+    padding: 0.4rem 1rem;
+    background: transparent;
+    border: 1px solid var(--fg-muted);
+    border-radius: 6px;
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wc-back-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.wc-round-info {
+    color: var(--fg-base);
+    font-family: "Syne", sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: 0;
     text-align: center;
-    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.6);
-    padding: 0 1.5rem;
-    pointer-events: none;
+}
+
+.wc-arena {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    position: relative;
+}
+
+.wc-card {
+    flex: 1;
+    max-width: 480px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.25s, box-shadow 0.25s;
+    border: 2px solid transparent;
+}
+
+.wc-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.wc-card--left:hover { border-color: var(--tech); }
+.wc-card--right:hover { border-color: var(--gold); }
+
+.wc-card-img-wrap {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--bg-2);
+}
+
+.wc-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s;
+}
+
+.wc-card:hover .wc-card-img {
+    transform: scale(1.05);
+}
+
+.wc-card-bar {
+    padding: 0.7rem 1rem;
+    text-align: center;
+}
+
+.wc-bar--left {
+    background: linear-gradient(90deg, var(--tech) 0%, rgba(26, 159, 218, 0.4) 100%);
+}
+
+.wc-bar--right {
+    background: linear-gradient(90deg, rgba(212, 168, 83, 0.4) 0%, var(--gold) 100%);
+}
+
+.wc-card-name {
+    font-family: "Syne", sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* VS badge */
 .wc-vs {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
     z-index: 10;
     font-family: "Cinzel", serif;
     font-weight: 900;
-    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-size: clamp(1.4rem, 3vw, 2.2rem);
     color: var(--gold-bright);
-    text-shadow: 0 0 20px rgba(212, 168, 83, 0.6), 0 0 60px rgba(212, 168, 83, 0.3);
-    background: radial-gradient(ellipse, rgba(8, 9, 13, 0.85) 40%, transparent 70%);
-    width: 5.5rem;
-    height: 5.5rem;
+    text-shadow: 0 0 16px rgba(212, 168, 83, 0.5);
+    background: var(--bg-0);
+    width: 4rem;
+    height: 4rem;
+    min-width: 4rem;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     border: 2px solid var(--gold-border);
-    pointer-events: none;
+    margin: 0 -1rem;
+    position: relative;
 }
 
 /* Pick animation */
@@ -2365,13 +2517,14 @@ body.modal-open {
     100% { transform: scale(0.92); opacity: 0; filter: brightness(0.3); }
 }
 
-.wc-side--picked { animation: wc-pick 0.5s ease forwards; }
-.wc-side--lost   { animation: wc-lose 0.4s ease forwards; }
+.wc-card--picked { animation: wc-pick 0.5s ease forwards; }
+.wc-card--lost   { animation: wc-lose 0.4s ease forwards; }
 
 /* Champion screen */
 .wc-champion {
     text-align: center;
     animation: fadeIn 0.6s ease;
+    padding-top: 2rem;
 }
 
 .wc-champion-img {
@@ -2396,20 +2549,49 @@ body.modal-open {
     margin-top: 0.25rem;
 }
 
+.wc-champion-restart {
+    margin-top: 1.5rem;
+    padding: 0.7rem 2rem;
+    font-family: "Syne", sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--gold);
+    cursor: pointer;
+    transition: all 0.25s;
+}
+
+.wc-champion-restart:hover {
+    background: var(--gold);
+    color: var(--bg-0);
+}
+
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 700px) {
     .wc-arena {
         flex-direction: column;
-        min-height: 80vh;
+        gap: 0;
     }
 
-    .wc-side:hover { flex: 1.3; }
-    .wc-side:not(:hover) { flex: 0.8; }
+    .wc-card { max-width: 100%; }
 
     .wc-vs {
-        width: 4rem;
-        height: 4rem;
-        font-size: 1.6rem;
+        margin: -1rem 0;
+        width: 3.2rem;
+        height: 3.2rem;
+        min-width: 3.2rem;
+        font-size: 1.2rem;
+    }
+
+    .wc-back-btn {
+        position: static;
+    }
+
+    .wc-duel-header {
+        flex-direction: column;
+        gap: 0.5rem;
     }
 }
 
