@@ -99,6 +99,7 @@ const dom = {
     status: document.getElementById("status-atualizacao"),
     updatedAt: document.getElementById("ultima-atualizacao"),
     refreshButton: document.getElementById("refresh-button"),
+    filterStatus: document.getElementById("filter-status"),
     filterPlataforma: document.getElementById("filter-plataforma"),
     filterMultiplayer: document.getElementById("filter-multiplayer"),
     filterAnoConclusao: document.getElementById("filter-ano-conclusao"),
