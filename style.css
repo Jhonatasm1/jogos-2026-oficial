@@ -331,6 +331,112 @@ main {
     display: block;
 }
 
+.tab-content.is-locked-state {
+    position: relative;
+    min-height: 320px;
+}
+
+.tab-content.is-locked-state > :not(.ygt-locked-state-host) {
+    opacity: 0.22;
+    filter: saturate(0.35) blur(1.5px);
+    pointer-events: none;
+    user-select: none;
+}
+
+.ygt-locked-state-host {
+    position: relative;
+    z-index: 2;
+}
+
+.tab-content.is-locked-state > .ygt-locked-state-host {
+    margin-bottom: 1.25rem;
+}
+
+.ygt-locked-state {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0 1.25rem;
+}
+
+.ygt-locked-card {
+    width: min(560px, 100%);
+    border-radius: 14px;
+    border: 1px solid var(--gold-border);
+    background: linear-gradient(145deg, rgba(11, 13, 20, 0.96), rgba(17, 22, 32, 0.92));
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(212, 168, 83, 0.08);
+    backdrop-filter: blur(10px);
+    text-align: center;
+    padding: 1.6rem 1.4rem;
+}
+
+.ygt-locked-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 0.85rem;
+    border-radius: 50%;
+    border: 1px solid var(--gold-border);
+    background: radial-gradient(circle at 30% 30%, rgba(212, 168, 83, 0.24), rgba(212, 168, 83, 0.06));
+    color: var(--gold-bright);
+    display: grid;
+    place-items: center;
+    font-family: "Syne", sans-serif;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+}
+
+.ygt-locked-title {
+    margin-bottom: 0.45rem;
+    color: var(--text-light);
+    font-size: 1.3rem;
+}
+
+.ygt-locked-message {
+    margin: 0 auto 1rem;
+    max-width: 46ch;
+    color: var(--fg-base);
+}
+
+.ygt-locked-login-btn {
+    appearance: none;
+    border: 1px solid var(--gold-border);
+    border-radius: 8px;
+    background: linear-gradient(120deg, var(--gold), var(--gold-bright));
+    color: #121417;
+    font-family: "Manrope", sans-serif;
+    font-weight: 800;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    padding: 0.72rem 1.25rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.ygt-locked-login-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(212, 168, 83, 0.26);
+    filter: brightness(1.06);
+}
+
+.ygt-locked-login-btn:focus-visible {
+    outline: 2px solid var(--gold-bright);
+    outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    .tab-content.is-locked-state {
+        min-height: 280px;
+    }
+
+    .ygt-locked-card {
+        padding: 1.3rem 1rem;
+    }
+
+    .ygt-locked-title {
+        font-size: 1.12rem;
+    }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }

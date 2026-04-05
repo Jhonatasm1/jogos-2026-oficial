@@ -304,6 +304,63 @@ function escapeHtml(value) {
         .replace(/'/g, "&#39;");
 }
 
+function renderLockedState(featureName, message) {
+    const safeFeature = escapeHtml(featureName || "este recurso");
+    const safeMessage = escapeHtml(message || `Crie sua conta no Your Gaming Temple para liberar ${safeFeature}.`);
+
+    return `
+        <div class="ygt-locked-state" role="region" aria-live="polite">
+            <div class="ygt-locked-card">
+                <div class="ygt-locked-icon" aria-hidden="true">LOCK</div>
+                <h3 class="ygt-locked-title">${safeFeature}</h3>
+                <p class="ygt-locked-message">${safeMessage}</p>
+                <button type="button" class="ygt-locked-login-btn" data-locked-login>
+                    Login com Google
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function bindLockedStateActions(tabElement) {
+    if (!tabElement) return;
+
+    tabElement.querySelectorAll("[data-locked-login]").forEach((button) => {
+        button.addEventListener("click", () => {
+            void handleGoogleLogin();
+        });
+    });
+}
+
+function showTabLockedState(tabId, featureName, message) {
+    const tab = document.getElementById(tabId);
+    if (!tab) return;
+
+    let host = tab.querySelector(":scope > .ygt-locked-state-host");
+    if (!host) {
+        host = document.createElement("div");
+        host.className = "ygt-locked-state-host";
+        tab.prepend(host);
+    }
+
+    host.innerHTML = renderLockedState(featureName, message);
+    host.hidden = false;
+    tab.classList.add("is-locked-state");
+    bindLockedStateActions(host);
+}
+
+function clearTabLockedState(tabId) {
+    const tab = document.getElementById(tabId);
+    if (!tab) return;
+
+    tab.classList.remove("is-locked-state");
+    const host = tab.querySelector(":scope > .ygt-locked-state-host");
+    if (!host) return;
+
+    host.hidden = true;
+    host.innerHTML = "";
+}
+
 function readFileAsDataUrl(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -856,11 +913,17 @@ async function renderBiGamer() {
     };
 
     if (!getCurrentUserId()) {
-        updateFilterSelects([]);
-        clearBiView("Faça login com o Google para ver seu BI Gamer");
-        if (tierBlock) tierBlock.hidden = true;
+        clearBiView("");
+        if (tierBlock) tierBlock.hidden = false;
+        showTabLockedState(
+            "bi-gamer",
+            "BI Gamer",
+            "Crie sua conta no Your Gaming Temple para liberar o BI Gamer."
+        );
         return;
     }
+
+    clearTabLockedState("bi-gamer");
 
     let rawGames = [];
 
@@ -1674,6 +1737,17 @@ function renderAvaliacao(gamesInput) {
         return;
     }
 
+    if (!getCurrentUserId()) {
+        showTabLockedState(
+            "avaliacao",
+            "Avaliacao Pessoal",
+            "Crie sua conta no Your Gaming Temple para liberar a Avaliacao Pessoal."
+        );
+        return;
+    }
+
+    clearTabLockedState("avaliacao");
+
     lista.innerHTML = "";
 
     const games = Array.isArray(gamesInput) ? gamesInput : getFilteredLibrary();
@@ -1913,9 +1987,15 @@ async function renderUserRanking() {
     };
 
     if (!getCurrentUserId()) {
-        writeEmptyState("Faça login com o Google para ver sua Classificacao do Usuario.");
+        showTabLockedState(
+            "user-ranking",
+            "Classificacao do Usuario",
+            "Crie sua conta no Your Gaming Temple para liberar a Classificacao do Usuario."
+        );
         return;
     }
+
+    clearTabLockedState("user-ranking");
 
     try {
         const [individualGames, globalGames] = await Promise.all([
@@ -2035,21 +2115,26 @@ async function renderUserRanking() {
 async function renderAnalyticsTab(tabId, options) {
     const settings = options && typeof options === "object" ? options : {};
     const force = Boolean(settings.force);
-    const scope = String(analyticsState.scope || ANALYTICS_SCOPE_GLOBAL) === ANALYTICS_SCOPE_INDIVIDUAL
+    const currentUserId = getCurrentUserId();
+
+    if (tabId === "avaliacao" && !currentUserId) {
+        showTabLockedState(
+            "avaliacao",
+            "Avaliacao Pessoal",
+            "Crie sua conta no Your Gaming Temple para liberar a Avaliacao Pessoal."
+        );
+        updateStatus("Faca login com o Google para liberar a Avaliacao Pessoal.", true);
+        return;
+    }
+
+    let scope = String(analyticsState.scope || ANALYTICS_SCOPE_GLOBAL) === ANALYTICS_SCOPE_INDIVIDUAL
         ? ANALYTICS_SCOPE_INDIVIDUAL
         : ANALYTICS_SCOPE_GLOBAL;
 
-    if (scope === ANALYTICS_SCOPE_INDIVIDUAL && !getCurrentUserId()) {
-        updateFilterSelects([]);
-
-        if (tabId === "visao-geral") renderVisaoGeral([]);
-        else if (tabId === "tempo-jogo") renderTempoJogo([]);
-        else if (tabId === "dificuldade") renderDificuldade([]);
-        else if (tabId === "plataforma") renderPlataforma([]);
-        else if (tabId === "avaliacao") renderAvaliacao([]);
-
-        updateStatus("Faca login com o Google para usar a Visao Individual.", true);
-        return;
+    if (scope === ANALYTICS_SCOPE_INDIVIDUAL && !currentUserId) {
+        scope = ANALYTICS_SCOPE_GLOBAL;
+        analyticsState.scope = ANALYTICS_SCOPE_GLOBAL;
+        if (dom.analyticsScopeSelect) dom.analyticsScopeSelect.value = ANALYTICS_SCOPE_GLOBAL;
     }
 
     try {
@@ -3735,9 +3820,16 @@ async function handleSteamLibraryTabOpen() {
     const statusEl = document.getElementById("steam-status");
 
     if (!getCurrentUserId()) {
-        renderSteamLibrary([]);
+        showTabLockedState(
+            "steam-library",
+            "Biblioteca Steam",
+            "Crie sua conta no Your Gaming Temple para sincronizar e gerenciar sua Biblioteca Steam."
+        );
+        updateStatus("Faca login com o Google para usar a Biblioteca Steam.", true);
         return;
     }
+
+    clearTabLockedState("steam-library");
 
     if (statusEl) {
         statusEl.textContent = "Carregando biblioteca da nuvem...";
@@ -3752,9 +3844,16 @@ async function handleManualLibraryTabOpen() {
     const statusEl = document.getElementById("manual-status");
 
     if (!getCurrentUserId()) {
-        renderManualGames([]);
+        showTabLockedState(
+            "add-your-game",
+            "Add Your Game",
+            "Crie sua conta no Your Gaming Temple para adicionar jogos manualmente a sua biblioteca."
+        );
+        updateStatus("Faca login com o Google para usar o Add Your Game.", true);
         return;
     }
+
+    clearTabLockedState("add-your-game");
 
     if (statusEl) {
         statusEl.textContent = "Carregando biblioteca da nuvem...";
@@ -5478,6 +5577,32 @@ function openMyWorldCupRankingModal(cupId) {
 }
 
 function renderMyWorldCups(forceListOnly) {
+    if (!getCurrentUserId()) {
+        showTabLockedState(
+            "my-world-cups",
+            "My World Cups",
+            "Crie sua conta no Your Gaming Temple para criar e gerenciar suas World Cups."
+        );
+
+        myWcState.selectedCupId = null;
+        myWcState.draftCup = null;
+        myWcState.draftMode = "create";
+        myWcState.step = "cover";
+        myWcState.choiceSearch = "";
+        myWcState.choiceSort = "win-ratio";
+        myWcState.choicePage = 1;
+
+        const editor = document.getElementById("mywc-editor");
+        const view = document.getElementById("mywc-view");
+        if (editor) editor.hidden = true;
+        if (view) view.hidden = false;
+
+        updateStatus("Faca login com o Google para liberar o My World Cups.", true);
+        return;
+    }
+
+    clearTabLockedState("my-world-cups");
+
     ensureMyWorldCupsLoaded();
 
     if (forceListOnly) {
