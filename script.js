@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment, collectionGroup } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
@@ -21,6 +21,10 @@ const AVALIACAO_SCALE = [
 const STEAM_API_BASE = "https://yxt-backend.onrender.com/steam-library/";
 const STEAM_SEARCH_API_BASE = "https://yxt-backend.onrender.com/steam-search";
 const USER_LIBRARY_COLLECTION = "library";
+const ANALYTICS_SCOPE_GLOBAL = "global";
+const ANALYTICS_SCOPE_INDIVIDUAL = "individual";
+const ANALYTICS_TABS = new Set(["visao-geral", "tempo-jogo", "dificuldade", "plataforma", "avaliacao"]);
+const ANALYTICS_CACHE_TTL_MS = 45000;
 const DEFAULT_GAME_COVER_PLACEHOLDER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#111827"/><rect x="20" y="20" width="600" height="320" rx="18" fill="#0f1419" stroke="#d4a853" stroke-width="2" stroke-dasharray="10 10"/><text x="50%" y="48%" text-anchor="middle" fill="#d4a853" font-family="sans-serif" font-size="30" font-weight="700">No Cover</text><text x="50%" y="58%" text-anchor="middle" fill="#8fa3bf" font-family="sans-serif" font-size="15">Use AppID, URL or upload an image</text></svg>'
 );
@@ -125,6 +129,15 @@ const userLibraryState = {
     loading: false
 };
 
+const analyticsState = {
+    scope: ANALYTICS_SCOPE_GLOBAL,
+    globalCache: [],
+    globalLoadedAt: 0,
+    individualCache: [],
+    individualUserId: "",
+    individualLoadedAt: 0
+};
+
 const authState = {
     unsubscribe: null
 };
@@ -137,6 +150,8 @@ const dom = {
     filterPlataforma: document.getElementById("filter-plataforma"),
     filterMultiplayer: document.getElementById("filter-multiplayer"),
     filterAnoConclusao: document.getElementById("filter-ano-conclusao"),
+    analyticsScopeWrap: document.getElementById("analytics-scope-wrap"),
+    analyticsScopeSelect: document.getElementById("analytics-scope-select"),
     filtersTop: document.getElementById("filters-top"),
     tabsContainer: document.querySelector(".tabs-container"),
     tabsNav: document.querySelector(".tabs-nav"),
@@ -318,13 +333,115 @@ async function searchSteamGameByName(name) {
 
 /* ====================== LIBRARY DATA ACCESS ====================== */
 
+function isAnalyticsTab(tabId) {
+    return ANALYTICS_TABS.has(String(tabId || ""));
+}
+
+function isCacheFresh(timestamp) {
+    if (!Number.isFinite(Number(timestamp)) || Number(timestamp) <= 0) return false;
+    return (Date.now() - Number(timestamp)) <= ANALYTICS_CACHE_TTL_MS;
+}
+
+function invalidateAnalyticsCaches() {
+    analyticsState.globalCache = [];
+    analyticsState.globalLoadedAt = 0;
+    analyticsState.individualCache = [];
+    analyticsState.individualUserId = "";
+    analyticsState.individualLoadedAt = 0;
+}
+
+function extractOwnerIdFromLibrarySnapshot(snapshotDoc) {
+    const path = String(snapshotDoc?.ref?.path || "").trim();
+    const match = path.match(/^users\/([^/]+)\/library\/[^/]+$/i);
+    return match ? String(match[1] || "") : "";
+}
+
+function normalizeLibrarySnapshotEntry(snapshotDoc, includeOwnerPrefix, fallbackOwnerId) {
+    const payload = snapshotDoc?.data && typeof snapshotDoc.data === "function"
+        ? (snapshotDoc.data() || {})
+        : {};
+    const ownerId = String(extractOwnerIdFromLibrarySnapshot(snapshotDoc) || fallbackOwnerId || "").trim();
+    const rawDocId = String(snapshotDoc?.id || "").trim();
+    const source = String(payload.source || "steam").toLowerCase() === "manual" ? "manual" : "steam";
+    const scopedDocId = includeOwnerPrefix && ownerId
+        ? `${ownerId}-${rawDocId}`
+        : rawDocId;
+
+    if (source === "manual") {
+        const normalizedManual = normalizeManualGame({
+            ...payload,
+            id: String(payload.id || rawDocId || scopedDocId),
+            docId: scopedDocId || rawDocId || String(payload.id || "")
+        });
+
+        return {
+            ...normalizedManual,
+            ownerId
+        };
+    }
+
+    const normalizedSteam = normalizeSteamGame({
+        ...payload,
+        appid: String(payload.appid || payload.id || "").trim(),
+        docId: scopedDocId || rawDocId
+    });
+
+    return {
+        ...normalizedSteam,
+        ownerId
+    };
+}
+
+async function loadLibraryForScope(scope, options) {
+    const settings = options && typeof options === "object" ? options : {};
+    const force = Boolean(settings.force);
+    const normalizedScope = String(scope || ANALYTICS_SCOPE_GLOBAL).toLowerCase() === ANALYTICS_SCOPE_INDIVIDUAL
+        ? ANALYTICS_SCOPE_INDIVIDUAL
+        : ANALYTICS_SCOPE_GLOBAL;
+
+    if (normalizedScope === ANALYTICS_SCOPE_INDIVIDUAL) {
+        const userId = getCurrentUserId();
+        if (!userId) return [];
+
+        if (!force
+            && analyticsState.individualUserId === userId
+            && isCacheFresh(analyticsState.individualLoadedAt)
+            && Array.isArray(analyticsState.individualCache)) {
+            return analyticsState.individualCache;
+        }
+
+        const snapshot = await getDocs(getUserLibraryCollectionRef(userId));
+        const games = snapshot.docs.map((entry) => normalizeLibrarySnapshotEntry(entry, false, userId));
+
+        analyticsState.individualCache = games;
+        analyticsState.individualUserId = userId;
+        analyticsState.individualLoadedAt = Date.now();
+        return games;
+    }
+
+    if (!force && isCacheFresh(analyticsState.globalLoadedAt) && Array.isArray(analyticsState.globalCache)) {
+        return analyticsState.globalCache;
+    }
+
+    const snapshot = await getDocs(collectionGroup(db, USER_LIBRARY_COLLECTION));
+    const games = snapshot.docs.map((entry) => normalizeLibrarySnapshotEntry(entry, true, ""));
+
+    analyticsState.globalCache = games;
+    analyticsState.globalLoadedAt = Date.now();
+    return games;
+}
+
+function getAnalyticsScopeLabel(scope) {
+    return String(scope || "") === ANALYTICS_SCOPE_INDIVIDUAL ? "Visao Individual" : "Visao Global";
+}
+
 function getLibrary() {
     return [...steamState.library, ...manualGameState.library];
 }
 
-function getFilteredLibrary() {
+function getFilteredLibrary(baseLibrary) {
     const { status, plataforma, multiplayer, anoConclusao } = state.overviewFilters;
-    const library = getLibrary();
+    const library = Array.isArray(baseLibrary) ? baseLibrary : getLibrary();
 
     return library.filter((game) => {
         const meta = game.metadata || {};
@@ -336,8 +453,8 @@ function getFilteredLibrary() {
     });
 }
 
-function updateFilterSelects() {
-    const library = getLibrary();
+function updateFilterSelects(baseLibrary) {
+    const library = Array.isArray(baseLibrary) ? baseLibrary : getLibrary();
 
     if (dom.filterStatus) {
         const values = [...new Set(library.map(g => (g.metadata?.status || "").trim()).filter(Boolean))]
@@ -497,6 +614,7 @@ function bindAuthEvents() {
             await saveUserToDatabase(user);
         }
         renderAuthUI(user || null);
+        invalidateAnalyticsCaches();
 
         if (!user) {
             steamState.library = [];
@@ -532,8 +650,8 @@ function bindAuthEvents() {
 
 /* ====================== RENDER: VISAO GERAL ====================== */
 
-function renderVisaoGeral() {
-    const games = getFilteredLibrary();
+function renderVisaoGeral(gamesInput) {
+    const games = Array.isArray(gamesInput) ? gamesInput : getFilteredLibrary();
 
     const totalJogosEl = document.getElementById("total-jogos");
     const totalConcluidosEl = document.getElementById("total-concluidos");
@@ -675,8 +793,7 @@ function renderCharts(games, statusCount) {
 
 /* ====================== RENDER: BI GAMER ====================== */
 
-function renderBiGamer() {
-    const games = getFilteredLibrary();
+async function renderBiGamer() {
 
     const totalEl = document.getElementById("bi-total");
     const concluidosEl = document.getElementById("bi-concluidos");
@@ -695,10 +812,68 @@ function renderBiGamer() {
     const topMultiEl = document.getElementById("bi-top-multi");
     const topJogosEl = document.getElementById("bi-top-jogos");
     const chartEl = document.getElementById("chart-bi-plataforma");
+    const tierBlock = document.getElementById("bi-tier-block");
 
     if (!totalEl || !concluidosEl || !jogandoEl || !pendentesEl || !horasJogadasEl || !horasPendentesEl || !mediaGameplayEl || !mediaZeradosEl || !soloMaisJogadoEl || !difComumEl || !difHorasEl || !taxaEl || !notaMediaEl || !topPlataformaEl || !topMultiEl || !topJogosEl) {
         return;
     }
+
+    const valueElements = [
+        totalEl,
+        concluidosEl,
+        jogandoEl,
+        pendentesEl,
+        horasJogadasEl,
+        horasPendentesEl,
+        mediaGameplayEl,
+        mediaZeradosEl,
+        soloMaisJogadoEl,
+        difComumEl,
+        difHorasEl,
+        taxaEl,
+        notaMediaEl,
+        topPlataformaEl,
+        topMultiEl
+    ];
+
+    const clearBiView = (message) => {
+        valueElements.forEach((element) => {
+            element.textContent = "-";
+        });
+
+        topJogosEl.innerHTML = message
+            ? `<p class="user-ranking-empty">${escapeHtml(message)}</p>`
+            : "";
+
+        if (state.charts.biPlataforma) {
+            state.charts.biPlataforma.destroy();
+            state.charts.biPlataforma = null;
+        }
+    };
+
+    if (!getCurrentUserId()) {
+        updateFilterSelects([]);
+        clearBiView("Faça login com o Google para ver seu BI Gamer");
+        if (tierBlock) tierBlock.hidden = true;
+        return;
+    }
+
+    let rawGames = [];
+
+    try {
+        rawGames = await loadLibraryForScope(ANALYTICS_SCOPE_INDIVIDUAL, { force: true });
+    } catch (error) {
+        console.error("Falha ao carregar BI Gamer individual.", error);
+        updateFilterSelects([]);
+        clearBiView("Nao foi possivel carregar seu BI Gamer agora.");
+        if (tierBlock) tierBlock.hidden = true;
+        return;
+    }
+
+    if (tierBlock) tierBlock.hidden = false;
+
+    updateFilterSelects(rawGames);
+    const games = getFilteredLibrary(rawGames);
 
     const statusStats = { concluidos: 0, jogando: 0, pendentes: 0 };
     const plataformaCount = {};
@@ -801,7 +976,7 @@ function renderBiGamer() {
         .sort((a, b) => b.seconds - a.seconds)
         .slice(0, 8);
 
-    const tierSeedCandidates = getLibrary()
+    const tierSeedCandidates = games
         .filter((game) => Number(game.playtime_hours) > 0)
         .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0))
         .map((game) => ({
@@ -811,12 +986,16 @@ function renderBiGamer() {
         }));
 
     topJogosEl.innerHTML = "";
-    topByTime.forEach((item) => {
-        const row = document.createElement("div");
-        row.className = "bi-top-item";
-        row.innerHTML = `<span>${item.name}</span><strong>${formatHoursCompact(item.seconds)}</strong>`;
-        topJogosEl.appendChild(row);
-    });
+    if (!topByTime.length) {
+        topJogosEl.innerHTML = '<p class="user-ranking-empty">Nenhum jogo encontrado para os filtros atuais.</p>';
+    } else {
+        topByTime.forEach((item) => {
+            const row = document.createElement("div");
+            row.className = "bi-top-item";
+            row.innerHTML = `<span>${item.name}</span><strong>${formatHoursCompact(item.seconds)}</strong>`;
+            topJogosEl.appendChild(row);
+        });
+    }
 
     bindTierListEvents();
 
@@ -846,6 +1025,11 @@ function renderBiGamer() {
         const values = platEntries.map(([, value]) => value);
 
         if (state.charts.biPlataforma) state.charts.biPlataforma.destroy();
+        if (!labels.length) {
+            state.charts.biPlataforma = null;
+            return;
+        }
+
         state.charts.biPlataforma = new Chart(chartEl, {
             type: "bar",
             data: {
@@ -881,8 +1065,8 @@ function renderBiGamer() {
 
 /* ====================== RENDER: TEMPO DE JOGO ====================== */
 
-function renderTempoJogo() {
-    const games = getFilteredLibrary();
+function renderTempoJogo(gamesInput) {
+    const games = Array.isArray(gamesInput) ? gamesInput : getFilteredLibrary();
     const ctxTopTempo = document.getElementById("chart-top-tempo");
     const ctxCurtosZerados = document.getElementById("chart-curtos-zerados");
 
@@ -1026,7 +1210,8 @@ function renderTempoJogo() {
 
 /* ====================== RENDER: DIFICULDADE ====================== */
 
-function renderDificuldade() {
+function renderDificuldade(gamesInput) {
+    const games = Array.isArray(gamesInput) ? gamesInput : getFilteredLibrary();
     const grid = document.getElementById("grid-dificuldade");
     const ctxDifBar = document.getElementById("chart-dificuldade-bar");
     const divDifHoras = document.getElementById("chart-dificuldade-horas");
@@ -1038,7 +1223,7 @@ function renderDificuldade() {
     const dificHoras = {};
     let totalJogosAvaliados = 0;
 
-    getFilteredLibrary().forEach(game => {
+    games.forEach(game => {
         const dif = (game.metadata?.dificuldade || "").trim();
         const seconds = Math.round((game.playtime_hours || 0) * 3600);
 
@@ -1249,7 +1434,7 @@ function renderDificuldade() {
         return null;
     };
 
-    getFilteredLibrary().forEach((game) => {
+    games.forEach((game) => {
         const difficultyValue = (game.metadata?.dificuldade || "").trim();
         const name = (game.name || "").trim();
         const seconds = Math.round((game.playtime_hours || 0) * 3600);
@@ -1310,7 +1495,7 @@ function renderDificuldade() {
 
 /* ====================== RENDER: PLATAFORMA ====================== */
 
-function renderPlataforma() {
+function renderPlataforma(gamesInput) {
     const grid = document.getElementById("grid-plataforma");
     const totalJogosEl = document.getElementById("pl-total-jogos");
     const totalPlataformasEl = document.getElementById("pl-total-plataformas");
@@ -1332,7 +1517,7 @@ function renderPlataforma() {
 
     const platCount = {};
     const platHours = {};
-    const games = getFilteredLibrary();
+    const games = Array.isArray(gamesInput) ? gamesInput : getFilteredLibrary();
 
     games.forEach((game) => {
         const plat = (game.metadata?.plataforma || "").trim() || "N/A";
@@ -1468,7 +1653,7 @@ function renderPlataforma() {
 
 /* ====================== RENDER: AVALIACAO ====================== */
 
-function renderAvaliacao() {
+function renderAvaliacao(gamesInput) {
     const lista = document.getElementById("lista-avaliacao");
     const totalJogosEl = document.getElementById("av-total-jogos");
     const notaMediaEl = document.getElementById("av-nota-media");
@@ -1487,7 +1672,7 @@ function renderAvaliacao() {
 
     lista.innerHTML = "";
 
-    const games = getFilteredLibrary();
+    const games = Array.isArray(gamesInput) ? gamesInput : getFilteredLibrary();
     const avaliados = games
         .map((game) => {
             const jogo = (game.name || "").trim() || "Sem titulo";
@@ -1695,7 +1880,7 @@ function simularEstatisticasGlobais(games) {
         });
 }
 
-function renderUserRanking() {
+async function renderUserRanking() {
     const grid = document.getElementById("user-ranking-grid");
     const totalJogosEl = document.getElementById("ur-total-jogos");
     const percentilMedioEl = document.getElementById("ur-percentil-medio");
@@ -1710,149 +1895,218 @@ function renderUserRanking() {
         return;
     }
 
-    grid.innerHTML = "";
-
-    const filteredGames = getFilteredLibrary();
-    const ranking = simularEstatisticasGlobais(filteredGames);
-    const totalJogos = ranking.length;
-
-    if (!totalJogos) {
+    const writeEmptyState = (message) => {
         totalJogosEl.textContent = "0";
         percentilMedioEl.textContent = "-";
-        jogosTop20El.textContent = "0";
+        jogosTop20El.textContent = "-";
         maisRapidoEl.textContent = "-";
         maisLentoEl.textContent = "-";
         kpiMelhorEl.textContent = "-";
         kpiMediaEl.textContent = "-";
         kpiImpactoEl.textContent = "Sem dados suficientes";
 
-        const empty = document.createElement("p");
-        empty.className = "user-ranking-empty";
-        empty.textContent = "Nao foi possivel simular estatisticas globais para os jogos atuais.";
-        grid.appendChild(empty);
+        grid.innerHTML = `<p class="user-ranking-empty">${escapeHtml(message)}</p>`;
+    };
+
+    if (!getCurrentUserId()) {
+        writeEmptyState("Faça login com o Google para ver sua Classificacao do Usuario.");
         return;
     }
 
-    const percentilMedio = ranking.reduce((acc, item) => acc + item.percentil, 0) / totalJogos;
-    const jogosTop20 = ranking.filter((item) => item.percentil <= 20).length;
-    const maiorVantagem = [...ranking].filter((item) => item.diferencaSegundos > 0).sort((a, b) => b.diferencaSegundos - a.diferencaSegundos)[0] || null;
-    const maiorDesafio = [...ranking].filter((item) => item.diferencaSegundos < 0).sort((a, b) => a.diferencaSegundos - b.diferencaSegundos)[0] || null;
-    const melhorPosicao = ranking[0];
-    const mediaDiferencaSegundos = Math.round(ranking.reduce((acc, item) => acc + item.diferencaSegundos, 0) / totalJogos);
+    try {
+        const [individualGames, globalGames] = await Promise.all([
+            loadLibraryForScope(ANALYTICS_SCOPE_INDIVIDUAL, { force: true }),
+            loadLibraryForScope(ANALYTICS_SCOPE_GLOBAL, { force: true })
+        ]);
 
-    totalJogosEl.textContent = String(totalJogos);
-    percentilMedioEl.textContent = `Top ${percentilMedio.toFixed(1)}%`;
-    jogosTop20El.textContent = String(jogosTop20);
-    maisRapidoEl.textContent = maiorVantagem
-        ? `${maiorVantagem.jogo} (${formatSecondsToTime(maiorVantagem.diferencaSegundos)})`
-        : "-";
-    maisLentoEl.textContent = maiorDesafio
-        ? `${maiorDesafio.jogo} (${formatSecondsToTime(Math.abs(maiorDesafio.diferencaSegundos))})`
-        : "-";
+        const isConcluded = (game) => normalizeText(game?.metadata?.status || "") === "concluido";
+        const sumHours = (games) => games.reduce((acc, game) => acc + Math.max(0, Number(game?.playtime_hours) || 0), 0);
 
-    kpiMelhorEl.textContent = `${melhorPosicao.jogo} (Top ${melhorPosicao.percentil}%)`;
-    if (mediaDiferencaSegundos > 0) {
-        kpiMediaEl.textContent = `${formatSecondsToTime(mediaDiferencaSegundos)} mais rapido`;
-    } else if (mediaDiferencaSegundos < 0) {
-        kpiMediaEl.textContent = `${formatSecondsToTime(Math.abs(mediaDiferencaSegundos))} mais lento`;
-    } else {
-        kpiMediaEl.textContent = "No ritmo da media global";
-    }
-
-    if (percentilMedio <= 20) {
-        kpiImpactoEl.textContent = "Perfil elite da comunidade";
-    } else if (percentilMedio <= 40) {
-        kpiImpactoEl.textContent = "Desempenho acima da media";
-    } else if (percentilMedio <= 60) {
-        kpiImpactoEl.textContent = "Bom espaco para subir no ranking";
-    } else {
-        kpiImpactoEl.textContent = "Modo hardcore de evolucao ativado";
-    }
-
-    ranking.forEach((item, index) => {
-        const card = document.createElement("article");
-        card.className = "user-ranking-card";
-
-        if (item.diferencaSegundos > 0) {
-            card.classList.add("is-faster");
-        } else if (item.diferencaSegundos < 0) {
-            card.classList.add("is-slower");
-        } else {
-            card.classList.add("is-even");
+        if (!individualGames.length) {
+            writeEmptyState("Sua biblioteca ainda nao possui jogos sincronizados para comparacao.");
+            return;
         }
 
-        const top = document.createElement("div");
-        top.className = "user-ranking-card-top";
+        const userCompletionRate = individualGames.length
+            ? (individualGames.filter(isConcluded).length / individualGames.length) * 100
+            : 0;
+        const globalCompletionRate = globalGames.length
+            ? (globalGames.filter(isConcluded).length / globalGames.length) * 100
+            : 0;
 
-        const title = document.createElement("h4");
-        title.textContent = `${index + 1}. ${item.jogo}`;
+        const userTotalHours = sumHours(individualGames);
 
-        const badge = document.createElement("span");
-        badge.className = "user-ranking-badge";
-        badge.textContent = `Top ${item.percentil}%`;
+        const globalTotalsByUser = new Map();
+        globalGames.forEach((game) => {
+            const ownerId = String(game?.ownerId || "").trim();
+            if (!ownerId) return;
+            const currentTotal = Number(globalTotalsByUser.get(ownerId) || 0);
+            globalTotalsByUser.set(ownerId, currentTotal + Math.max(0, Number(game?.playtime_hours) || 0));
+        });
 
-        top.appendChild(title);
-        top.appendChild(badge);
+        const globalUsersCount = globalTotalsByUser.size;
+        const globalAverageTotalHours = globalUsersCount
+            ? Array.from(globalTotalsByUser.values()).reduce((acc, value) => acc + value, 0) / globalUsersCount
+            : 0;
 
-        const times = document.createElement("div");
-        times.className = "user-ranking-times";
+        const completionDelta = userCompletionRate - globalCompletionRate;
+        const hoursDelta = userTotalHours - globalAverageTotalHours;
 
-        const meuTempoBlock = document.createElement("div");
-        meuTempoBlock.className = "user-ranking-time-block";
-        meuTempoBlock.innerHTML = `
-            <span class="user-ranking-time-label">Seu tempo</span>
-            <strong class="user-ranking-time-value">${formatSecondsToTime(item.meuTempoSegundos)}</strong>
-        `;
+        totalJogosEl.textContent = String(individualGames.length);
+        percentilMedioEl.textContent = `${userCompletionRate.toFixed(1)}%`;
+        jogosTop20El.textContent = `${globalCompletionRate.toFixed(1)}%`;
+        maisRapidoEl.textContent = `${userTotalHours.toFixed(1)}h`;
+        maisLentoEl.textContent = `${globalAverageTotalHours.toFixed(1)}h`;
 
-        const mediaBlock = document.createElement("div");
-        mediaBlock.className = "user-ranking-time-block";
-        mediaBlock.innerHTML = `
-            <span class="user-ranking-time-label">Media global</span>
-            <strong class="user-ranking-time-value">${formatSecondsToTime(item.mediaGlobalSegundos)}</strong>
-        `;
+        kpiMelhorEl.textContent = `Sua taxa de conclusao e ${userCompletionRate.toFixed(1)}% (media global: ${globalCompletionRate.toFixed(1)}%).`;
+        kpiMediaEl.textContent = `Seu tempo total e ${userTotalHours.toFixed(1)}h (media global: ${globalAverageTotalHours.toFixed(1)}h).`;
 
-        times.appendChild(meuTempoBlock);
-        times.appendChild(mediaBlock);
-
-        const delta = document.createElement("div");
-        delta.className = "user-ranking-delta";
-        if (item.diferencaSegundos > 0) {
-            delta.textContent = `${formatSecondsToTime(item.diferencaSegundos)} mais rapido que a media`;
-        } else if (item.diferencaSegundos < 0) {
-            delta.textContent = `${formatSecondsToTime(Math.abs(item.diferencaSegundos))} mais lento que a media`;
+        if (completionDelta >= 0 && hoursDelta >= 0) {
+            kpiImpactoEl.textContent = "Voce esta acima da media global em conclusao e engajamento.";
+        } else if (completionDelta >= 0) {
+            kpiImpactoEl.textContent = "Boa eficiencia: sua taxa de conclusao esta acima da media global.";
+        } else if (hoursDelta >= 0) {
+            kpiImpactoEl.textContent = "Seu volume de jogo e alto; falta converter mais em jogos concluidos.";
         } else {
-            delta.textContent = "Mesmo ritmo da media global";
+            kpiImpactoEl.textContent = "Abaixo da media global por enquanto. Continue a temporada para subir.";
         }
 
-        const impact = document.createElement("p");
-        impact.className = "user-ranking-impact";
-        impact.textContent = item.impacto;
+        const completionDeltaText = completionDelta === 0
+            ? "0.0 p.p."
+            : `${completionDelta > 0 ? "+" : ""}${completionDelta.toFixed(1)} p.p.`;
+        const hoursDeltaText = hoursDelta === 0
+            ? "0.0h"
+            : `${hoursDelta > 0 ? "+" : ""}${hoursDelta.toFixed(1)}h`;
 
-        card.appendChild(top);
-        card.appendChild(times);
-        card.appendChild(delta);
-        card.appendChild(impact);
-        grid.appendChild(card);
-    });
+        const completionCardClass = completionDelta > 0 ? "is-faster" : (completionDelta < 0 ? "is-slower" : "is-even");
+        const hoursCardClass = hoursDelta > 0 ? "is-even" : (hoursDelta < 0 ? "is-slower" : "is-even");
+
+        grid.innerHTML = `
+            <article class="user-ranking-card ${completionCardClass}">
+                <div class="user-ranking-card-top">
+                    <h4>Taxa de Conclusao</h4>
+                    <span class="user-ranking-badge">${completionDeltaText}</span>
+                </div>
+                <div class="user-ranking-times">
+                    <div class="user-ranking-time-block">
+                        <span class="user-ranking-time-label">Sua taxa</span>
+                        <strong class="user-ranking-time-value">${userCompletionRate.toFixed(1)}%</strong>
+                    </div>
+                    <div class="user-ranking-time-block">
+                        <span class="user-ranking-time-label">Media global</span>
+                        <strong class="user-ranking-time-value">${globalCompletionRate.toFixed(1)}%</strong>
+                    </div>
+                </div>
+                <div class="user-ranking-delta">Sua Taxa de Conclusao e ${userCompletionRate.toFixed(1)}% (A media global e ${globalCompletionRate.toFixed(1)}%).</div>
+                <p class="user-ranking-impact">Essa diferenca representa seu ritmo de finalizacao em relacao a plataforma.</p>
+            </article>
+
+            <article class="user-ranking-card ${hoursCardClass}">
+                <div class="user-ranking-card-top">
+                    <h4>Tempo Total</h4>
+                    <span class="user-ranking-badge">${hoursDeltaText}</span>
+                </div>
+                <div class="user-ranking-times">
+                    <div class="user-ranking-time-block">
+                        <span class="user-ranking-time-label">Seu tempo</span>
+                        <strong class="user-ranking-time-value">${userTotalHours.toFixed(1)}h</strong>
+                    </div>
+                    <div class="user-ranking-time-block">
+                        <span class="user-ranking-time-label">Media global</span>
+                        <strong class="user-ranking-time-value">${globalAverageTotalHours.toFixed(1)}h</strong>
+                    </div>
+                </div>
+                <div class="user-ranking-delta">Seu Tempo Total e ${userTotalHours.toFixed(1)}h (A media global e ${globalAverageTotalHours.toFixed(1)}h).</div>
+                <p class="user-ranking-impact">A media global e calculada por usuario com base no collectionGroup da biblioteca.</p>
+            </article>
+        `;
+    } catch (error) {
+        console.error("Falha ao carregar comparativo do usuario.", error);
+        writeEmptyState("Nao foi possivel carregar a comparacao global agora.");
+    }
 }
 
 /* ====================== CENTRAL UPDATE ====================== */
 
-function updateDashboards() {
-    updateFilterSelects();
+async function renderAnalyticsTab(tabId, options) {
+    const settings = options && typeof options === "object" ? options : {};
+    const force = Boolean(settings.force);
+    const scope = String(analyticsState.scope || ANALYTICS_SCOPE_GLOBAL) === ANALYTICS_SCOPE_INDIVIDUAL
+        ? ANALYTICS_SCOPE_INDIVIDUAL
+        : ANALYTICS_SCOPE_GLOBAL;
+
+    if (scope === ANALYTICS_SCOPE_INDIVIDUAL && !getCurrentUserId()) {
+        updateFilterSelects([]);
+
+        if (tabId === "visao-geral") renderVisaoGeral([]);
+        else if (tabId === "tempo-jogo") renderTempoJogo([]);
+        else if (tabId === "dificuldade") renderDificuldade([]);
+        else if (tabId === "plataforma") renderPlataforma([]);
+        else if (tabId === "avaliacao") renderAvaliacao([]);
+
+        updateStatus("Faca login com o Google para usar a Visao Individual.", true);
+        return;
+    }
+
+    try {
+        const sourceGames = await loadLibraryForScope(scope, { force });
+        const filteredGames = getFilteredLibrary(sourceGames);
+
+        updateFilterSelects(sourceGames);
+
+        if (tabId === "visao-geral") renderVisaoGeral(filteredGames);
+        else if (tabId === "tempo-jogo") renderTempoJogo(filteredGames);
+        else if (tabId === "dificuldade") renderDificuldade(filteredGames);
+        else if (tabId === "plataforma") renderPlataforma(filteredGames);
+        else if (tabId === "avaliacao") renderAvaliacao(filteredGames);
+
+        updateStatus(`${filteredGames.length} jogos no recorte (${getAnalyticsScopeLabel(scope)}).`, false);
+    } catch (error) {
+        console.error("Falha ao renderizar analytics.", error);
+        updateFilterSelects([]);
+
+        if (tabId === "visao-geral") renderVisaoGeral([]);
+        else if (tabId === "tempo-jogo") renderTempoJogo([]);
+        else if (tabId === "dificuldade") renderDificuldade([]);
+        else if (tabId === "plataforma") renderPlataforma([]);
+        else if (tabId === "avaliacao") renderAvaliacao([]);
+
+        updateStatus("Falha ao carregar dados da nuvem para os graficos.", true);
+    }
+}
+
+async function renderTabContent(tabId, options) {
+    const settings = options && typeof options === "object" ? options : {};
+    const targetTab = String(tabId || "bi-gamer");
+
+    if (isAnalyticsTab(targetTab)) {
+        await renderAnalyticsTab(targetTab, options);
+        return;
+    }
+
+    if (targetTab === "bi-gamer") {
+        await renderBiGamer();
+        return;
+    }
+
+    if (targetTab === "user-ranking") {
+        await renderUserRanking();
+        return;
+    }
+
     const library = getLibrary();
     updateStatus(`${library.length} jogos na biblioteca.`, false);
 
+    if (targetTab === "steam-library") await handleSteamLibraryTabOpen();
+    else if (targetTab === "add-your-game") await handleManualLibraryTabOpen();
+    else if (targetTab === "world-cup") renderWorldCup();
+    else if (targetTab === "my-world-cups") renderMyWorldCups(Boolean(settings.forceListOnly));
+}
+
+function updateDashboards(options) {
+    const settings = options && typeof options === "object" ? options : {};
     const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
-    if (activeTab === "visao-geral") renderVisaoGeral();
-    else if (activeTab === "bi-gamer") renderBiGamer();
-    else if (activeTab === "tempo-jogo") renderTempoJogo();
-    else if (activeTab === "dificuldade") renderDificuldade();
-    else if (activeTab === "plataforma") renderPlataforma();
-    else if (activeTab === "avaliacao") renderAvaliacao();
-    else if (activeTab === "user-ranking") renderUserRanking();
-    else if (activeTab === "world-cup") renderWorldCup();
-    else if (activeTab === "my-world-cups") renderMyWorldCups();
+    void renderTabContent(activeTab, settings);
 }
 
 /* ====================== TIER LIST ====================== */
@@ -2582,6 +2836,10 @@ async function loadUserLibraryFromCloud(options) {
         const steamIdInput = document.getElementById("steam-id-input");
         if (steamIdInput && steamState.steamId) steamIdInput.value = steamState.steamId;
 
+        analyticsState.individualCache = [...steamGames, ...manualGames];
+        analyticsState.individualUserId = currentUserId;
+        analyticsState.individualLoadedAt = Date.now();
+
         userLibraryState.uid = currentUserId;
         userLibraryState.loaded = true;
         return true;
@@ -2914,6 +3172,7 @@ async function addManualGame(event) {
     try {
         nextGame.docId = String(nextGame.docId || nextGame.id);
         await upsertLibraryGameToCloud(nextGame, "manual");
+        invalidateAnalyticsCaches();
 
         manualGameState.library.unshift(nextGame);
         renderManualGames(manualGameState.library);
@@ -3056,6 +3315,7 @@ async function saveGameMetadata(event) {
 
     try {
         await updateLibraryGameInCloud(updatedItem, gameEditorState.libraryType);
+        invalidateAnalyticsCaches();
     } catch (error) {
         console.error("Falha ao atualizar metadados no Firestore:", error);
         const statusEl = gameEditorState.libraryType === "manual"
@@ -3177,6 +3437,7 @@ async function deleteCurrentGameFromModal() {
         const previousLength = steamState.library.length;
         steamState.library = steamState.library.filter((item) => String(item.appid) !== String(gameEditorState.gameId));
         if (steamState.library.length === previousLength) return;
+        invalidateAnalyticsCaches();
         renderSteamLibrary(steamState.library);
 
         const statusEl = document.getElementById("steam-status");
@@ -3203,6 +3464,7 @@ async function deleteCurrentGameFromModal() {
         const previousLength = manualGameState.library.length;
         manualGameState.library = manualGameState.library.filter((item) => String(item.id) !== String(gameEditorState.gameId));
         if (manualGameState.library.length === previousLength) return;
+        invalidateAnalyticsCaches();
         renderManualGames(manualGameState.library);
 
         const statusEl = document.getElementById("manual-status");
@@ -3314,6 +3576,7 @@ async function fetchSteamLibrary() {
         ));
 
         await syncSteamLibraryBatchToCloud(nextSteamLibrary, steamId);
+        invalidateAnalyticsCaches();
 
         steamState.library = nextSteamLibrary;
         steamState.steamId = steamId;
@@ -3512,23 +3775,46 @@ function switchTab(tabId) {
     targetContent.classList.add("active");
 
     if (dom.filtersTop) {
-        dom.filtersTop.hidden = tabId === "steam-library" || tabId === "add-your-game" || tabId === "world-cup" || tabId === "my-world-cups";
+        dom.filtersTop.hidden = tabId === "steam-library"
+            || tabId === "add-your-game"
+            || tabId === "world-cup"
+            || tabId === "my-world-cups"
+            || tabId === "user-ranking";
     }
 
-    if (tabId === "visao-geral") renderVisaoGeral();
-    else if (tabId === "bi-gamer") renderBiGamer();
-    else if (tabId === "tempo-jogo") renderTempoJogo();
-    else if (tabId === "dificuldade") renderDificuldade();
-    else if (tabId === "plataforma") renderPlataforma();
-    else if (tabId === "avaliacao") renderAvaliacao();
-    else if (tabId === "user-ranking") renderUserRanking();
-    else if (tabId === "steam-library") void handleSteamLibraryTabOpen();
-    else if (tabId === "add-your-game") void handleManualLibraryTabOpen();
-    else if (tabId === "world-cup") renderWorldCup();
-    else if (tabId === "my-world-cups") renderMyWorldCups(true);
+    if (dom.analyticsScopeWrap) {
+        dom.analyticsScopeWrap.hidden = !isAnalyticsTab(tabId);
+    }
+
+    if (dom.analyticsScopeSelect) {
+        dom.analyticsScopeSelect.value = analyticsState.scope;
+    }
+
+    if (tabId === "my-world-cups") {
+        void renderTabContent(tabId, { force: true, forceListOnly: true });
+        return;
+    }
+
+    void renderTabContent(tabId, { force: true });
 }
 
 function bindEvents() {
+    if (dom.analyticsScopeSelect) {
+        dom.analyticsScopeSelect.value = analyticsState.scope;
+        dom.analyticsScopeSelect.addEventListener("change", (event) => {
+            const nextScope = String(event.target.value || "") === ANALYTICS_SCOPE_INDIVIDUAL
+                ? ANALYTICS_SCOPE_INDIVIDUAL
+                : ANALYTICS_SCOPE_GLOBAL;
+
+            analyticsState.scope = nextScope;
+
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
+            if (isAnalyticsTab(activeTab)) {
+                updateDashboards({ force: true });
+            }
+        });
+    }
+
     if (dom.filterStatus) {
         dom.filterStatus.addEventListener("change", (event) => {
             state.overviewFilters.status = event.target.value;
@@ -3563,7 +3849,7 @@ function bindEvents() {
 
     if (dom.refreshButton) {
         dom.refreshButton.addEventListener("click", () => {
-            updateDashboards();
+            updateDashboards({ force: true });
         });
     }
 
@@ -5681,8 +5967,19 @@ function init() {
     bindWorldCupEvents();
     bindMyWorldCupEvents();
     renderMyWorldCupCards();
-    if (dom.filtersTop) dom.filtersTop.hidden = false;
-    updateDashboards();
+
+    const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
+    if (dom.filtersTop) {
+        dom.filtersTop.hidden = activeTab === "steam-library"
+            || activeTab === "add-your-game"
+            || activeTab === "world-cup"
+            || activeTab === "my-world-cups"
+            || activeTab === "user-ranking";
+    }
+    if (dom.analyticsScopeWrap) dom.analyticsScopeWrap.hidden = !isAnalyticsTab(activeTab);
+    if (dom.analyticsScopeSelect) dom.analyticsScopeSelect.value = analyticsState.scope;
+
+    updateDashboards({ force: true });
 }
 
 window.addEventListener("beforeunload", () => {

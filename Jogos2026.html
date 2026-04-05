@@ -47,6 +47,12 @@
         </nav>
 
         <div class="filters-container" id="filters-top">
+            <label id="analytics-scope-wrap">Vis&atilde;o:
+                <select id="analytics-scope-select">
+                    <option value="global" selected>Vis&atilde;o Global</option>
+                    <option value="individual">Vis&atilde;o Individual</option>
+                </select>
+            </label>
             <label>Status:<select id="filter-status"></select></label>
             <label>Plataforma:<select id="filter-plataforma"></select></label>
             <label>Multiplayer:<select id="filter-multiplayer"></select></label>
@@ -452,26 +458,26 @@
                 <div class="user-ranking-layout">
                     <aside class="user-ranking-sidepanel">
                         <h3 class="user-ranking-title">Classifica&ccedil;&atilde;o do Usu&aacute;rio</h3>
-                        <p class="user-ranking-subtitle">Gamifica&ccedil;&atilde;o e percentis com base no seu tempo e na m&eacute;dia global simulada.</p>
+                        <p class="user-ranking-subtitle">Comparativo em tempo real entre sua biblioteca e a m&eacute;dia global da plataforma.</p>
                         <div class="user-ranking-side-metrics">
                             <div class="user-ranking-mini-card">
-                                <span>Jogos analisados</span>
+                                <span>Jogos na sua biblioteca</span>
                                 <strong id="ur-total-jogos">-</strong>
                             </div>
                             <div class="user-ranking-mini-card">
-                                <span>Percentil m&eacute;dio</span>
+                                <span>Sua taxa de conclus&atilde;o</span>
                                 <strong id="ur-percentil-medio">-</strong>
                             </div>
                             <div class="user-ranking-mini-card">
-                                <span>Jogos no Top 20%</span>
+                                <span>M&eacute;dia global de conclus&atilde;o</span>
                                 <strong id="ur-jogos-top20">-</strong>
                             </div>
                             <div class="user-ranking-mini-card">
-                                <span>Maior vantagem</span>
+                                <span>Seu tempo total</span>
                                 <strong id="ur-mais-rapido">-</strong>
                             </div>
                             <div class="user-ranking-mini-card">
-                                <span>Maior desafio</span>
+                                <span>M&eacute;dia global de tempo total</span>
                                 <strong id="ur-mais-lento">-</strong>
                             </div>
                         </div>
@@ -480,15 +486,15 @@
                     <div class="user-ranking-mainboard">
                         <div class="user-ranking-kpi-grid">
                             <article class="user-ranking-kpi">
-                                <p>Melhor posi&ccedil;&atilde;o</p>
+                                <p>Comparativo de conclus&atilde;o</p>
                                 <h4 id="ur-kpi-melhor">-</h4>
                             </article>
                             <article class="user-ranking-kpi">
-                                <p>Desempenho m&eacute;dio</p>
+                                <p>Comparativo de tempo</p>
                                 <h4 id="ur-kpi-media">-</h4>
                             </article>
                             <article class="user-ranking-kpi">
-                                <p>Recado da temporada</p>
+                                <p>Diagn&oacute;stico</p>
                                 <h4 id="ur-kpi-impacto">-</h4>
                             </article>
                         </div>
