@@ -4473,7 +4473,6 @@ function startGlobalLeagueRealtimeListener() {
     const leagueQuery = query(
         collection(db, GLOBAL_LEAGUE_COLLECTION),
         orderBy("points", "desc"),
-        orderBy("titles", "desc"),
         limit(100)
     );
 
@@ -4489,7 +4488,7 @@ function startGlobalLeagueRealtimeListener() {
             renderLeagueHTML(leagueRealtimeState.entries);
         },
         (error) => {
-            console.warn("Falha no listener realtime da Liga Global.", error);
+            console.error("Erro ao ler a Liga Global:", error);
         }
     );
 }
@@ -4585,16 +4584,16 @@ async function syncPointsToCloud(participantsStats) {
 
     const tournamentCategory = String(wcState.activeCup?.category || "Geral").trim() || "Geral";
 
-    try {
-        await Promise.all(entries.map(async (participant) => {
-            const pointsEarned = Math.max(0, Number(participant?.pointsEarned) || 0);
-            const titlesEarned = Math.max(0, Number(participant?.titlesEarned) || 0);
-            const originalName = String(participant?.originalName || "").trim();
-            if (!originalName || (pointsEarned <= 0 && titlesEarned <= 0)) return;
+    await Promise.all(entries.map(async (participant) => {
+        const pointsEarned = Math.max(0, Number(participant?.pointsEarned) || 0);
+        const titlesEarned = Math.max(0, Number(participant?.titlesEarned) || 0);
+        const originalName = String(participant?.originalName || "").trim();
+        if (!originalName || (pointsEarned <= 0 && titlesEarned <= 0)) return;
 
-            const slugifiedName = slugifyLeagueParticipantName(originalName);
-            const compRef = doc(db, GLOBAL_LEAGUE_COLLECTION, slugifiedName);
+        const slugifiedName = slugifyLeagueParticipantName(originalName);
+        const compRef = doc(db, GLOBAL_LEAGUE_COLLECTION, slugifiedName);
 
+        try {
             await setDoc(compRef, {
                 name: originalName,
                 category: tournamentCategory,
@@ -4602,10 +4601,10 @@ async function syncPointsToCloud(participantsStats) {
                 titles: increment(titlesEarned),
                 lastUpdated: serverTimestamp()
             }, { merge: true });
-        }));
-    } catch (error) {
-        console.warn("Falha ao sincronizar pontos da Liga Global na nuvem.", error);
-    }
+        } catch (error) {
+            console.error("Erro ao salvar pontos:", error);
+        }
+    }));
 }
 
 async function updateCustomCupLeagueStats(cupId, participantsStats) {
