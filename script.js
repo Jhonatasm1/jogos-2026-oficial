@@ -149,6 +149,7 @@ const manualGameState = {
 const libraryViewState = {
     sortCriteria: LIBRARY_SORT_PLAYTIME,
     sortDirection: "desc",
+    searchQuery: "",
     controlsBound: false
 };
 
@@ -1194,6 +1195,10 @@ function getNormalizedLibrarySortDirection(direction) {
     return String(direction || "desc").trim().toLowerCase() === "asc" ? "asc" : "desc";
 }
 
+function getNormalizedLibrarySearchQuery(value) {
+    return String(value || "").trim();
+}
+
 function getLibrarySortLabel(criteria) {
     switch (getNormalizedLibrarySortCriteria(criteria)) {
     case LIBRARY_SORT_NAME:
@@ -1272,6 +1277,14 @@ function getLibraryStatusWeight(game) {
         : null;
 }
 
+function filterLibraryByName(gamesArray, searchQuery) {
+    const games = Array.isArray(gamesArray) ? gamesArray : [];
+    const normalizedSearch = normalizeText(searchQuery);
+    if (!normalizedSearch) return games;
+
+    return games.filter((game) => normalizeText(game?.name || "").includes(normalizedSearch));
+}
+
 function sortLibrary(gamesArray, criteria, direction) {
     const sourceGames = Array.isArray(gamesArray) ? gamesArray : [];
     const criteriaKey = getNormalizedLibrarySortCriteria(criteria);
@@ -1334,15 +1347,19 @@ function updateLibrarySortDirectionButton() {
 function bindLibrarySortControls() {
     const criteriaSelect = document.getElementById("library-sort-criteria");
     const directionButton = document.getElementById("library-sort-direction");
-    if (!criteriaSelect || !directionButton) return;
+    const searchInput = document.getElementById("library-search-input");
+    if (!criteriaSelect || !directionButton || !searchInput) return;
 
     const normalizedCriteria = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
     const normalizedDirection = getNormalizedLibrarySortDirection(libraryViewState.sortDirection);
+    const normalizedSearch = getNormalizedLibrarySearchQuery(libraryViewState.searchQuery);
 
     libraryViewState.sortCriteria = normalizedCriteria;
     libraryViewState.sortDirection = normalizedDirection;
+    libraryViewState.searchQuery = normalizedSearch;
 
     criteriaSelect.value = normalizedCriteria;
+    searchInput.value = normalizedSearch;
     updateLibrarySortDirectionButton();
 
     if (libraryViewState.controlsBound) return;
@@ -1360,6 +1377,14 @@ function bindLibrarySortControls() {
             ? "desc"
             : "asc";
         updateLibrarySortDirectionButton();
+
+        if ((document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "") === "steam-library") {
+            renderSteamLibrary(getLibrary());
+        }
+    });
+
+    searchInput.addEventListener("input", (event) => {
+        libraryViewState.searchQuery = getNormalizedLibrarySearchQuery(event?.target?.value);
 
         if ((document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "") === "steam-library") {
             renderSteamLibrary(getLibrary());
@@ -3999,10 +4024,12 @@ function renderSteamLibrary(games) {
     const resultsEl = document.getElementById("steam-results");
     const statusEl = document.getElementById("steam-status");
     const criteriaSelect = document.getElementById("library-sort-criteria");
+    const searchInput = document.getElementById("library-search-input");
     if (!resultsEl || !statusEl) return;
 
     bindLibrarySortControls();
     if (criteriaSelect) criteriaSelect.value = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
+    if (searchInput) searchInput.value = getNormalizedLibrarySearchQuery(libraryViewState.searchQuery);
     updateLibrarySortDirectionButton();
 
     if (!getCurrentUserId()) {
@@ -4013,13 +4040,17 @@ function renderSteamLibrary(games) {
     }
 
     const sourceGames = Array.isArray(games) ? games.filter(Boolean) : [];
+    const activeSearchQuery = getNormalizedLibrarySearchQuery(libraryViewState.searchQuery);
+    const filteredGames = filterLibraryByName(sourceGames, activeSearchQuery);
     const sortCriteria = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
     const sortDirection = getNormalizedLibrarySortDirection(libraryViewState.sortDirection);
-    const sortedGames = sortLibrary(sourceGames, sortCriteria, sortDirection);
+    const sortedGames = sortLibrary(filteredGames, sortCriteria, sortDirection);
 
     if (!sortedGames.length) {
         resultsEl.innerHTML = "";
-        statusEl.textContent = "Nenhum jogo encontrado na Your Library.";
+        statusEl.textContent = activeSearchQuery
+            ? `Nenhum jogo encontrado para "${activeSearchQuery}" na Your Library.`
+            : "Nenhum jogo encontrado na Your Library.";
         statusEl.className = "steam-status steam-status--error";
         return;
     }
@@ -4065,7 +4096,10 @@ function renderSteamLibrary(games) {
         </div>`;
     }).join("") + "</div>";
 
-    statusEl.textContent = `${sortedGames.length} jogos em Your Library. Ordenado por ${getLibrarySortLabel(sortCriteria)} (${sortDirection.toUpperCase()}). Clique em um card para editar metadados.`;
+    const searchSuffix = activeSearchQuery
+        ? ` Filtro: "${activeSearchQuery}" (${sortedGames.length}/${sourceGames.length}).`
+        : "";
+    statusEl.textContent = `${sortedGames.length} jogos em Your Library. Ordenado por ${getLibrarySortLabel(sortCriteria)} (${sortDirection.toUpperCase()}).${searchSuffix} Clique em um card para editar metadados.`;
     statusEl.className = "steam-status steam-status--success";
     bindSteamCardEvents();
 }

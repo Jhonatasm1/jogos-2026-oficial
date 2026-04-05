@@ -1304,6 +1304,7 @@ main {
     letter-spacing: 0.45px;
 }
 
+.library-toolbar-field input[type="search"],
 .library-toolbar-field select {
     min-width: 260px;
     border: 1px solid rgba(26, 159, 218, 0.35);
@@ -1315,10 +1316,25 @@ main {
     padding: 0.56rem 0.72rem;
 }
 
+.library-toolbar-field input[type="search"]::placeholder {
+    color: rgba(205, 199, 188, 0.6);
+}
+
+.library-toolbar-field input[type="search"]:focus,
 .library-toolbar-field select:focus {
     outline: none;
     border-color: var(--gold);
     box-shadow: 0 0 0 2px var(--gold-glow);
+}
+
+.library-toolbar-field--search {
+    flex: 1;
+    min-width: 260px;
+}
+
+.library-toolbar-field--search input[type="search"] {
+    width: 100%;
+    min-width: 0;
 }
 
 .library-sort-direction {
@@ -2039,6 +2055,7 @@ body.modal-open {
     }
 
     .library-toolbar-field,
+    .library-toolbar-field input[type="search"],
     .library-toolbar-field select,
     .library-sort-direction {
         width: 100%;
