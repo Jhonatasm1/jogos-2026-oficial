@@ -624,6 +624,10 @@ function bindAuthEvents() {
             userLibraryState.loaded = false;
             userLibraryState.loading = false;
 
+            if (myWcState.selectedCupId || myWcState.draftCup) {
+                closeMyWorldCupEditor();
+            }
+
             renderSteamLibrary([]);
             renderManualGames([]);
             updateDashboards();
@@ -4090,6 +4094,8 @@ function mapMyCupToPlayableCup(cup) {
 }
 
 function getPlayableWorldCups() {
+    const currentUserId = getCurrentUserId();
+
     const baseCups = wcCups.map((cup) => ({
         ...cup,
         sourceType: "global",
@@ -4098,6 +4104,13 @@ function getPlayableWorldCups() {
     }));
 
     const customCups = myWcState.cups
+        .filter((cup) => {
+            const ownerId = String(cup?.authorId || "");
+            if (currentUserId && ownerId === currentUserId) return true;
+
+            const visibility = normalizeText(cup?.visibility || "public");
+            return visibility !== "private";
+        })
         .map(mapMyCupToPlayableCup)
         .filter(Boolean);
     return [...baseCups, ...customCups];
@@ -5279,11 +5292,16 @@ function renderMyWorldCupCards() {
 
     const currentUserId = getCurrentUserId();
 
-    const cups = [...myWcState.cups]
+    const cups = (currentUserId
+        ? myWcState.cups.filter((cup) => String(cup?.authorId || "") === currentUserId)
+        : [])
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
     if (!cups.length) {
         grid.innerHTML = "";
+        empty.textContent = currentUserId
+            ? "Voce ainda nao criou nenhuma World Cup."
+            : "Faca login com o Google para ver suas World Cups.";
         empty.hidden = false;
         return;
     }
