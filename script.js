@@ -20,9 +20,7 @@ const AVALIACAO_SCALE = [
 
 const STEAM_API_BASE = "https://yxt-backend.onrender.com/steam-library/";
 const STEAM_SEARCH_API_BASE = "https://yxt-backend.onrender.com/steam-search";
-const STEAM_LIBRARY_STORAGE_KEY = "yxt_library";
-const STEAM_LIBRARY_STEAM_ID_KEY = "yxt_library_steam_id";
-const MANUAL_GAME_STORAGE_KEY = "yxt_manual_games";
+const USER_LIBRARY_COLLECTION = "library";
 const DEFAULT_GAME_COVER_PLACEHOLDER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#111827"/><rect x="20" y="20" width="600" height="320" rx="18" fill="#0f1419" stroke="#d4a853" stroke-width="2" stroke-dasharray="10 10"/><text x="50%" y="48%" text-anchor="middle" fill="#d4a853" font-family="sans-serif" font-size="30" font-weight="700">No Cover</text><text x="50%" y="58%" text-anchor="middle" fill="#8fa3bf" font-family="sans-serif" font-size="15">Use AppID, URL or upload an image</text></svg>'
 );
@@ -119,6 +117,12 @@ const gameEditorState = {
     libraryType: "",
     gameId: null,
     pendingCoverSrc: null
+};
+
+const userLibraryState = {
+    uid: "",
+    loaded: false,
+    loading: false
 };
 
 const authState = {
@@ -315,16 +319,7 @@ async function searchSteamGameByName(name) {
 /* ====================== LIBRARY DATA ACCESS ====================== */
 
 function getLibrary() {
-    const merged = [...steamState.library, ...manualGameState.library];
-    if (merged.length > 0) return merged;
-    try {
-        const raw = localStorage.getItem(STEAM_LIBRARY_STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
+    return [...steamState.library, ...manualGameState.library];
 }
 
 function getFilteredLibrary() {
@@ -502,6 +497,30 @@ function bindAuthEvents() {
             await saveUserToDatabase(user);
         }
         renderAuthUI(user || null);
+
+        if (!user) {
+            steamState.library = [];
+            steamState.steamId = "";
+            manualGameState.library = [];
+            userLibraryState.uid = "";
+            userLibraryState.loaded = false;
+            userLibraryState.loading = false;
+
+            renderSteamLibrary([]);
+            renderManualGames([]);
+            updateDashboards();
+        } else {
+            userLibraryState.uid = String(user.uid || "");
+            await loadUserLibraryFromCloud({ force: true });
+            updateDashboards();
+
+            const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
+            if (activeTab === "steam-library") {
+                renderSteamLibrary(steamState.library);
+            } else if (activeTab === "add-your-game") {
+                renderManualGames(manualGameState.library);
+            }
+        }
 
         if (myWcState.loaded) {
             renderMyWorldCupCards();
@@ -2473,7 +2492,185 @@ function getSteamModalElements() {
     };
 }
 
+function getUserLibraryCollectionRef(userId) {
+    return collection(db, "users", String(userId || ""), USER_LIBRARY_COLLECTION);
+}
+
+function getUserLibraryDocRef(userId, docId) {
+    return doc(db, "users", String(userId || ""), USER_LIBRARY_COLLECTION, String(docId || ""));
+}
+
+function getSteamLibraryDocId(appid) {
+    const safeAppId = String(appid || "").trim();
+    return safeAppId
+        ? `steam-${safeAppId}`
+        : `steam-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getLibraryCloudPayload(game, source) {
+    const normalizedSource = String(source || "").toLowerCase() === "manual" ? "manual" : "steam";
+    return {
+        source: normalizedSource,
+        id: normalizedSource === "manual"
+            ? String(game.id || game.docId || "")
+            : String(game.appid || ""),
+        appid: String(game.appid || ""),
+        name: String(game.name || "Desconhecido"),
+        playtime_hours: Math.max(0, Number(game.playtime_hours) || 0),
+        playtime_overridden: Boolean(game.playtime_overridden),
+        metadata: {
+            ...DEFAULT_STEAM_METADATA,
+            ...(game.metadata || {})
+        },
+        coverSrc: String(game.coverSrc || ""),
+        steamSyncId: normalizedSource === "steam" ? String(game.steamSyncId || "") : "",
+        updatedAt: serverTimestamp()
+    };
+}
+
+async function loadUserLibraryFromCloud(options) {
+    const settings = options && typeof options === "object" ? options : {};
+    const force = Boolean(settings.force);
+    const currentUserId = getCurrentUserId();
+
+    if (!currentUserId) {
+        steamState.library = [];
+        manualGameState.library = [];
+        userLibraryState.uid = "";
+        userLibraryState.loaded = false;
+        return false;
+    }
+
+    if (!force && userLibraryState.loaded && userLibraryState.uid === currentUserId) {
+        return true;
+    }
+
+    if (userLibraryState.loading) {
+        return false;
+    }
+
+    userLibraryState.loading = true;
+
+    try {
+        const snapshot = await getDocs(getUserLibraryCollectionRef(currentUserId));
+        const steamGames = [];
+        const manualGames = [];
+
+        snapshot.docs.forEach((entry) => {
+            const payload = entry.data() || {};
+            const source = String(payload.source || "steam").toLowerCase() === "manual" ? "manual" : "steam";
+
+            if (source === "manual") {
+                manualGames.push(normalizeManualGame({
+                    ...payload,
+                    id: String(payload.id || entry.id),
+                    docId: entry.id
+                }));
+                return;
+            }
+
+            steamGames.push(normalizeSteamGame({
+                ...payload,
+                appid: String(payload.appid || payload.id || "").trim(),
+                docId: entry.id
+            }));
+        });
+
+        steamState.library = steamGames;
+        manualGameState.library = manualGames;
+        steamState.steamId = steamGames.find((game) => String(game.steamSyncId || "").trim())?.steamSyncId || "";
+        const steamIdInput = document.getElementById("steam-id-input");
+        if (steamIdInput && steamState.steamId) steamIdInput.value = steamState.steamId;
+
+        userLibraryState.uid = currentUserId;
+        userLibraryState.loaded = true;
+        return true;
+    } catch (error) {
+        console.error("Falha ao carregar biblioteca da nuvem.", error);
+        return false;
+    } finally {
+        userLibraryState.loading = false;
+    }
+}
+
+async function upsertLibraryGameToCloud(game, source) {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) throw new Error("Usuario nao autenticado.");
+
+    const normalizedSource = String(source || "").toLowerCase() === "manual" ? "manual" : "steam";
+    const docId = normalizedSource === "manual"
+        ? String(game.docId || game.id || "").trim()
+        : String(game.docId || getSteamLibraryDocId(game.appid)).trim();
+    if (!docId) throw new Error("ID de documento invalido para biblioteca.");
+
+    const payload = getLibraryCloudPayload(game, normalizedSource);
+    await setDoc(getUserLibraryDocRef(currentUserId, docId), payload, { merge: true });
+    return docId;
+}
+
+async function updateLibraryGameInCloud(game, source) {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) throw new Error("Usuario nao autenticado.");
+
+    const normalizedSource = String(source || "").toLowerCase() === "manual" ? "manual" : "steam";
+    const docId = normalizedSource === "manual"
+        ? String(game.docId || game.id || "").trim()
+        : String(game.docId || getSteamLibraryDocId(game.appid)).trim();
+    if (!docId) throw new Error("ID de documento invalido para update da biblioteca.");
+
+    const payload = getLibraryCloudPayload(game, normalizedSource);
+    const docRef = getUserLibraryDocRef(currentUserId, docId);
+
+    try {
+        await updateDoc(docRef, payload);
+    } catch {
+        await setDoc(docRef, payload, { merge: true });
+    }
+
+    return docId;
+}
+
+async function deleteLibraryGameFromCloud(game, source) {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) throw new Error("Usuario nao autenticado.");
+
+    const normalizedSource = String(source || "").toLowerCase() === "manual" ? "manual" : "steam";
+    const docId = normalizedSource === "manual"
+        ? String(game?.docId || game?.id || "").trim()
+        : String(game?.docId || getSteamLibraryDocId(game?.appid)).trim();
+    if (!docId) return;
+
+    await deleteDoc(getUserLibraryDocRef(currentUserId, docId));
+}
+
+async function syncSteamLibraryBatchToCloud(games, steamId) {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) throw new Error("Usuario nao autenticado.");
+
+    const normalizedGames = Array.isArray(games) ? games.map((game) => normalizeSteamGame(game)) : [];
+    const desiredDocIds = new Set(normalizedGames.map((game) => String(game.docId || getSteamLibraryDocId(game.appid)).trim()).filter(Boolean));
+
+    const snapshot = await getDocs(getUserLibraryCollectionRef(currentUserId));
+    const deletions = snapshot.docs
+        .filter((entry) => {
+            const payload = entry.data() || {};
+            const source = String(payload.source || "steam").toLowerCase() === "manual" ? "manual" : "steam";
+            return source === "steam" && !desiredDocIds.has(entry.id);
+        })
+        .map((entry) => deleteDoc(getUserLibraryDocRef(currentUserId, entry.id)));
+
+    const writes = normalizedGames.map((game) => upsertLibraryGameToCloud({
+        ...game,
+        steamSyncId: String(steamId || game.steamSyncId || "")
+    }, "steam"));
+
+    await Promise.all([...deletions, ...writes]);
+}
+
 function normalizeSteamGame(game, currentMetadata, currentCoverSrc, currentPlaytimeOverride, currentPlaytimeOverridden) {
+    const appIdText = String(game.appid || "").trim();
+    const resolvedDocId = String(game.docId || getSteamLibraryDocId(appIdText)).trim();
+
     const mergedMetadata = {
         ...DEFAULT_STEAM_METADATA,
         ...(currentMetadata || {}),
@@ -2486,7 +2683,10 @@ function normalizeSteamGame(game, currentMetadata, currentCoverSrc, currentPlayt
         : Number(game.playtime_hours);
 
     return {
-        appid: game.appid,
+        appid: appIdText,
+        docId: resolvedDocId,
+        source: "steam",
+        steamSyncId: String(game.steamSyncId || ""),
         name: game.name || "Desconhecido",
         playtime_hours: Number.isFinite(resolvedPlaytime) ? resolvedPlaytime : 0,
         playtime_overridden: currentPlaytimeOverride !== undefined
@@ -2498,41 +2698,24 @@ function normalizeSteamGame(game, currentMetadata, currentCoverSrc, currentPlayt
 }
 
 function saveSteamLibraryToStorage() {
-    try {
-        localStorage.setItem(STEAM_LIBRARY_STORAGE_KEY, JSON.stringify(steamState.library));
-        if (steamState.steamId) {
-            localStorage.setItem(STEAM_LIBRARY_STEAM_ID_KEY, steamState.steamId);
-        }
-    } catch (error) {
-        console.error("Falha ao persistir yxt_library:", error);
-    }
+    return syncSteamLibraryBatchToCloud(steamState.library, steamState.steamId);
 }
 
 function loadSteamLibraryFromStorage() {
-    try {
-        const raw = localStorage.getItem(STEAM_LIBRARY_STORAGE_KEY);
-        if (!raw) return false;
-
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return false;
-
-        steamState.library = parsed
-            .map((game) => normalizeSteamGame(game))
-            .filter((game) => Number.isFinite(Number(game.appid)) || typeof game.appid === "string");
-
-        const storedSteamId = localStorage.getItem(STEAM_LIBRARY_STEAM_ID_KEY) || "";
-        steamState.steamId = storedSteamId;
-        return steamState.library.length > 0;
-    } catch (error) {
-        console.error("Falha ao ler yxt_library:", error);
-        return false;
-    }
+    return loadUserLibraryFromCloud({ force: true });
 }
 
 function renderSteamLibrary(games) {
     const resultsEl = document.getElementById("steam-results");
     const statusEl = document.getElementById("steam-status");
     if (!resultsEl || !statusEl) return;
+
+    if (!getCurrentUserId()) {
+        resultsEl.innerHTML = "";
+        statusEl.textContent = "Faça login com o Google para ver sua biblioteca";
+        statusEl.className = "steam-status steam-status--error";
+        return;
+    }
 
     const sortedGames = [...games]
         .filter((g) => (Number(g.playtime_hours) || 0) >= 0)
@@ -2577,6 +2760,8 @@ function normalizeManualGame(game) {
     const gameId = String(game?.id || `manual-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
     return {
         id: gameId,
+        docId: String(game?.docId || gameId),
+        source: "manual",
         appid: String(game?.appid || "").trim(),
         name: game?.name || "Novo jogo",
         playtime_hours: Number(game?.playtime_hours) || 0,
@@ -2589,36 +2774,25 @@ function normalizeManualGame(game) {
 }
 
 function loadManualGamesFromStorage() {
-    try {
-        const raw = localStorage.getItem(MANUAL_GAME_STORAGE_KEY);
-        if (!raw) return false;
-
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return false;
-
-        manualGameState.library = parsed
-            .map((game) => normalizeManualGame(game))
-            .filter((game) => Boolean(game.name));
-
-        return manualGameState.library.length > 0;
-    } catch (error) {
-        console.error("Falha ao ler yxt_manual_games:", error);
-        return false;
-    }
+    return loadUserLibraryFromCloud({ force: true });
 }
 
 function saveManualGamesToStorage() {
-    try {
-        localStorage.setItem(MANUAL_GAME_STORAGE_KEY, JSON.stringify(manualGameState.library));
-    } catch (error) {
-        console.error("Falha ao persistir yxt_manual_games:", error);
-    }
+    const writes = manualGameState.library.map((game) => upsertLibraryGameToCloud(game, "manual"));
+    return Promise.all(writes);
 }
 
 function renderManualGames(games) {
     const resultsEl = document.getElementById("manual-games-results");
     const statusEl = document.getElementById("manual-status");
     if (!resultsEl || !statusEl) return;
+
+    if (!getCurrentUserId()) {
+        resultsEl.innerHTML = "";
+        statusEl.textContent = "Faça login com o Google para gerenciar sua biblioteca";
+        statusEl.className = "steam-status steam-status--error";
+        return;
+    }
 
     const sortedGames = [...games]
         .filter((g) => (Number(g.playtime_hours) || 0) >= 0)
@@ -2660,15 +2834,9 @@ function renderManualGames(games) {
 }
 
 function initializeManualGamesFromStorage() {
-    const loaded = loadManualGamesFromStorage();
-    if (loaded) {
+    void loadUserLibraryFromCloud({ force: true }).then(() => {
         renderManualGames(manualGameState.library);
-        const statusEl = document.getElementById("manual-status");
-        if (statusEl) {
-            statusEl.textContent = `${manualGameState.library.length} jogos restaurados do armazenamento local.`;
-            statusEl.className = "steam-status steam-status--success";
-        }
-    }
+    });
 }
 
 async function addManualGame(event) {
@@ -2686,6 +2854,14 @@ async function addManualGame(event) {
     let appid = String(appIdInput?.value || "").trim();
     const coverUrl = String(coverUrlInput?.value || "").trim();
     const file = coverInput?.files?.[0] || null;
+
+    if (!getCurrentUserId()) {
+        if (statusEl) {
+            statusEl.textContent = "Faça login com o Google para adicionar jogos.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        return;
+    }
 
     if (!name) {
         if (statusEl) {
@@ -2735,10 +2911,21 @@ async function addManualGame(event) {
         coverSrc
     });
 
-    manualGameState.library.unshift(nextGame);
-    saveManualGamesToStorage();
-    renderManualGames(manualGameState.library);
-    updateDashboards();
+    try {
+        nextGame.docId = String(nextGame.docId || nextGame.id);
+        await upsertLibraryGameToCloud(nextGame, "manual");
+
+        manualGameState.library.unshift(nextGame);
+        renderManualGames(manualGameState.library);
+        updateDashboards();
+    } catch (error) {
+        console.error("Falha ao salvar jogo manual no Firestore:", error);
+        if (statusEl) {
+            statusEl.textContent = "Nao foi possivel salvar este jogo na nuvem.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        return;
+    }
 
     if (statusEl) {
         statusEl.textContent = `${name} adicionado aos jogos manuais.${autoFillMessage}`;
@@ -2785,11 +2972,22 @@ function openManualGameModal(gameId) {
     document.body.classList.add("modal-open");
 }
 
-function saveGameMetadata(event) {
+async function saveGameMetadata(event) {
     event.preventDefault();
 
     const modal = getSteamModalElements();
     if (!gameEditorState.libraryType || !gameEditorState.gameId) return;
+
+    if (!getCurrentUserId()) {
+        const statusEl = gameEditorState.libraryType === "manual"
+            ? document.getElementById("manual-status")
+            : document.getElementById("steam-status");
+        if (statusEl) {
+            statusEl.textContent = "Faça login com o Google para salvar metadados.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        return;
+    }
 
     const metadata = {
         status: modal.status?.value || "",
@@ -2809,19 +3007,24 @@ function saveGameMetadata(event) {
     const nextPlaytimeHours = Number.isFinite(nextPlaytimeRaw) && nextPlaytimeRaw >= 0
         ? nextPlaytimeRaw
         : 0;
-    const currentCoverSrc = gameEditorState.libraryType === "steam"
-        ? steamState.library.find((item) => String(item.appid) === String(gameEditorState.gameId))?.coverSrc || ""
-        : manualGameState.library.find((item) => item.id === String(gameEditorState.gameId))?.coverSrc || "";
+    const currentItem = gameEditorState.libraryType === "steam"
+        ? steamState.library.find((item) => String(item.appid) === String(gameEditorState.gameId))
+        : manualGameState.library.find((item) => item.id === String(gameEditorState.gameId));
+    if (!currentItem) return;
+
+    const currentCoverSrc = String(currentItem.coverSrc || "");
 
     const nextCoverSrc = gameEditorState.pendingCoverSrc === null
         ? currentCoverSrc
         : gameEditorState.pendingCoverSrc;
 
+    let updatedItem = null;
+
     if (gameEditorState.libraryType === "steam") {
         const idx = steamState.library.findIndex((item) => String(item.appid) === String(gameEditorState.gameId));
         if (idx === -1) return;
 
-        steamState.library[idx] = {
+        updatedItem = {
             ...steamState.library[idx],
             appid: nextAppId || steamState.library[idx].appid,
             playtime_hours: nextPlaytimeHours,
@@ -2833,14 +3036,11 @@ function saveGameMetadata(event) {
             },
             coverSrc: String(nextCoverSrc || "")
         };
-
-        saveSteamLibraryToStorage();
-        renderSteamLibrary(steamState.library);
     } else {
         const idx = manualGameState.library.findIndex((item) => item.id === String(gameEditorState.gameId));
         if (idx === -1) return;
 
-        manualGameState.library[idx] = {
+        updatedItem = {
             ...manualGameState.library[idx],
             name: modal.gameName?.textContent || manualGameState.library[idx].name,
             appid: nextAppId || manualGameState.library[idx].appid,
@@ -2852,8 +3052,29 @@ function saveGameMetadata(event) {
             },
             coverSrc: String(nextCoverSrc || "")
         };
+    }
 
-        saveManualGamesToStorage();
+    try {
+        await updateLibraryGameInCloud(updatedItem, gameEditorState.libraryType);
+    } catch (error) {
+        console.error("Falha ao atualizar metadados no Firestore:", error);
+        const statusEl = gameEditorState.libraryType === "manual"
+            ? document.getElementById("manual-status")
+            : document.getElementById("steam-status");
+        if (statusEl) {
+            statusEl.textContent = "Nao foi possivel salvar metadados na nuvem.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        return;
+    }
+
+    if (gameEditorState.libraryType === "steam") {
+        const idx = steamState.library.findIndex((item) => String(item.appid) === String(gameEditorState.gameId));
+        if (idx >= 0) steamState.library[idx] = updatedItem;
+        renderSteamLibrary(steamState.library);
+    } else {
+        const idx = manualGameState.library.findIndex((item) => item.id === String(gameEditorState.gameId));
+        if (idx >= 0) manualGameState.library[idx] = updatedItem;
         renderManualGames(manualGameState.library);
     }
 
@@ -2923,26 +3144,65 @@ function closeSteamMetadataModal() {
     document.body.classList.remove("modal-open");
 }
 
-function deleteCurrentGameFromModal() {
+async function deleteCurrentGameFromModal() {
     if (!gameEditorState.libraryType || !gameEditorState.gameId) return;
 
+    if (!getCurrentUserId()) {
+        const statusEl = gameEditorState.libraryType === "manual"
+            ? document.getElementById("manual-status")
+            : document.getElementById("steam-status");
+        if (statusEl) {
+            statusEl.textContent = "Faça login com o Google para remover jogos.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        return;
+    }
+
     if (gameEditorState.libraryType === "steam") {
+        const target = steamState.library.find((item) => String(item.appid) === String(gameEditorState.gameId));
+        if (!target) return;
+
+        try {
+            await deleteLibraryGameFromCloud(target, "steam");
+        } catch (error) {
+            console.error("Falha ao excluir jogo Steam da nuvem:", error);
+            const statusEl = document.getElementById("steam-status");
+            if (statusEl) {
+                statusEl.textContent = "Nao foi possivel remover o jogo da nuvem.";
+                statusEl.className = "steam-status steam-status--error";
+            }
+            return;
+        }
+
         const previousLength = steamState.library.length;
         steamState.library = steamState.library.filter((item) => String(item.appid) !== String(gameEditorState.gameId));
         if (steamState.library.length === previousLength) return;
-        saveSteamLibraryToStorage();
         renderSteamLibrary(steamState.library);
 
         const statusEl = document.getElementById("steam-status");
         if (statusEl) {
-            statusEl.textContent = "Jogo removido da Biblioteca Steam local.";
+            statusEl.textContent = "Jogo removido da Biblioteca Steam.";
             statusEl.className = "steam-status steam-status--success";
         }
     } else {
+        const target = manualGameState.library.find((item) => String(item.id) === String(gameEditorState.gameId));
+        if (!target) return;
+
+        try {
+            await deleteLibraryGameFromCloud(target, "manual");
+        } catch (error) {
+            console.error("Falha ao excluir jogo manual da nuvem:", error);
+            const statusEl = document.getElementById("manual-status");
+            if (statusEl) {
+                statusEl.textContent = "Nao foi possivel remover o jogo da nuvem.";
+                statusEl.className = "steam-status steam-status--error";
+            }
+            return;
+        }
+
         const previousLength = manualGameState.library.length;
         manualGameState.library = manualGameState.library.filter((item) => String(item.id) !== String(gameEditorState.gameId));
         if (manualGameState.library.length === previousLength) return;
-        saveManualGamesToStorage();
         renderManualGames(manualGameState.library);
 
         const statusEl = document.getElementById("manual-status");
@@ -2995,21 +3255,9 @@ function bindSteamCardEvents() {
 }
 
 function initializeSteamLibraryFromStorage() {
-    const loaded = loadSteamLibraryFromStorage();
-    const input = document.getElementById("steam-id-input");
-    const statusEl = document.getElementById("steam-status");
-
-    if (input && steamState.steamId) {
-        input.value = steamState.steamId;
-    }
-
-    if (loaded) {
+    void loadUserLibraryFromCloud({ force: true }).then(() => {
         renderSteamLibrary(steamState.library);
-        if (statusEl) {
-            statusEl.textContent = `${steamState.library.length} jogos restaurados do armazenamento local.`;
-            statusEl.className = "steam-status steam-status--success";
-        }
-    }
+    });
 }
 
 async function fetchSteamLibrary() {
@@ -3017,6 +3265,13 @@ async function fetchSteamLibrary() {
     const statusEl = document.getElementById("steam-status");
     const resultsEl = document.getElementById("steam-results");
     const steamId = (input?.value || "").trim();
+
+    if (!getCurrentUserId()) {
+        statusEl.textContent = "Faça login com o Google para sincronizar sua biblioteca Steam.";
+        statusEl.className = "steam-status steam-status--error";
+        resultsEl.innerHTML = "";
+        return;
+    }
 
     if (!steamId) {
         statusEl.textContent = "Digite um SteamID64 valido.";
@@ -3043,21 +3298,13 @@ async function fetchSteamLibrary() {
             return;
         }
 
-        const isSameUser = steamState.steamId && steamState.steamId === steamId;
+        const existingByAppId = new Map(steamState.library.map((game) => [String(game.appid), game]));
 
-        if (!isSameUser) {
-            steamState.library = [];
-            steamState.steamId = steamId;
-            localStorage.removeItem(STEAM_LIBRARY_STORAGE_KEY);
-            localStorage.removeItem(STEAM_LIBRARY_STEAM_ID_KEY);
-        }
-
-        const existingByAppId = isSameUser
-            ? new Map(steamState.library.map((game) => [String(game.appid), game]))
-            : new Map();
-
-        steamState.library = games.map((game) => normalizeSteamGame(
-            game,
+        const nextSteamLibrary = games.map((game) => normalizeSteamGame(
+            {
+                ...game,
+                steamSyncId: steamId
+            },
             existingByAppId.get(String(game.appid))?.metadata || DEFAULT_STEAM_METADATA,
             existingByAppId.get(String(game.appid))?.coverSrc || "",
             existingByAppId.get(String(game.appid))?.playtime_overridden
@@ -3065,8 +3312,11 @@ async function fetchSteamLibrary() {
                 : undefined,
             existingByAppId.get(String(game.appid))?.playtime_overridden || false
         ));
+
+        await syncSteamLibraryBatchToCloud(nextSteamLibrary, steamId);
+
+        steamState.library = nextSteamLibrary;
         steamState.steamId = steamId;
-        saveSteamLibraryToStorage();
         renderSteamLibrary(steamState.library);
         updateDashboards();
 
@@ -3079,91 +3329,29 @@ async function fetchSteamLibrary() {
 }
 
 function exportSteamLibraryBackup() {
-    try {
-        const rawLibrary = localStorage.getItem(STEAM_LIBRARY_STORAGE_KEY);
-        const payload = rawLibrary ? JSON.parse(rawLibrary) : [];
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "yxt_backup.json";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        const statusEl = document.getElementById("steam-status");
-        if (statusEl) {
-            statusEl.textContent = "Backup exportado com sucesso.";
-            statusEl.className = "steam-status steam-status--success";
-        }
-    } catch (error) {
-        const statusEl = document.getElementById("steam-status");
-        if (statusEl) {
-            statusEl.textContent = "Falha ao exportar backup. Verifique os dados locais.";
-            statusEl.className = "steam-status steam-status--error";
-        }
-        console.error("Falha ao exportar yxt_library:", error);
-    }
+    const statusEl = document.getElementById("steam-status");
+    if (!statusEl) return;
+    statusEl.textContent = "Backups locais foram desativados. Seus dados ja estao na nuvem.";
+    statusEl.className = "steam-status steam-status--success";
 }
 
 function triggerSteamLibraryImport() {
-    const input = document.getElementById("import-backup-input");
-    if (input) {
-        input.value = "";
-        input.click();
-    }
+    const statusEl = document.getElementById("steam-status");
+    if (!statusEl) return;
+    statusEl.textContent = "Importacao local desativada. Use a sincronizacao da Steam na nuvem.";
+    statusEl.className = "steam-status steam-status--success";
 }
 
 function importSteamLibraryBackup(event) {
-    const file = event?.target?.files?.[0];
     const statusEl = document.getElementById("steam-status");
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-        try {
-            const parsed = JSON.parse(String(reader.result || "[]"));
-            if (!Array.isArray(parsed)) {
-                throw new Error("Formato de backup invalido.");
-            }
-
-            localStorage.setItem(STEAM_LIBRARY_STORAGE_KEY, JSON.stringify(parsed));
-            steamState.library = parsed
-                .map((game) => normalizeSteamGame(game))
-                .filter((game) => Number.isFinite(Number(game.appid)) || typeof game.appid === "string");
-
-            renderSteamLibrary(steamState.library);
-            updateDashboards();
-
-            if (statusEl) {
-                statusEl.textContent = `${steamState.library.length} jogos importados do backup.`;
-                statusEl.className = "steam-status steam-status--success";
-            }
-        } catch (error) {
-            if (statusEl) {
-                statusEl.textContent = "Falha ao importar backup. Arquivo JSON invalido.";
-                statusEl.className = "steam-status steam-status--error";
-            }
-            console.error("Falha ao importar yxt_library:", error);
-        }
-    };
-
-    reader.onerror = () => {
-        if (statusEl) {
-            statusEl.textContent = "Falha ao ler o arquivo de backup.";
-            statusEl.className = "steam-status steam-status--error";
-        }
-    };
-
-    reader.readAsText(file, "UTF-8");
+    if (event?.target) event.target.value = "";
+    if (!statusEl) return;
+    statusEl.textContent = "Importacao local desativada. Seus jogos ficam salvos no Firebase.";
+    statusEl.className = "steam-status steam-status--success";
 }
 
 function bindSteamEvents() {
     const btn = document.getElementById("steam-sync-btn");
-    const exportBackupBtn = document.getElementById("export-backup-btn");
-    const importBackupBtn = document.getElementById("import-backup-btn");
-    const importBackupInput = document.getElementById("import-backup-input");
     const manualAddBtn = document.getElementById("manual-add-game-btn");
     const manualCoverPickerBtn = document.getElementById("manual-cover-picker-btn");
     const manualCoverInput = document.getElementById("manual-cover-input");
@@ -3171,9 +3359,6 @@ function bindSteamEvents() {
     const modal = getSteamModalElements();
 
     if (btn) btn.addEventListener("click", fetchSteamLibrary);
-    if (exportBackupBtn) exportBackupBtn.addEventListener("click", exportSteamLibraryBackup);
-    if (importBackupBtn) importBackupBtn.addEventListener("click", triggerSteamLibraryImport);
-    if (importBackupInput) importBackupInput.addEventListener("change", importSteamLibraryBackup);
     if (manualAddBtn) manualAddBtn.addEventListener("click", (event) => { addManualGame(event).catch((error) => console.error("Falha ao adicionar jogo manual:", error)); });
     if (manualCoverPickerBtn && manualCoverInput) {
         manualCoverPickerBtn.addEventListener("click", () => manualCoverInput.click());
@@ -3193,7 +3378,11 @@ function bindSteamEvents() {
     }
 
     if (modal.deleteBtn) {
-        modal.deleteBtn.addEventListener("click", deleteCurrentGameFromModal);
+        modal.deleteBtn.addEventListener("click", () => {
+            deleteCurrentGameFromModal().catch((error) => {
+                console.error("Falha ao excluir jogo da biblioteca:", error);
+            });
+        });
     }
 
     if (modal.overlay) {
@@ -3275,6 +3464,40 @@ function clearModalCoverOverride() {
     updateModalCoverPreview(DEFAULT_GAME_COVER_PLACEHOLDER);
 }
 
+async function handleSteamLibraryTabOpen() {
+    const statusEl = document.getElementById("steam-status");
+
+    if (!getCurrentUserId()) {
+        renderSteamLibrary([]);
+        return;
+    }
+
+    if (statusEl) {
+        statusEl.textContent = "Carregando biblioteca da nuvem...";
+        statusEl.className = "steam-status steam-status--loading";
+    }
+
+    await loadUserLibraryFromCloud({ force: true });
+    renderSteamLibrary(steamState.library);
+}
+
+async function handleManualLibraryTabOpen() {
+    const statusEl = document.getElementById("manual-status");
+
+    if (!getCurrentUserId()) {
+        renderManualGames([]);
+        return;
+    }
+
+    if (statusEl) {
+        statusEl.textContent = "Carregando biblioteca da nuvem...";
+        statusEl.className = "steam-status steam-status--loading";
+    }
+
+    await loadUserLibraryFromCloud({ force: true });
+    renderManualGames(manualGameState.library);
+}
+
 /* ====================== TABS, EVENTS, INIT ====================== */
 
 function switchTab(tabId) {
@@ -3299,8 +3522,8 @@ function switchTab(tabId) {
     else if (tabId === "plataforma") renderPlataforma();
     else if (tabId === "avaliacao") renderAvaliacao();
     else if (tabId === "user-ranking") renderUserRanking();
-    else if (tabId === "steam-library") renderSteamLibrary(steamState.library);
-    else if (tabId === "add-your-game") renderManualGames(manualGameState.library);
+    else if (tabId === "steam-library") void handleSteamLibraryTabOpen();
+    else if (tabId === "add-your-game") void handleManualLibraryTabOpen();
     else if (tabId === "world-cup") renderWorldCup();
     else if (tabId === "my-world-cups") renderMyWorldCups(true);
 }
@@ -5457,8 +5680,6 @@ function init() {
     bindSteamEvents();
     bindWorldCupEvents();
     bindMyWorldCupEvents();
-    initializeSteamLibraryFromStorage();
-    initializeManualGamesFromStorage();
     renderMyWorldCupCards();
     if (dom.filtersTop) dom.filtersTop.hidden = false;
     updateDashboards();
