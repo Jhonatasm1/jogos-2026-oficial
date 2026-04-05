@@ -1213,6 +1213,132 @@ main {
     margin-bottom: 1.25rem;
 }
 
+.library-sync-details {
+    width: min(760px, 100%);
+    margin: 0.2rem auto 0.9rem;
+    border: 1px solid rgba(26, 159, 218, 0.28);
+    border-radius: 10px;
+    background: rgba(12, 16, 25, 0.62);
+    text-align: left;
+    overflow: hidden;
+}
+
+.library-sync-details summary {
+    list-style: none;
+    cursor: pointer;
+    color: var(--tech-bright);
+    font-family: "Syne", sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    padding: 0.65rem 0.85rem;
+    background: rgba(7, 11, 18, 0.7);
+    border-bottom: 1px solid transparent;
+}
+
+.library-sync-details[open] summary {
+    border-bottom-color: rgba(26, 159, 218, 0.26);
+}
+
+.library-sync-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.library-sync-details summary::after {
+    content: "▾";
+    float: right;
+    opacity: 0.85;
+}
+
+.library-sync-details[open] summary::after {
+    content: "▴";
+}
+
+.library-sync-content {
+    padding: 0.75rem 0.85rem 0.9rem;
+}
+
+.library-sync-note {
+    color: var(--fg-muted);
+    font-size: 0.8rem;
+    margin-bottom: 0.65rem;
+}
+
+.steam-input-group--compact {
+    justify-content: flex-start;
+}
+
+.steam-input-group--compact input {
+    width: 230px;
+}
+
+.steam-input-group--compact button {
+    padding: 0.58rem 1rem;
+    font-size: 0.88rem;
+}
+
+.library-toolbar {
+    width: min(760px, 100%);
+    margin: 0 auto 0.8rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--gold-border);
+    border-radius: 10px;
+    background: rgba(10, 13, 21, 0.78);
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.library-toolbar-field {
+    display: grid;
+    gap: 0.35rem;
+    text-align: left;
+}
+
+.library-toolbar-field span {
+    color: var(--fg-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.45px;
+}
+
+.library-toolbar-field select {
+    min-width: 260px;
+    border: 1px solid rgba(26, 159, 218, 0.35);
+    border-radius: 8px;
+    background: rgba(8, 9, 13, 0.85);
+    color: var(--text-light);
+    font-family: "Manrope", sans-serif;
+    font-size: 0.9rem;
+    padding: 0.56rem 0.72rem;
+}
+
+.library-toolbar-field select:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px var(--gold-glow);
+}
+
+.library-sort-direction {
+    border: 1px solid var(--gold-border);
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(212, 168, 83, 0.18), rgba(26, 159, 218, 0.2));
+    color: var(--text-light);
+    font-family: "Syne", sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    padding: 0.58rem 0.95rem;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.2s ease;
+}
+
+.library-sort-direction:hover {
+    transform: translateY(-1px);
+    border-color: var(--gold);
+}
+
 .steam-input-group {
     display: flex;
     justify-content: center;
@@ -1585,7 +1711,7 @@ main {
     flex-direction: column;
     justify-content: center;
     padding: 0.6rem 0.9rem;
-    gap: 0.3rem;
+    gap: 0.28rem;
     overflow: hidden;
 }
 
@@ -1596,6 +1722,31 @@ main {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.steam-card-meta-line {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--fg-muted);
+    font-size: 0.74rem;
+    line-height: 1.2;
+}
+
+.steam-card-source {
+    border: 1px solid rgba(26, 159, 218, 0.35);
+    border-radius: 999px;
+    color: var(--tech-bright);
+    background: rgba(26, 159, 218, 0.12);
+    padding: 0.08rem 0.42rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.steam-card-status {
+    color: var(--gold-bright);
 }
 
 .steam-card-bar-wrap {
@@ -1883,6 +2034,20 @@ body.modal-open {
 }
 
 @media (max-width: 760px) {
+    .library-toolbar {
+        align-items: stretch;
+    }
+
+    .library-toolbar-field,
+    .library-toolbar-field select,
+    .library-sort-direction {
+        width: 100%;
+    }
+
+    .steam-input-group--compact {
+        justify-content: center;
+    }
+
     .steam-modal-summary,
     .steam-modal-cover,
     .steam-modal-form {

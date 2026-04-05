@@ -28,6 +28,28 @@ const GLOBAL_SEARCH_RESULTS_LIMIT = 8;
 const GLOBAL_SEARCH_DB_READ_LIMIT = 30;
 const GLOBAL_SEARCH_DEBOUNCE_MS = 500;
 const GLOBAL_SEARCH_RAWG_PAGE_SIZE = 8;
+const LIBRARY_SORT_NAME = "name";
+const LIBRARY_SORT_PLAYTIME = "playtime";
+const LIBRARY_SORT_RATING = "rating";
+const LIBRARY_SORT_DIFICULDADE = "dificuldade";
+const LIBRARY_SORT_PRIORIDADE = "prioridade";
+const LIBRARY_SORT_STATUS = "status";
+const LIBRARY_SORT_OPTIONS = new Set([
+    LIBRARY_SORT_NAME,
+    LIBRARY_SORT_PLAYTIME,
+    LIBRARY_SORT_RATING,
+    LIBRARY_SORT_DIFICULDADE,
+    LIBRARY_SORT_PRIORIDADE,
+    LIBRARY_SORT_STATUS
+]);
+const LIBRARY_STATUS_WEIGHT = {
+    jogando: 60,
+    pendente: 50,
+    iniciado: 45,
+    pausado: 40,
+    dropado: 20,
+    concluido: 10
+};
 const ANALYTICS_SCOPE_GLOBAL = "global";
 const ANALYTICS_SCOPE_INDIVIDUAL = "individual";
 const ANALYTICS_TABS = new Set(["visao-geral", "tempo-jogo", "dificuldade", "plataforma", "avaliacao"]);
@@ -122,6 +144,12 @@ const steamState = {
 const manualGameState = {
     library: [],
     selectedGameId: null
+};
+
+const libraryViewState = {
+    sortCriteria: LIBRARY_SORT_PLAYTIME,
+    sortDirection: "desc",
+    controlsBound: false
 };
 
 const globalGameSearchState = {
@@ -980,6 +1008,11 @@ async function cloneGlobalGameToPersonalLibrary(gameInput) {
         manualGameState.library.unshift(clonedGame);
     }
 
+    if (state.tierList.loaded) {
+        const addedToTierPool = seedTierPoolFromLibraryGames([clonedGame]);
+        if (addedToTierPool > 0) scheduleTierListSave();
+    }
+
     invalidateAnalyticsCaches();
     return {
         alreadyExists: false,
@@ -1150,6 +1183,190 @@ function getAnalyticsScopeLabel(scope) {
 
 function getLibrary() {
     return [...steamState.library, ...manualGameState.library];
+}
+
+function getNormalizedLibrarySortCriteria(criteria) {
+    const value = String(criteria || LIBRARY_SORT_PLAYTIME).trim().toLowerCase();
+    return LIBRARY_SORT_OPTIONS.has(value) ? value : LIBRARY_SORT_PLAYTIME;
+}
+
+function getNormalizedLibrarySortDirection(direction) {
+    return String(direction || "desc").trim().toLowerCase() === "asc" ? "asc" : "desc";
+}
+
+function getLibrarySortLabel(criteria) {
+    switch (getNormalizedLibrarySortCriteria(criteria)) {
+    case LIBRARY_SORT_NAME:
+        return "Nome";
+    case LIBRARY_SORT_RATING:
+        return "Nota";
+    case LIBRARY_SORT_DIFICULDADE:
+        return "Dificuldade";
+    case LIBRARY_SORT_PRIORIDADE:
+        return "Prioridade";
+    case LIBRARY_SORT_STATUS:
+        return "Status";
+    case LIBRARY_SORT_PLAYTIME:
+    default:
+        return "Tempo";
+    }
+}
+
+function getLibraryUserRatingScore(game) {
+    const raw = game?.metadata?.avaliacao;
+    const numeric = parseNumber(raw);
+    if (numeric !== null && Number.isFinite(numeric)) return numeric;
+
+    const parsed = parsePersonalRating(raw);
+    if (parsed && Number.isFinite(Number(parsed.score))) {
+        return Number(parsed.score);
+    }
+
+    return null;
+}
+
+function getLibraryPlayableHours(game) {
+    const value = Number(game?.playtime_hours);
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return value;
+}
+
+function compareLibraryNames(a, b) {
+    const first = String(a?.name || "").trim();
+    const second = String(b?.name || "").trim();
+    return first.localeCompare(second, "pt-BR", { sensitivity: "base" });
+}
+
+function compareNullableNumbers(firstValue, secondValue, direction) {
+    const firstHasValue = Number.isFinite(Number(firstValue));
+    const secondHasValue = Number.isFinite(Number(secondValue));
+
+    if (!firstHasValue && !secondHasValue) return 0;
+    if (!firstHasValue) return 1;
+    if (!secondHasValue) return -1;
+
+    const diff = Number(firstValue) - Number(secondValue);
+    if (diff === 0) return 0;
+    return direction === "asc" ? diff : -diff;
+}
+
+function compareNullableStrings(firstValue, secondValue, direction) {
+    const firstText = String(firstValue || "").trim();
+    const secondText = String(secondValue || "").trim();
+    const firstMissing = !firstText;
+    const secondMissing = !secondText;
+
+    if (firstMissing && secondMissing) return 0;
+    if (firstMissing) return 1;
+    if (secondMissing) return -1;
+
+    const base = firstText.localeCompare(secondText, "pt-BR", { sensitivity: "base" });
+    return direction === "asc" ? base : -base;
+}
+
+function getLibraryStatusWeight(game) {
+    const statusKey = normalizeText(game?.metadata?.status || "");
+    if (!statusKey) return null;
+    return Number.isFinite(Number(LIBRARY_STATUS_WEIGHT[statusKey]))
+        ? Number(LIBRARY_STATUS_WEIGHT[statusKey])
+        : null;
+}
+
+function sortLibrary(gamesArray, criteria, direction) {
+    const sourceGames = Array.isArray(gamesArray) ? gamesArray : [];
+    const criteriaKey = getNormalizedLibrarySortCriteria(criteria);
+    const directionKey = getNormalizedLibrarySortDirection(direction);
+    const sorted = [...sourceGames];
+
+    sorted.sort((firstGame, secondGame) => {
+        if (criteriaKey === LIBRARY_SORT_PLAYTIME) {
+            const compare = compareNullableNumbers(getLibraryPlayableHours(firstGame), getLibraryPlayableHours(secondGame), directionKey);
+            return compare || compareLibraryNames(firstGame, secondGame);
+        }
+
+        if (criteriaKey === LIBRARY_SORT_RATING) {
+            const firstRating = getLibraryUserRatingScore(firstGame);
+            const secondRating = getLibraryUserRatingScore(secondGame);
+            const compare = compareNullableNumbers(firstRating, secondRating, directionKey);
+            return compare || compareLibraryNames(firstGame, secondGame);
+        }
+
+        if (criteriaKey === LIBRARY_SORT_STATUS) {
+            const firstWeight = getLibraryStatusWeight(firstGame);
+            const secondWeight = getLibraryStatusWeight(secondGame);
+            const weightCompare = compareNullableNumbers(firstWeight, secondWeight, directionKey);
+            if (weightCompare !== 0) return weightCompare;
+
+            const stringCompare = compareNullableStrings(firstGame?.metadata?.status, secondGame?.metadata?.status, directionKey);
+            return stringCompare || compareLibraryNames(firstGame, secondGame);
+        }
+
+        if (criteriaKey === LIBRARY_SORT_DIFICULDADE) {
+            const compare = compareNullableStrings(firstGame?.metadata?.dificuldade, secondGame?.metadata?.dificuldade, directionKey);
+            return compare || compareLibraryNames(firstGame, secondGame);
+        }
+
+        if (criteriaKey === LIBRARY_SORT_PRIORIDADE) {
+            const compare = compareNullableStrings(firstGame?.metadata?.prioridade, secondGame?.metadata?.prioridade, directionKey);
+            return compare || compareLibraryNames(firstGame, secondGame);
+        }
+
+        const nameCompare = compareNullableStrings(firstGame?.name, secondGame?.name, directionKey);
+        return nameCompare || compareLibraryNames(firstGame, secondGame);
+    });
+
+    return sorted;
+}
+
+function updateLibrarySortDirectionButton() {
+    const directionButton = document.getElementById("library-sort-direction");
+    if (!directionButton) return;
+
+    const direction = getNormalizedLibrarySortDirection(libraryViewState.sortDirection);
+    const arrow = direction === "asc" ? "\u2191" : "\u2193";
+    const label = direction === "asc" ? "ASC" : "DESC";
+
+    directionButton.dataset.direction = direction;
+    directionButton.textContent = `${arrow} ${label}`;
+    directionButton.setAttribute("aria-label", `Direcao ${label}`);
+}
+
+function bindLibrarySortControls() {
+    const criteriaSelect = document.getElementById("library-sort-criteria");
+    const directionButton = document.getElementById("library-sort-direction");
+    if (!criteriaSelect || !directionButton) return;
+
+    const normalizedCriteria = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
+    const normalizedDirection = getNormalizedLibrarySortDirection(libraryViewState.sortDirection);
+
+    libraryViewState.sortCriteria = normalizedCriteria;
+    libraryViewState.sortDirection = normalizedDirection;
+
+    criteriaSelect.value = normalizedCriteria;
+    updateLibrarySortDirectionButton();
+
+    if (libraryViewState.controlsBound) return;
+
+    criteriaSelect.addEventListener("change", (event) => {
+        libraryViewState.sortCriteria = getNormalizedLibrarySortCriteria(event?.target?.value);
+
+        if ((document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "") === "steam-library") {
+            renderSteamLibrary(getLibrary());
+        }
+    });
+
+    directionButton.addEventListener("click", () => {
+        libraryViewState.sortDirection = getNormalizedLibrarySortDirection(libraryViewState.sortDirection) === "asc"
+            ? "desc"
+            : "asc";
+        updateLibrarySortDirectionButton();
+
+        if ((document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "") === "steam-library") {
+            renderSteamLibrary(getLibrary());
+        }
+    });
+
+    libraryViewState.controlsBound = true;
 }
 
 function getFilteredLibrary(baseLibrary) {
@@ -1361,7 +1578,7 @@ function bindAuthEvents() {
 
             const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
             if (activeTab === "steam-library") {
-                renderSteamLibrary(steamState.library);
+                renderSteamLibrary(getLibrary());
             } else if (activeTab === "add-your-game") {
                 await handleManualLibraryTabOpen();
             }
@@ -1738,16 +1955,21 @@ async function renderBiGamer() {
             state.tierList.loaded = true;
 
             if (!loaded) {
-                const added = seedTierPool(tierSeedCandidates);
-                if (added > 0) scheduleTierListSave();
+                const addedFromTop = seedTierPool(tierSeedCandidates);
+                const addedFromLibrary = seedTierPoolFromLibraryGames(getLibrary());
+                if ((addedFromTop + addedFromLibrary) > 0) scheduleTierListSave();
+            } else {
+                const addedFromLibrary = seedTierPoolFromLibraryGames(getLibrary());
+                if (addedFromLibrary > 0) scheduleTierListSave();
             }
 
             renderTierList();
         });
     } else {
         if (state.tierList.loaded) {
-            const added = seedTierPool(tierSeedCandidates);
-            if (added > 0) scheduleTierListSave();
+            const addedFromTop = seedTierPool(tierSeedCandidates);
+            const addedFromLibrary = seedTierPoolFromLibraryGames(getLibrary());
+            if ((addedFromTop + addedFromLibrary) > 0) scheduleTierListSave();
         }
         renderTierList();
     }
@@ -3471,6 +3693,36 @@ function seedTierPool(topByTime) {
     return addedCount;
 }
 
+function seedTierPoolFromLibraryGames(gamesInput) {
+    const games = Array.isArray(gamesInput) ? gamesInput : [];
+    if (!games.length) return 0;
+
+    const seen = new Set();
+    state.tierList.pool.forEach((item) => seen.add(normalizeText(item.title)));
+    Object.keys(state.tierList.tiers).forEach((tierName) => {
+        state.tierList.tiers[tierName].forEach((item) => seen.add(normalizeText(item.title)));
+    });
+
+    let addedCount = 0;
+
+    games.forEach((game) => {
+        if (!game) return;
+
+        const title = String(game.name || "").trim();
+        const key = normalizeText(title);
+        if (!title || !key || seen.has(key)) return;
+
+        const src = String(getResolvedGameCover(game) || "").trim();
+        if (!src || src === DEFAULT_GAME_COVER_PLACEHOLDER) return;
+
+        seen.add(key);
+        state.tierList.pool.push(createTierItem(title, src, false));
+        addedCount += 1;
+    });
+
+    return addedCount;
+}
+
 /* ====================== STEAM LIBRARY ====================== */
 
 function getSteamModalElements() {
@@ -3595,6 +3847,11 @@ async function loadUserLibraryFromCloud(options) {
         analyticsState.individualUserId = currentUserId;
         analyticsState.individualLoadedAt = Date.now();
 
+        if (state.tierList.loaded) {
+            const addedToTierPool = seedTierPoolFromLibraryGames([...steamGames, ...manualGames]);
+            if (addedToTierPool > 0) scheduleTierListSave();
+        }
+
         userLibraryState.uid = currentUserId;
         userLibraryState.loaded = true;
         return true;
@@ -3718,10 +3975,35 @@ function loadSteamLibraryFromStorage() {
     return loadUserLibraryFromCloud({ force: true });
 }
 
+function getLibraryCardSourceType(game) {
+    return normalizeText(game?.source || "") === "manual" ? "manual" : "steam";
+}
+
+function getLibraryCardInteractionKey(game) {
+    const sourceType = getLibraryCardSourceType(game);
+    if (sourceType === "steam") {
+        return String(game?.appid || "").trim();
+    }
+    return String(game?.id || game?.docId || "").trim();
+}
+
+function getLibraryCardSourceLabel(game) {
+    const sourceType = getLibraryCardSourceType(game);
+    if (sourceType === "manual") {
+        return String(game?.metadata?.rawgId || "").trim() ? "RAWG" : "Manual";
+    }
+    return "Steam";
+}
+
 function renderSteamLibrary(games) {
     const resultsEl = document.getElementById("steam-results");
     const statusEl = document.getElementById("steam-status");
+    const criteriaSelect = document.getElementById("library-sort-criteria");
     if (!resultsEl || !statusEl) return;
+
+    bindLibrarySortControls();
+    if (criteriaSelect) criteriaSelect.value = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
+    updateLibrarySortDirectionButton();
 
     if (!getCurrentUserId()) {
         resultsEl.innerHTML = "";
@@ -3730,25 +4012,35 @@ function renderSteamLibrary(games) {
         return;
     }
 
-    const sortedGames = [...games]
-        .filter((g) => (Number(g.playtime_hours) || 0) >= 0)
-        .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0));
+    const sourceGames = Array.isArray(games) ? games.filter(Boolean) : [];
+    const sortCriteria = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
+    const sortDirection = getNormalizedLibrarySortDirection(libraryViewState.sortDirection);
+    const sortedGames = sortLibrary(sourceGames, sortCriteria, sortDirection);
 
     if (!sortedGames.length) {
         resultsEl.innerHTML = "";
-        statusEl.textContent = "Nenhum jogo encontrado na biblioteca Steam.";
+        statusEl.textContent = "Nenhum jogo encontrado na Your Library.";
         statusEl.className = "steam-status steam-status--error";
         return;
     }
 
-    const maxHours = Math.max(...sortedGames.map((g) => Number(g.playtime_hours) || 0), 1);
+    const maxHours = Math.max(...sortedGames.map((g) => Math.max(0, Number(g.playtime_hours) || 0)), 1);
 
     resultsEl.innerHTML = '<div class="steam-grid">' + sortedGames.map((g, i) => {
-        const barWidth = Math.max(((Number(g.playtime_hours) || 0) / maxHours) * 100, 2);
+        const hours = Math.max(0, Number(g.playtime_hours) || 0);
+        const barWidth = maxHours > 0 ? Math.max((hours / maxHours) * 100, 2) : 2;
         const safeName = escapeHtml(g.name);
         const coverSrc = getResolvedGameCover(g);
+        const sourceType = getLibraryCardSourceType(g);
+        const sourceLabel = getLibraryCardSourceLabel(g);
+        const interactionKey = getLibraryCardInteractionKey(g);
+        const ratingScore = getLibraryUserRatingScore(g);
+        const ratingText = Number.isFinite(Number(ratingScore)) ? formatRatingScore(Number(ratingScore)) : "-";
+        const statusText = String(g?.metadata?.status || "").trim() || "-";
+        const difficultyText = String(g?.metadata?.dificuldade || "").trim() || "-";
+        const priorityText = String(g?.metadata?.prioridade || "").trim() || "-";
 
-        return `<div class="steam-card" tabindex="0" role="button" data-appid="${g.appid}" style="animation-delay:${i * 0.03}s">
+        return `<div class="steam-card" tabindex="0" role="button" data-library-source="${sourceType}" data-library-key="${escapeHtml(interactionKey)}" style="animation-delay:${i * 0.03}s">
             <div class="steam-card-rank">#${i + 1}</div>
             <img class="steam-card-img"
                  src="${coverSrc}"
@@ -3756,15 +4048,24 @@ function renderSteamLibrary(games) {
                  onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'" />
             <div class="steam-card-info">
                 <span class="steam-card-name">${safeName}</span>
+                <div class="steam-card-meta-line">
+                    <span class="steam-card-source">${escapeHtml(sourceLabel)}</span>
+                    <span class="steam-card-status">Status: ${escapeHtml(statusText)}</span>
+                </div>
+                <div class="steam-card-meta-line">
+                    <span>Nota: ${escapeHtml(ratingText)}</span>
+                    <span>Dificuldade: ${escapeHtml(difficultyText)}</span>
+                    <span>Prioridade: ${escapeHtml(priorityText)}</span>
+                </div>
                 <div class="steam-card-bar-wrap">
                     <div class="steam-card-bar" style="width:${barWidth}%"></div>
                 </div>
-                <span class="steam-card-hours">${Number(g.playtime_hours) || 0}h</span>
+                <span class="steam-card-hours">${hours}h</span>
             </div>
         </div>`;
     }).join("") + "</div>";
 
-    statusEl.textContent = `${sortedGames.length} jogos carregados. Clique em um card para editar metadados.`;
+    statusEl.textContent = `${sortedGames.length} jogos em Your Library. Ordenado por ${getLibrarySortLabel(sortCriteria)} (${sortDirection.toUpperCase()}). Clique em um card para editar metadados.`;
     statusEl.className = "steam-status steam-status--success";
     bindSteamCardEvents();
 }
@@ -3937,6 +4238,10 @@ async function addManualGame(event) {
         invalidateAnalyticsCaches();
 
         manualGameState.library.unshift(nextGame);
+        if (state.tierList.loaded) {
+            const addedToTierPool = seedTierPoolFromLibraryGames([nextGame]);
+            if (addedToTierPool > 0) scheduleTierListSave();
+        }
         renderManualGames(manualGameState.library);
         updateDashboards();
     } catch (error) {
@@ -3961,12 +4266,13 @@ async function addManualGame(event) {
 }
 
 function openManualGameModal(gameId) {
-    const game = manualGameState.library.find((item) => item.id === String(gameId));
+    const normalizedGameId = String(gameId || "");
+    const game = manualGameState.library.find((item) => item.id === normalizedGameId || String(item.docId || "") === normalizedGameId);
     const modal = getSteamModalElements();
     if (!game || !modal.overlay || !modal.form) return;
 
     gameEditorState.libraryType = "manual";
-    gameEditorState.gameId = String(gameId);
+    gameEditorState.gameId = String(game.id || normalizedGameId);
     gameEditorState.pendingCoverSrc = null;
 
     modal.gameName.textContent = game.name;
@@ -4093,11 +4399,16 @@ async function saveGameMetadata(event) {
     if (gameEditorState.libraryType === "steam") {
         const idx = steamState.library.findIndex((item) => String(item.appid) === String(gameEditorState.gameId));
         if (idx >= 0) steamState.library[idx] = updatedItem;
-        renderSteamLibrary(steamState.library);
+        renderSteamLibrary(getLibrary());
     } else {
         const idx = manualGameState.library.findIndex((item) => item.id === String(gameEditorState.gameId));
         if (idx >= 0) manualGameState.library[idx] = updatedItem;
         renderManualGames(manualGameState.library);
+    }
+
+    if (state.tierList.loaded) {
+        const addedToTierPool = seedTierPoolFromLibraryGames([updatedItem]);
+        if (addedToTierPool > 0) scheduleTierListSave();
     }
 
     const statusEl = gameEditorState.libraryType === "manual"
@@ -4200,11 +4511,11 @@ async function deleteCurrentGameFromModal() {
         steamState.library = steamState.library.filter((item) => String(item.appid) !== String(gameEditorState.gameId));
         if (steamState.library.length === previousLength) return;
         invalidateAnalyticsCaches();
-        renderSteamLibrary(steamState.library);
+        renderSteamLibrary(getLibrary());
 
         const statusEl = document.getElementById("steam-status");
         if (statusEl) {
-            statusEl.textContent = "Jogo removido da Biblioteca Steam.";
+            statusEl.textContent = "Jogo removido da Your Library.";
             statusEl.className = "steam-status steam-status--success";
         }
     } else {
@@ -4261,18 +4572,29 @@ function saveSteamMetadata(event) {
 }
 
 function bindSteamCardEvents() {
-    const cards = document.querySelectorAll(".steam-card[data-appid]");
+    const cards = document.querySelectorAll("#steam-results .steam-card[data-library-source][data-library-key]");
     cards.forEach((card) => {
+        const activateCard = () => {
+            const source = normalizeText(card.getAttribute("data-library-source") || "steam") === "manual" ? "manual" : "steam";
+            const key = String(card.getAttribute("data-library-key") || "").trim();
+            if (!key) return;
+
+            if (source === "steam") {
+                openSteamMetadataModal(key);
+                return;
+            }
+
+            openManualGameModal(key);
+        };
+
         card.addEventListener("click", () => {
-            const appid = card.getAttribute("data-appid");
-            openSteamMetadataModal(appid);
+            activateCard();
         });
 
         card.addEventListener("keydown", (event) => {
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                const appid = card.getAttribute("data-appid");
-                openSteamMetadataModal(appid);
+                activateCard();
             }
         });
     });
@@ -4280,7 +4602,7 @@ function bindSteamCardEvents() {
 
 function initializeSteamLibraryFromStorage() {
     void loadUserLibraryFromCloud({ force: true }).then(() => {
-        renderSteamLibrary(steamState.library);
+        renderSteamLibrary(getLibrary());
     });
 }
 
@@ -4291,7 +4613,7 @@ async function fetchSteamLibrary() {
     const steamId = (input?.value || "").trim();
 
     if (!getCurrentUserId()) {
-        statusEl.textContent = "Faça login com o Google para sincronizar sua biblioteca Steam.";
+        statusEl.textContent = "Faça login com o Google para sincronizar sua biblioteca com a Steam.";
         statusEl.className = "steam-status steam-status--error";
         resultsEl.innerHTML = "";
         return;
@@ -4305,7 +4627,7 @@ async function fetchSteamLibrary() {
 
     statusEl.textContent = "Carregando...";
     statusEl.className = "steam-status steam-status--loading";
-    resultsEl.innerHTML = '<div class="steam-loading"><div class="steam-spinner"></div><span>Buscando biblioteca Steam...</span></div>';
+    resultsEl.innerHTML = '<div class="steam-loading"><div class="steam-spinner"></div><span>Buscando jogos da Steam para a Your Library...</span></div>';
 
     try {
         const response = await fetch(STEAM_API_BASE + encodeURIComponent(steamId));
@@ -4316,7 +4638,7 @@ async function fetchSteamLibrary() {
             .sort((a, b) => b.playtime_hours - a.playtime_hours);
 
         if (!games.length) {
-            statusEl.textContent = "Nenhum jogo encontrado na biblioteca Steam.";
+            statusEl.textContent = "Nenhum jogo encontrado na sua conta Steam.";
             statusEl.className = "steam-status steam-status--error";
             resultsEl.innerHTML = "";
             return;
@@ -4342,7 +4664,11 @@ async function fetchSteamLibrary() {
 
         steamState.library = nextSteamLibrary;
         steamState.steamId = steamId;
-        renderSteamLibrary(steamState.library);
+        if (state.tierList.loaded) {
+            const addedToTierPool = seedTierPoolFromLibraryGames(getLibrary());
+            if (addedToTierPool > 0) scheduleTierListSave();
+        }
+        renderSteamLibrary(getLibrary());
         updateDashboards();
 
     } catch (error) {
@@ -4498,10 +4824,10 @@ async function handleSteamLibraryTabOpen() {
     if (!getCurrentUserId()) {
         showTabLockedState(
             "steam-library",
-            "Biblioteca Steam",
-            "Crie sua conta no Your Gaming Temple para sincronizar e gerenciar sua Biblioteca Steam."
+            "Your Library",
+            "Crie sua conta no Your Gaming Temple para liberar a Your Library e sincronizar com a Steam."
         );
-        updateStatus("Faca login com o Google para usar a Biblioteca Steam.", true);
+        updateStatus("Faca login com o Google para usar a Your Library.", true);
         return;
     }
 
@@ -4513,7 +4839,7 @@ async function handleSteamLibraryTabOpen() {
     }
 
     await loadUserLibraryFromCloud({ force: true });
-    renderSteamLibrary(steamState.library);
+    renderSteamLibrary(getLibrary());
 }
 
 async function handleManualLibraryTabOpen() {
