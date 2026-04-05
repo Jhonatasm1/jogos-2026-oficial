@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment, collectionGroup } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment, collectionGroup, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
@@ -3886,7 +3886,6 @@ const LEAGUE_SCORING_SYSTEM = {
     256: { base: 1, top32: 2, top16: 3, top8: 5, top4: 6, top2: 7, champion: 7 }
 };
 
-const LEAGUE_STORAGE_KEY = "yxt_games_league";
 const WC_PUBLIC_STATS_KEY = "yxt_wc_public_stats";
 const LEGACY_LEAGUE_EXCLUDED_NAMES = new Set(["une vie a t'aimer"]);
 const GLOBAL_LEAGUE_COLLECTION = "global_league";
@@ -3922,6 +3921,11 @@ const myWcState = {
     choiceSearch: "",
     choiceSort: "win-ratio",
     choicePage: 1
+};
+
+const leagueRealtimeState = {
+    entries: [],
+    unsubscribe: null
 };
 
 function shuffleArray(arr) {
@@ -4456,24 +4460,44 @@ function incrementPublicWorldCupPlays(cupId) {
 }
 
 function loadLeagueData() {
-    try {
-        const raw = localStorage.getItem(LEAGUE_STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        const cleaned = sortLeagueEntries(sanitizeLeagueEntries(parsed));
-
-        if (!Array.isArray(parsed) || JSON.stringify(cleaned) !== JSON.stringify(parsed)) {
-            saveLeagueData(cleaned);
-        }
-
-        return cleaned;
-    } catch {
-        return [];
-    }
+    return sortLeagueEntries(sanitizeLeagueEntries(leagueRealtimeState.entries));
 }
 
-function saveLeagueData(data) {
-    localStorage.setItem(LEAGUE_STORAGE_KEY, JSON.stringify(data));
+function renderLeagueHTML(leagueData) {
+    renderLeagueTable(leagueData);
+}
+
+function startGlobalLeagueRealtimeListener() {
+    if (leagueRealtimeState.unsubscribe) return;
+
+    const leagueQuery = query(
+        collection(db, GLOBAL_LEAGUE_COLLECTION),
+        orderBy("points", "desc"),
+        orderBy("titles", "desc"),
+        limit(100)
+    );
+
+    leagueRealtimeState.unsubscribe = onSnapshot(
+        leagueQuery,
+        (snapshot) => {
+            const leagueData = [];
+            snapshot.forEach((docSnapshot) => {
+                leagueData.push(docSnapshot.data());
+            });
+
+            leagueRealtimeState.entries = sortLeagueEntries(sanitizeLeagueEntries(leagueData));
+            renderLeagueHTML(leagueRealtimeState.entries);
+        },
+        (error) => {
+            console.warn("Falha no listener realtime da Liga Global.", error);
+        }
+    );
+}
+
+function stopGlobalLeagueRealtimeListener() {
+    if (!leagueRealtimeState.unsubscribe) return;
+    leagueRealtimeState.unsubscribe();
+    leagueRealtimeState.unsubscribe = null;
 }
 
 function getScoreForPlacement(tournamentSize, eliminatedAtRound) {
@@ -4661,30 +4685,7 @@ async function processLeagueAfterTournament(championName) {
         return;
     }
 
-    const league = loadLeagueData();
-    const leagueMap = new Map(league.map(e => [e.name, e]));
-
-    participantsStats.forEach((participant) => {
-        const name = String(participant?.originalName || "").trim();
-        if (!name) return;
-
-        const points = Math.max(0, Number(participant?.pointsEarned) || 0);
-        const titles = Math.max(0, Number(participant?.titlesEarned) || 0);
-        if (points <= 0 && titles <= 0) return;
-
-        const existing = leagueMap.get(name);
-        if (existing) {
-            existing.points += points;
-            existing.titles += titles;
-        } else {
-            leagueMap.set(name, { name, points, titles });
-        }
-    });
-
-    const sorted = sortLeagueEntries([...leagueMap.values()]);
-    saveLeagueData(sorted);
     incrementPublicWorldCupPlays(activeCup?.id || "best-games");
-    renderLeagueTable(sorted);
     await syncPointsToCloud(participantsStats);
 }
 
@@ -4839,12 +4840,8 @@ async function refreshMyWorldCupsFromCloud(options) {
 
     try {
         const cloudCups = await loadMyWorldCupsFromCloud();
-        if (cloudCups.length) {
-            myWcState.cups = cloudCups;
-            saveMyWorldCupsToStorage();
-        } else if (!myWcState.cups.length) {
-            myWcState.cups = loadMyWorldCupsFromStorage();
-        }
+        myWcState.cups = cloudCups;
+        saveMyWorldCupsToStorage();
 
         myWcState.cloudLoaded = true;
         renderMyWorldCupCards();
@@ -4866,7 +4863,7 @@ function saveMyWorldCupsToStorage() {
 
 function ensureMyWorldCupsLoaded() {
     if (myWcState.loaded) return;
-    myWcState.cups = loadMyWorldCupsFromStorage();
+    myWcState.cups = [];
     myWcState.loaded = true;
     void refreshMyWorldCupsFromCloud({ force: true });
 }
@@ -5961,6 +5958,7 @@ function bindWorldCupEvents() {
 
 function init() {
     ensureMyWorldCupsLoaded();
+    startGlobalLeagueRealtimeListener();
     bindAuthEvents();
     bindEvents();
     bindSteamEvents();
@@ -5987,6 +5985,8 @@ window.addEventListener("beforeunload", () => {
         authState.unsubscribe();
         authState.unsubscribe = null;
     }
+
+    stopGlobalLeagueRealtimeListener();
 
     if (state.tierList.saveTimer) {
         clearTimeout(state.tierList.saveTimer);
