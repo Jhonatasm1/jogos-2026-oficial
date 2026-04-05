@@ -13,7 +13,17 @@
 </head>
 <body>
     <header>
-        <h1>Your Gaming Temple</h1>
+        <div class="header-top">
+            <h1>Your Gaming Temple</h1>
+            <div id="user-profile-container" class="user-profile-container" aria-live="polite">
+                <button id="btn-login" class="user-auth-btn" type="button">Login com Google</button>
+                <div id="user-profile-info" class="user-profile-info" style="display: none;">
+                    <img id="user-profile-photo" class="user-profile-photo" src="" alt="Foto de perfil do usuario">
+                    <span id="user-first-name" class="user-first-name"></span>
+                    <button id="btn-logout" class="user-auth-btn user-auth-btn--ghost" type="button">Sair</button>
+                </div>
+            </div>
+        </div>
         <div class="status-info">
             <p id="status-atualizacao">Carregando...</p>
             <p id="ultima-atualizacao"></p>
@@ -938,7 +948,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260404-yxt21"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
 

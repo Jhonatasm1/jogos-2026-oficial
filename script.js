@@ -1,3 +1,6 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
 const TIER_STATE_STORE = "tier_state";
@@ -34,6 +37,23 @@ const DEFAULT_STEAM_METADATA = {
     anoLancamento: "",
     comentarios: ""
 };
+const DEFAULT_PROFILE_PHOTO = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" fill="#0f1522"/><circle cx="48" cy="36" r="18" fill="#27405a"/><path d="M14 90c6-17 20-28 34-28s28 11 34 28" fill="#27405a"/><circle cx="48" cy="48" r="47" fill="none" stroke="#d4a853" stroke-width="2"/></svg>'
+);
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDhCOzgnVFqn3i_r8Gd8tJHOGGQ95kObOk",
+    authDomain: "your-gaming-temple.firebaseapp.com",
+    projectId: "your-gaming-temple",
+    storageBucket: "your-gaming-temple.firebasestorage.app",
+    messagingSenderId: "172767084437",
+    appId: "1:172767084437:web:a2190a5c526df6645f009c"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 const state = {
     overviewFilters: {
@@ -96,6 +116,10 @@ const gameEditorState = {
     pendingCoverSrc: null
 };
 
+const authState = {
+    unsubscribe: null
+};
+
 const dom = {
     status: document.getElementById("status-atualizacao"),
     updatedAt: document.getElementById("ultima-atualizacao"),
@@ -108,7 +132,12 @@ const dom = {
     tabsContainer: document.querySelector(".tabs-container"),
     tabsNav: document.querySelector(".tabs-nav"),
     tabBtns: document.querySelectorAll(".tab-btn"),
-    tabContents: document.querySelectorAll(".tab-content")
+    tabContents: document.querySelectorAll(".tab-content"),
+    loginButton: document.getElementById("btn-login"),
+    logoutButton: document.getElementById("btn-logout"),
+    userProfileInfo: document.getElementById("user-profile-info"),
+    userProfilePhoto: document.getElementById("user-profile-photo"),
+    userFirstName: document.getElementById("user-first-name")
 };
 
 /* ====================== UTILITIES ====================== */
@@ -373,6 +402,69 @@ function updateStatus(message, isError) {
 
     const now = new Date();
     dom.updatedAt.textContent = `Ultima atualizacao: ${now.toLocaleTimeString("pt-BR")}`;
+}
+
+/* ====================== AUTH (FIREBASE) ====================== */
+
+function getAuthFirstName(user) {
+    const displayName = String(user?.displayName || "").trim();
+    if (displayName) return displayName.split(/\s+/)[0];
+
+    const email = String(user?.email || "").trim();
+    if (email.includes("@")) return email.split("@")[0];
+
+    return "Player";
+}
+
+function renderAuthUI(user) {
+    if (!dom.loginButton || !dom.logoutButton || !dom.userProfileInfo || !dom.userProfilePhoto || !dom.userFirstName) return;
+
+    if (user) {
+        dom.loginButton.style.display = "none";
+        dom.userProfileInfo.style.display = "flex";
+        dom.userFirstName.textContent = getAuthFirstName(user);
+        dom.userProfilePhoto.src = String(user.photoURL || "").trim() || DEFAULT_PROFILE_PHOTO;
+        dom.userProfilePhoto.alt = `Foto de perfil de ${dom.userFirstName.textContent}`;
+        return;
+    }
+
+    dom.loginButton.style.display = "inline-flex";
+    dom.userProfileInfo.style.display = "none";
+    dom.userFirstName.textContent = "";
+    dom.userProfilePhoto.src = DEFAULT_PROFILE_PHOTO;
+    dom.userProfilePhoto.alt = "Foto de perfil";
+}
+
+async function handleGoogleLogin() {
+    try {
+        await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+        console.error("Falha no login com Google.", error);
+        updateStatus("Falha ao autenticar com Google.", true);
+    }
+}
+
+async function handleGoogleLogout() {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Falha no logout.", error);
+        updateStatus("Falha ao encerrar sessao do Google.", true);
+    }
+}
+
+function bindAuthEvents() {
+    if (dom.loginButton) {
+        dom.loginButton.addEventListener("click", handleGoogleLogin);
+    }
+
+    if (dom.logoutButton) {
+        dom.logoutButton.addEventListener("click", handleGoogleLogout);
+    }
+
+    authState.unsubscribe = onAuthStateChanged(auth, (user) => {
+        renderAuthUI(user || null);
+    });
 }
 
 /* ====================== RENDER: VISAO GERAL ====================== */
@@ -5088,6 +5180,7 @@ function bindWorldCupEvents() {
 
 function init() {
     ensureMyWorldCupsLoaded();
+    bindAuthEvents();
     bindEvents();
     bindSteamEvents();
     bindWorldCupEvents();
@@ -5100,6 +5193,11 @@ function init() {
 }
 
 window.addEventListener("beforeunload", () => {
+    if (authState.unsubscribe) {
+        authState.unsubscribe();
+        authState.unsubscribe = null;
+    }
+
     if (state.tierList.saveTimer) {
         clearTimeout(state.tierList.saveTimer);
         state.tierList.saveTimer = null;

@@ -108,6 +108,14 @@ header {
     box-shadow: 0 2px 20px rgba(212, 168, 83, 0.08);
 }
 
+.header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
 header h1 {
     font-family: "Cinzel", serif;
     font-size: 2.6rem;
@@ -118,6 +126,66 @@ header h1 {
     letter-spacing: 2px;
 }
 
+.user-profile-container {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-left: auto;
+}
+
+.user-auth-btn {
+    border: 1px solid var(--gold-border);
+    background: linear-gradient(135deg, rgba(26, 159, 218, 0.2), rgba(212, 168, 83, 0.26));
+    color: var(--text-light);
+    border-radius: 999px;
+    padding: 0.45rem 0.88rem;
+    font-family: "Syne", sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.user-auth-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+}
+
+.user-profile-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.4rem 0.25rem 0.25rem;
+    border: 1px solid var(--gold-border);
+    border-radius: 999px;
+    background: rgba(8, 14, 24, 0.7);
+}
+
+.user-profile-photo {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--tech-border);
+    object-fit: cover;
+    background: #101826;
+}
+
+.user-first-name {
+    color: var(--text-light);
+    font-size: 0.84rem;
+    font-weight: 700;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-auth-btn--ghost {
+    background: transparent;
+    padding-inline: 0.72rem;
+}
+
 /* ── Status info ── */
 .status-info {
     display: flex;
@@ -125,6 +193,7 @@ header h1 {
     flex-wrap: wrap;
     font-size: 0.9rem;
     color: var(--fg-muted);
+    margin-top: 0.65rem;
 }
 
 .status-info p { margin: 0; }
@@ -2073,6 +2142,11 @@ body.modal-open {
 
 @media (max-width: 960px) {
     header h1 { font-size: 1.8rem; }
+    .user-profile-container {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+    }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .filters-container { gap: 0.5rem; }
     .filters-container label {
@@ -2087,6 +2161,15 @@ body.modal-open {
 @media (max-width: 640px) {
     header { padding: 1.5rem 1rem; }
     header h1 { font-size: 1.4rem; letter-spacing: 1px; }
+
+    .user-profile-info {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .user-first-name {
+        max-width: 112px;
+    }
 
     .tabs-nav {
         overflow-x: auto;
