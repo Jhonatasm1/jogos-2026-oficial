@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
@@ -50,8 +51,12 @@ const firebaseConfig = {
     appId: "1:172767084437:web:a2190a5c526df6645f009c"
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+if (typeof window !== "undefined") {
+    window.ygtFirebase = { app, auth, db };
+}
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
@@ -435,6 +440,26 @@ function renderAuthUI(user) {
     dom.userProfilePhoto.alt = "Foto de perfil";
 }
 
+async function saveUserToDatabase(user) {
+    if (!user?.uid) return;
+
+    try {
+        const userRef = doc(db, "users", user.uid);
+        const existingUser = await getDoc(userRef);
+        if (existingUser.exists()) return;
+
+        await setDoc(userRef, {
+            uid: user.uid,
+            displayName: user.displayName || "",
+            email: user.email || "",
+            photoURL: user.photoURL || "",
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Falha ao registrar usuario no Firestore.", error);
+    }
+}
+
 async function handleGoogleLogin() {
     try {
         await signInWithPopup(auth, googleProvider);
@@ -462,7 +487,10 @@ function bindAuthEvents() {
         dom.logoutButton.addEventListener("click", handleGoogleLogout);
     }
 
-    authState.unsubscribe = onAuthStateChanged(auth, (user) => {
+    authState.unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            await saveUserToDatabase(user);
+        }
         renderAuthUI(user || null);
     });
 }
