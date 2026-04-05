@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
@@ -4811,7 +4811,7 @@ function renderMyWorldCupCards() {
     }).join("");
 
     grid.querySelectorAll(".mywc-card-btn").forEach((button) => {
-        button.addEventListener("click", (event) => {
+        button.addEventListener("click", async (event) => {
             event.stopPropagation();
 
             const action = button.getAttribute("data-action");
@@ -4874,12 +4874,21 @@ function renderMyWorldCupCards() {
                 const shouldDelete = window.confirm("Deseja realmente excluir esta World Cup?");
                 if (!shouldDelete) return;
 
+                try {
+                    await deleteDoc(doc(db, WORLD_CUPS_COLLECTION, cupId));
+                } catch (error) {
+                    console.warn("Falha ao excluir World Cup da nuvem.", error);
+                    updateStatus("Nao foi possivel excluir a World Cup no Firestore.", true);
+                    return;
+                }
+
                 myWcState.cups = myWcState.cups.filter((cup) => cup.id !== cupId);
                 saveMyWorldCupsToStorage();
 
                 if (myWcState.selectedCupId === cupId) closeMyWorldCupEditor();
                 renderMyWorldCupCards();
                 renderWcGrid();
+                updateStatus("World Cup excluida com sucesso.", false);
             }
         });
     });
