@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
@@ -421,6 +421,16 @@ function getAuthFirstName(user) {
     return "Player";
 }
 
+function getCurrentUserId() {
+    return String(auth?.currentUser?.uid || "").trim();
+}
+
+function isCupOwnedByCurrentUser(cup) {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) return false;
+    return String(cup?.authorId || "") === currentUserId;
+}
+
 function renderAuthUI(user) {
     if (!dom.loginButton || !dom.logoutButton || !dom.userProfileInfo || !dom.userProfilePhoto || !dom.userFirstName) return;
 
@@ -492,6 +502,12 @@ function bindAuthEvents() {
             await saveUserToDatabase(user);
         }
         renderAuthUI(user || null);
+
+        if (myWcState.loaded) {
+            renderMyWorldCupCards();
+            renderWcGrid();
+            void refreshMyWorldCupsFromCloud();
+        }
     });
 }
 
@@ -3364,6 +3380,8 @@ const LEAGUE_SCORING_SYSTEM = {
 const LEAGUE_STORAGE_KEY = "yxt_games_league";
 const WC_PUBLIC_STATS_KEY = "yxt_wc_public_stats";
 const LEGACY_LEAGUE_EXCLUDED_NAMES = new Set(["une vie a t'aimer"]);
+const GLOBAL_LEAGUE_COLLECTION = "global_league";
+const WORLD_CUPS_COLLECTION = "world_cups";
 
 const wcState = {
     currentRound: 0,
@@ -3384,6 +3402,8 @@ const MY_WC_CHOICES_PER_PAGE = 8;
 
 const myWcState = {
     loaded: false,
+    cloudLoaded: false,
+    cloudLoading: false,
     cups: [],
     selectedCupId: null,
     draftCup: null,
@@ -3548,6 +3568,7 @@ function mapMyCupToPlayableCup(cup) {
         id: String(cup.id),
         sourceType: "custom",
         sourceCupId: String(cup.id),
+        authorId: String(cup.authorId || ""),
         title: String(cup.title || "World Cup sem titulo"),
         category: String(cup.category || "Custom"),
         cover: String(cup.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
@@ -3559,7 +3580,8 @@ function getPlayableWorldCups() {
     const baseCups = wcCups.map((cup) => ({
         ...cup,
         sourceType: "global",
-        sourceCupId: null
+        sourceCupId: null,
+        authorId: ""
     }));
 
     const customCups = myWcState.cups
@@ -3592,6 +3614,7 @@ function renderWcGrid() {
     if (!grid) return;
 
     const cups = getPlayableWorldCups();
+    const currentUserId = getCurrentUserId();
     syncWorldCupCategoryFilter(cups);
 
     const searchVal = (document.getElementById("wc-search")?.value || "").trim().toLowerCase();
@@ -3608,7 +3631,12 @@ function renderWcGrid() {
         return;
     }
 
-    grid.innerHTML = filtered.map(cup => `
+    grid.innerHTML = filtered.map((cup) => {
+        const canEdit = cup.sourceType === "custom"
+            && Boolean(currentUserId)
+            && String(cup.authorId || "") === currentUserId;
+
+        return `
         <div class="wc-cup-card" data-cup-id="${cup.id}">
             <img class="wc-cup-card-img" src="${cup.cover}" alt="${escapeHtml(cup.title)}"
                  onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'" />
@@ -3616,17 +3644,31 @@ function renderWcGrid() {
                 <h4 class="wc-cup-card-title">${escapeHtml(cup.title)}</h4>
                 <span class="wc-cup-card-meta">${cup.category} &middot; ${cup.items.length} itens</span>
                 <div class="wc-cup-card-actions">
+                    ${canEdit ? '<button type="button" class="wc-cup-card-btn" data-action="edit-cup">Editar Copa</button>' : ""}
                     <button type="button" class="wc-cup-card-btn" data-action="ranking">Ver ranking</button>
                 </div>
             </div>
         </div>
-    `).join("");
+    `;
+    }).join("");
 
     grid.querySelectorAll(".wc-cup-card").forEach(card => {
         card.addEventListener("click", (event) => {
             const cupId = card.getAttribute("data-cup-id");
             const cup = cups.find(c => c.id === cupId);
             if (!cup) return;
+
+            const editCupBtn = event.target.closest('.wc-cup-card-btn[data-action="edit-cup"]');
+            if (editCupBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (cup.sourceType === "custom" && isCupOwnedByCurrentUser(cup)) {
+                    switchTab("my-world-cups");
+                    openMyWorldCupEditor(String(cup.sourceCupId || cup.id || ""));
+                }
+                return;
+            }
 
             const rankingBtn = event.target.closest('.wc-cup-card-btn[data-action="ranking"]');
             if (rankingBtn) {
@@ -3827,7 +3869,8 @@ async function showChampion(name) {
 
     if (duel) duel.hidden = true;
 
-    processLeagueAfterTournament(championEntry.name);
+    updateStatus("Sincronizando com a Liga Global...", false);
+    await processLeagueAfterTournament(championEntry.name);
 
     const cover = await resolveWcEntryCover(championEntry);
 
@@ -3962,7 +4005,77 @@ function isGlobalLeagueCup(cup) {
     return String(cup?.id || "") === "best-games";
 }
 
-function updateCustomCupLeagueStats(cupId, championName) {
+function slugifyLeagueParticipantName(value) {
+    const base = normalizeLeagueNameKey(value)
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    return base || `competidor-${Date.now().toString(36)}`;
+}
+
+function buildTournamentParticipantsStats(championName) {
+    const statsMap = new Map();
+    const tournamentSize = wcState.tournamentSize;
+
+    const mergeStats = (name, pointsEarned, titlesEarned) => {
+        const normalizedName = String(name || "").trim();
+        if (!normalizedName) return;
+
+        const pts = Math.max(0, Number(pointsEarned) || 0);
+        const titles = Math.max(0, Number(titlesEarned) || 0);
+        if (pts <= 0 && titles <= 0) return;
+
+        const existing = statsMap.get(normalizedName);
+        if (existing) {
+            existing.pointsEarned += pts;
+            existing.titlesEarned += titles;
+        } else {
+            statsMap.set(normalizedName, {
+                originalName: normalizedName,
+                pointsEarned: pts,
+                titlesEarned: titles
+            });
+        }
+    };
+
+    wcState.eliminations.forEach((eliminatedAtRound, participantName) => {
+        const pts = getScoreForPlacement(tournamentSize, eliminatedAtRound);
+        mergeStats(participantName, pts, 0);
+    });
+
+    mergeStats(championName, getScoreForPlacement(tournamentSize, "champion"), 1);
+    return [...statsMap.values()];
+}
+
+async function syncPointsToCloud(participantsStats) {
+    const entries = Array.isArray(participantsStats) ? participantsStats : [];
+    if (!entries.length) return;
+
+    const tournamentCategory = String(wcState.activeCup?.category || "Geral").trim() || "Geral";
+
+    try {
+        await Promise.all(entries.map(async (participant) => {
+            const pointsEarned = Math.max(0, Number(participant?.pointsEarned) || 0);
+            const titlesEarned = Math.max(0, Number(participant?.titlesEarned) || 0);
+            const originalName = String(participant?.originalName || "").trim();
+            if (!originalName || (pointsEarned <= 0 && titlesEarned <= 0)) return;
+
+            const slugifiedName = slugifyLeagueParticipantName(originalName);
+            const compRef = doc(db, GLOBAL_LEAGUE_COLLECTION, slugifiedName);
+
+            await setDoc(compRef, {
+                name: originalName,
+                category: tournamentCategory,
+                points: increment(pointsEarned),
+                titles: increment(titlesEarned),
+                lastUpdated: serverTimestamp()
+            }, { merge: true });
+        }));
+    } catch (error) {
+        console.warn("Falha ao sincronizar pontos da Liga Global na nuvem.", error);
+    }
+}
+
+async function updateCustomCupLeagueStats(cupId, participantsStats) {
     const cupIndex = myWcState.cups.findIndex((cup) => cup.id === String(cupId));
     if (cupIndex < 0) return;
 
@@ -3971,26 +4084,21 @@ function updateCustomCupLeagueStats(cupId, championName) {
         (cup.stats?.leaderboard || []).map((entry) => [entry.name, normalizeMyWorldCupLeagueEntry(entry)])
     );
 
-    wcState.eliminations.forEach((eliminatedAtRound, participantName) => {
-        const pts = getScoreForPlacement(wcState.tournamentSize, eliminatedAtRound);
-        if (pts <= 0) return;
+    const stats = Array.isArray(participantsStats) ? participantsStats : [];
+    stats.forEach((participant) => {
+        const name = String(participant?.originalName || "").trim();
+        const points = Math.max(0, Number(participant?.pointsEarned) || 0);
+        const titles = Math.max(0, Number(participant?.titlesEarned) || 0);
+        if (!name || (points <= 0 && titles <= 0)) return;
 
-        const existing = leaderboardMap.get(participantName);
+        const existing = leaderboardMap.get(name);
         if (existing) {
-            existing.points += pts;
+            existing.points += points;
+            existing.titles += titles;
         } else {
-            leaderboardMap.set(participantName, { name: participantName, points: pts, titles: 0 });
+            leaderboardMap.set(name, { name, points, titles });
         }
     });
-
-    const championPts = getScoreForPlacement(wcState.tournamentSize, "champion");
-    const championEntry = leaderboardMap.get(championName);
-    if (championEntry) {
-        championEntry.points += championPts;
-        championEntry.titles += 1;
-    } else {
-        leaderboardMap.set(championName, { name: championName, points: championPts, titles: 1 });
-    }
 
     const sortedLeaderboard = sortLeagueEntries([...leaderboardMap.values()]);
 
@@ -4009,48 +4117,66 @@ function updateCustomCupLeagueStats(cupId, championName) {
     }
 
     saveMyWorldCupsToStorage();
+
+    try {
+        const cupRef = doc(db, WORLD_CUPS_COLLECTION, updatedCup.id);
+        await updateDoc(cupRef, {
+            stats: updatedCup.stats,
+            updatedAt: updatedCup.updatedAt,
+            lastUpdated: serverTimestamp()
+        });
+    } catch (error) {
+        const cupRef = doc(db, WORLD_CUPS_COLLECTION, updatedCup.id);
+        await setDoc(cupRef, {
+            id: updatedCup.id,
+            stats: updatedCup.stats,
+            updatedAt: updatedCup.updatedAt,
+            authorId: String(updatedCup.authorId || "")
+        }, { merge: true });
+    }
 }
 
-function processLeagueAfterTournament(championName) {
+async function processLeagueAfterTournament(championName) {
     const size = wcState.tournamentSize;
     if (!LEAGUE_SCORING_SYSTEM[size]) return;
+
+    const participantsStats = buildTournamentParticipantsStats(championName);
 
     const activeCup = wcState.activeCup;
     if (activeCup && !isGlobalLeagueCup(activeCup)) {
         const customCupId = String(activeCup.sourceCupId || "").trim();
         if (customCupId) {
-            updateCustomCupLeagueStats(customCupId, championName);
+            await updateCustomCupLeagueStats(customCupId, participantsStats);
         }
+        await syncPointsToCloud(participantsStats);
         return;
     }
 
     const league = loadLeagueData();
     const leagueMap = new Map(league.map(e => [e.name, e]));
 
-    wcState.eliminations.forEach((eliminatedAtRound, gameName) => {
-        const pts = getScoreForPlacement(size, eliminatedAtRound);
-        if (pts <= 0) return;
-        const existing = leagueMap.get(gameName);
+    participantsStats.forEach((participant) => {
+        const name = String(participant?.originalName || "").trim();
+        if (!name) return;
+
+        const points = Math.max(0, Number(participant?.pointsEarned) || 0);
+        const titles = Math.max(0, Number(participant?.titlesEarned) || 0);
+        if (points <= 0 && titles <= 0) return;
+
+        const existing = leagueMap.get(name);
         if (existing) {
-            existing.points += pts;
+            existing.points += points;
+            existing.titles += titles;
         } else {
-            leagueMap.set(gameName, { name: gameName, points: pts, titles: 0 });
+            leagueMap.set(name, { name, points, titles });
         }
     });
-
-    const champPts = getScoreForPlacement(size, "champion");
-    const champEntry = leagueMap.get(championName);
-    if (champEntry) {
-        champEntry.points += champPts;
-        champEntry.titles += 1;
-    } else {
-        leagueMap.set(championName, { name: championName, points: champPts, titles: 1 });
-    }
 
     const sorted = sortLeagueEntries([...leagueMap.values()]);
     saveLeagueData(sorted);
     incrementPublicWorldCupPlays(activeCup?.id || "best-games");
     renderLeagueTable(sorted);
+    await syncPointsToCloud(participantsStats);
 }
 
 function renderLeagueTable(data) {
@@ -4089,6 +4215,7 @@ function createDefaultMyWorldCup() {
     const timestamp = Date.now();
     return {
         id: createMyWorldCupId("cup"),
+        authorId: getCurrentUserId(),
         title: "Nova World Cup",
         description: "",
         cover: DEFAULT_GAME_COVER_PLACEHOLDER,
@@ -4144,6 +4271,7 @@ function normalizeMyWorldCup(cup) {
 
     return {
         id: String(cup?.id || createMyWorldCupId("cup")),
+        authorId: String(cup?.authorId || ""),
         title: String(cup?.title || "Nova World Cup"),
         description: String(cup?.description || ""),
         cover: String(cup?.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
@@ -4172,6 +4300,53 @@ function loadMyWorldCupsFromStorage() {
     }
 }
 
+function normalizeCloudWorldCupDoc(snapshot) {
+    const payload = snapshot?.data && typeof snapshot.data === "function"
+        ? snapshot.data()
+        : {};
+
+    return normalizeMyWorldCup({
+        ...payload,
+        id: String(payload?.id || snapshot?.id || createMyWorldCupId("cup")),
+        authorId: String(payload?.authorId || "")
+    });
+}
+
+async function loadMyWorldCupsFromCloud() {
+    const snapshot = await getDocs(collection(db, WORLD_CUPS_COLLECTION));
+    if (!snapshot || snapshot.empty) return [];
+
+    return snapshot.docs
+        .map((docSnapshot) => normalizeCloudWorldCupDoc(docSnapshot))
+        .filter((cup) => Boolean(cup?.id));
+}
+
+async function refreshMyWorldCupsFromCloud(options) {
+    const settings = options && typeof options === "object" ? options : {};
+    if (myWcState.cloudLoading) return;
+    if (myWcState.draftCup && !settings.force) return;
+
+    myWcState.cloudLoading = true;
+
+    try {
+        const cloudCups = await loadMyWorldCupsFromCloud();
+        if (cloudCups.length) {
+            myWcState.cups = cloudCups;
+            saveMyWorldCupsToStorage();
+        } else if (!myWcState.cups.length) {
+            myWcState.cups = loadMyWorldCupsFromStorage();
+        }
+
+        myWcState.cloudLoaded = true;
+        renderMyWorldCupCards();
+        renderWcGrid();
+    } catch (error) {
+        console.warn("Falha ao carregar World Cups da nuvem.", error);
+    } finally {
+        myWcState.cloudLoading = false;
+    }
+}
+
 function saveMyWorldCupsToStorage() {
     try {
         localStorage.setItem(MY_WC_STORAGE_KEY, JSON.stringify(myWcState.cups));
@@ -4184,6 +4359,7 @@ function ensureMyWorldCupsLoaded() {
     if (myWcState.loaded) return;
     myWcState.cups = loadMyWorldCupsFromStorage();
     myWcState.loaded = true;
+    void refreshMyWorldCupsFromCloud({ force: true });
 }
 
 function getSelectedMyWorldCup() {
@@ -4538,6 +4714,13 @@ function openMyWorldCupEditor(cupId) {
     const cup = myWcState.cups.find((entry) => entry.id === String(cupId));
     if (!cup) return;
 
+    const cupAuthorId = String(cup.authorId || "");
+    const currentUserId = getCurrentUserId();
+    if (cupAuthorId && cupAuthorId !== currentUserId) {
+        updateStatus("Apenas o autor pode editar esta World Cup.", true);
+        return;
+    }
+
     const view = document.getElementById("mywc-view");
     const editor = document.getElementById("mywc-editor");
     const feedback = document.getElementById("mywc-feedback");
@@ -4589,6 +4772,8 @@ function renderMyWorldCupCards() {
     const empty = document.getElementById("mywc-empty");
     if (!grid || !empty) return;
 
+    const currentUserId = getCurrentUserId();
+
     const cups = [...myWcState.cups]
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
@@ -4599,7 +4784,9 @@ function renderMyWorldCupCards() {
     }
 
     empty.hidden = true;
-    grid.innerHTML = cups.map((cup) => `
+    grid.innerHTML = cups.map((cup) => {
+        const canEdit = Boolean(currentUserId) && String(cup.authorId || "") === currentUserId;
+        return `
         <article class="mywc-card" data-cup-id="${cup.id}">
             <div class="mywc-card-top">
                 <img class="mywc-card-cover" src="${escapeHtml(cup.cover || DEFAULT_GAME_COVER_PLACEHOLDER)}" alt="${escapeHtml(cup.title)}" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'">
@@ -4612,15 +4799,16 @@ function renderMyWorldCupCards() {
                 <div class="mywc-card-footer">
                     <span class="mywc-card-count">${cup.choices.length} escolhas · ${Number(cup.stats?.plays || 0)} jogadas</span>
                     <div class="mywc-card-actions">
-                        <button type="button" class="mywc-card-btn" data-action="edit">Editar copa do mundo</button>
+                        ${canEdit ? '<button type="button" class="mywc-card-btn" data-action="edit">Editar copa do mundo</button>' : ""}
                         <button type="button" class="mywc-card-btn" data-action="ranking">Ver ranking</button>
                         <button type="button" class="mywc-card-btn" data-action="copy">Duplicar</button>
-                        <button type="button" class="mywc-card-btn" data-action="delete">Excluir</button>
+                        ${canEdit ? '<button type="button" class="mywc-card-btn" data-action="delete">Excluir</button>' : ""}
                     </div>
                 </div>
             </div>
         </article>
-    `).join("");
+    `;
+    }).join("");
 
     grid.querySelectorAll(".mywc-card-btn").forEach((button) => {
         button.addEventListener("click", (event) => {
@@ -4631,7 +4819,14 @@ function renderMyWorldCupCards() {
             const cupId = card?.getAttribute("data-cup-id");
             if (!cupId) return;
 
+            const sourceCup = myWcState.cups.find((cup) => cup.id === cupId);
+            const isOwner = Boolean(sourceCup) && String(sourceCup.authorId || "") === getCurrentUserId();
+
             if (action === "edit") {
+                if (!isOwner) {
+                    updateStatus("Apenas o autor pode editar esta World Cup.", true);
+                    return;
+                }
                 openMyWorldCupEditor(cupId);
                 return;
             }
@@ -4642,13 +4837,14 @@ function renderMyWorldCupCards() {
             }
 
             if (action === "copy") {
-                const source = myWcState.cups.find((cup) => cup.id === cupId);
+                const source = sourceCup;
                 if (!source) return;
 
                 const timestamp = Date.now();
                 const duplicate = normalizeMyWorldCup({
                     ...source,
                     id: createMyWorldCupId("cup"),
+                    authorId: getCurrentUserId(),
                     title: `${source.title} (copia)`,
                     createdAt: timestamp,
                     updatedAt: timestamp,
@@ -4670,6 +4866,11 @@ function renderMyWorldCupCards() {
             }
 
             if (action === "delete") {
+                if (!isOwner) {
+                    updateStatus("Apenas o autor pode excluir esta World Cup.", true);
+                    return;
+                }
+
                 const shouldDelete = window.confirm("Deseja realmente excluir esta World Cup?");
                 if (!shouldDelete) return;
 
@@ -4862,7 +5063,10 @@ function bindMyWorldCupEvents() {
 
     if (createBtn) {
         createBtn.addEventListener("click", () => {
-            const createdCup = createDefaultMyWorldCup();
+            const createdCup = normalizeMyWorldCup({
+                ...createDefaultMyWorldCup(),
+                authorId: getCurrentUserId()
+            });
             myWcState.cups.unshift(createdCup);
             saveMyWorldCupsToStorage();
 
@@ -5146,31 +5350,62 @@ function bindMyWorldCupEvents() {
     }
 
     if (publishBtn) {
-        publishBtn.addEventListener("click", () => {
+        publishBtn.addEventListener("click", async () => {
             const draft = getSelectedMyWorldCup();
             if (!draft) return;
 
+            const currentUserId = getCurrentUserId();
+            if (!currentUserId) {
+                updateStatus("Faca login com Google para publicar sua World Cup.", true);
+                return;
+            }
+
+            const existingCup = myWcState.selectedCupId
+                ? myWcState.cups.find((cup) => cup.id === myWcState.selectedCupId)
+                : null;
+            const existingAuthorId = String(existingCup?.authorId || draft.authorId || "");
+
+            if (existingAuthorId && existingAuthorId !== currentUserId) {
+                updateStatus("Apenas o autor pode editar/publicar esta World Cup.", true);
+                return;
+            }
+
             const normalized = normalizeMyWorldCup({
                 ...draft,
+                authorId: currentUserId,
                 updatedAt: Date.now(),
                 choices: draft.choices.map((choice) => ({ ...choice }))
             });
 
-            const index = myWcState.selectedCupId
-                ? myWcState.cups.findIndex((cup) => cup.id === myWcState.selectedCupId)
-                : -1;
+            try {
+                const cupRef = doc(db, WORLD_CUPS_COLLECTION, normalized.id);
+                await setDoc(cupRef, {
+                    ...normalized,
+                    authorId: currentUserId,
+                    updatedAt: Date.now(),
+                    lastUpdated: serverTimestamp()
+                }, { merge: true });
 
-            if (index >= 0) {
-                myWcState.cups[index] = normalized;
-            } else {
-                myWcState.cups.unshift(normalized);
+                const index = myWcState.selectedCupId
+                    ? myWcState.cups.findIndex((cup) => cup.id === myWcState.selectedCupId)
+                    : -1;
+
+                if (index >= 0) {
+                    myWcState.cups[index] = normalized;
+                } else {
+                    myWcState.cups.unshift(normalized);
+                }
+
+                saveMyWorldCupsToStorage();
+                closeMyWorldCupEditor();
+                renderMyWorldCupCards();
+                renderWcGrid();
+                updateStatus("World Cup salva e publicada com sucesso.", false);
+                void refreshMyWorldCupsFromCloud({ force: true });
+            } catch (error) {
+                console.error("Falha ao publicar World Cup na nuvem.", error);
+                updateStatus("Nao foi possivel publicar a World Cup no Firestore.", true);
             }
-
-            saveMyWorldCupsToStorage();
-            closeMyWorldCupEditor();
-            renderMyWorldCupCards();
-            renderWcGrid();
-            updateStatus("World Cup salva e publicada com sucesso.", false);
         });
     }
 
