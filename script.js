@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment, collectionGroup, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment, collectionGroup, onSnapshot, query, orderBy, limit, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
@@ -20,7 +20,14 @@ const AVALIACAO_SCALE = [
 
 const STEAM_API_BASE = "https://yxt-backend.onrender.com/steam-library/";
 const STEAM_SEARCH_API_BASE = "https://yxt-backend.onrender.com/steam-search";
+const RAWG_API_BASE = "https://api.rawg.io/api/games";
+const RAWG_API_KEY = "d8dfd0b35a264ad8804a5255f1c9b60b";
 const USER_LIBRARY_COLLECTION = "library";
+const GLOBAL_GAMES_COLLECTION = "games_database";
+const GLOBAL_SEARCH_RESULTS_LIMIT = 8;
+const GLOBAL_SEARCH_DB_READ_LIMIT = 30;
+const GLOBAL_SEARCH_DEBOUNCE_MS = 500;
+const GLOBAL_SEARCH_RAWG_PAGE_SIZE = 8;
 const ANALYTICS_SCOPE_GLOBAL = "global";
 const ANALYTICS_SCOPE_INDIVIDUAL = "individual";
 const ANALYTICS_TABS = new Set(["visao-geral", "tempo-jogo", "dificuldade", "plataforma", "avaliacao"]);
@@ -117,6 +124,18 @@ const manualGameState = {
     selectedGameId: null
 };
 
+const globalGameSearchState = {
+    initialized: false,
+    eventsBound: false,
+    debounceSearch: null,
+    requestToken: 0,
+    lastQuery: "",
+    results: [],
+    pendingAdds: new Set(),
+    rawgCache: new Map(),
+    manualFormExpanded: false
+};
+
 const gameEditorState = {
     libraryType: "",
     gameId: null,
@@ -172,6 +191,26 @@ function normalizeText(value) {
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .trim();
+}
+
+function debounce(callback, waitMs) {
+    let timer = null;
+
+    const wrapped = (...args) => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+            timer = null;
+            callback(...args);
+        }, waitMs);
+    };
+
+    wrapped.cancel = () => {
+        if (!timer) return;
+        clearTimeout(timer);
+        timer = null;
+    };
+
+    return wrapped;
 }
 
 function parseNumber(value) {
@@ -386,6 +425,623 @@ async function searchSteamGameByName(name) {
         name: String(data.game.name || ""),
         cover: String(data.game.cover || "")
     };
+}
+
+function getGlobalGamesCollectionRef() {
+    return collection(db, GLOBAL_GAMES_COLLECTION);
+}
+
+function slugifyGlobalGameToken(value) {
+    const normalized = normalizeText(value).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return normalized || "game";
+}
+
+function buildGlobalGameDocId(gameInput) {
+    const rawgId = String(gameInput?.rawgId || "").trim();
+    if (rawgId) return `rawg-${rawgId}`;
+
+    const gameName = slugifyGlobalGameToken(gameInput?.name || "game");
+    const releaseYear = String(gameInput?.year || "").trim() || "unknown";
+    return `game-${gameName}-${releaseYear}`;
+}
+
+function normalizeGlobalGameEntry(gameInput) {
+    const name = String(gameInput?.name || gameInput?.title || "").trim();
+    if (!name) return null;
+
+    const releasedDate = String(gameInput?.releasedDate || gameInput?.released || "").trim();
+    const parsedYearMatch = releasedDate.match(/^(\d{4})/);
+    const year = String(gameInput?.year || gameInput?.releaseYear || (parsedYearMatch ? parsedYearMatch[1] : "")).trim();
+    const rawgId = String(gameInput?.rawgId || gameInput?.id || "").trim();
+    const rawgSlug = String(gameInput?.rawgSlug || gameInput?.slug || "").trim();
+    const coverSrc = String(gameInput?.coverSrc || gameInput?.background_image || "").trim();
+    const globalDocId = String(gameInput?.globalDocId || gameInput?.docId || buildGlobalGameDocId({
+        name,
+        rawgId,
+        year,
+        releasedDate
+    })).trim();
+
+    return {
+        globalDocId,
+        source: String(gameInput?.source || "rawg").trim() || "rawg",
+        name,
+        nameLower: normalizeText(gameInput?.nameLower || name),
+        coverSrc,
+        year,
+        releasedDate,
+        rawgId,
+        rawgSlug
+    };
+}
+
+function getGlobalSearchElements() {
+    const tab = document.getElementById("add-your-game");
+    const header = tab?.querySelector(".steam-header") || null;
+
+    return {
+        tab,
+        header,
+        statusEl: document.getElementById("manual-status"),
+        resultsEl: document.getElementById("manual-games-results"),
+        searchInput: document.getElementById("global-game-search-input"),
+        resultsMeta: document.getElementById("global-search-meta"),
+        manualToggleBtn: document.getElementById("manual-form-toggle-btn"),
+        manualFormWrapper: document.getElementById("manual-form-wrapper")
+    };
+}
+
+function setManualFormExpanded(expanded) {
+    const { manualToggleBtn, manualFormWrapper } = getGlobalSearchElements();
+    if (!manualToggleBtn || !manualFormWrapper) return;
+
+    const nextExpanded = Boolean(expanded);
+    globalGameSearchState.manualFormExpanded = nextExpanded;
+    manualFormWrapper.hidden = !nextExpanded;
+    manualToggleBtn.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
+    manualToggleBtn.textContent = nextExpanded
+        ? "Ocultar formulario manual"
+        : "Nao encontrou? Adicionar manualmente";
+}
+
+function setupAddYourGameSearchInterface() {
+    const elements = getGlobalSearchElements();
+    const { tab, header, resultsEl } = elements;
+    if (!tab || !header || !resultsEl) return;
+
+    const manualGroup = header.querySelector(".manual-input-group");
+    const manualNote = header.querySelector(".manual-note");
+    if (!manualGroup) return;
+
+    if (!document.getElementById("global-game-search-input")) {
+        const searchShell = document.createElement("div");
+        searchShell.className = "global-search-shell";
+        searchShell.innerHTML = `
+            <label class="global-search-label" for="global-game-search-input">Pesquisar jogo globalmente...</label>
+            <input type="search" id="global-game-search-input" class="global-search-input" placeholder="Pesquisar jogo globalmente..." autocomplete="off">
+        `;
+        header.insertBefore(searchShell, manualGroup);
+    }
+
+    if (!document.getElementById("manual-form-toggle-btn")) {
+        const toggleButton = document.createElement("button");
+        toggleButton.type = "button";
+        toggleButton.id = "manual-form-toggle-btn";
+        toggleButton.className = "manual-form-toggle-btn";
+        toggleButton.setAttribute("aria-expanded", "false");
+        toggleButton.textContent = "Nao encontrou? Adicionar manualmente";
+        header.insertBefore(toggleButton, manualGroup);
+    }
+
+    if (!document.getElementById("manual-form-wrapper")) {
+        const formWrapper = document.createElement("div");
+        formWrapper.id = "manual-form-wrapper";
+        formWrapper.className = "manual-form-wrapper";
+        formWrapper.hidden = true;
+
+        manualGroup.parentNode.insertBefore(formWrapper, manualGroup);
+        formWrapper.appendChild(manualGroup);
+        if (manualNote) formWrapper.appendChild(manualNote);
+    }
+
+    if (!tab.querySelector(".global-search-results-head")) {
+        const head = document.createElement("div");
+        head.className = "global-search-results-head";
+        head.innerHTML = `
+            <h4>Resultados da Busca</h4>
+            <p class="global-search-meta" id="global-search-meta" aria-live="polite"></p>
+        `;
+        resultsEl.parentNode.insertBefore(head, resultsEl);
+    }
+
+    resultsEl.classList.add("global-search-results");
+    globalGameSearchState.initialized = true;
+    setManualFormExpanded(false);
+}
+
+function updateGlobalSearchMeta(message) {
+    const metaEl = document.getElementById("global-search-meta");
+    if (!metaEl) return;
+    metaEl.textContent = String(message || "");
+}
+
+function renderGlobalSearchIdleState(message) {
+    const { resultsEl } = getGlobalSearchElements();
+    if (!resultsEl) return;
+
+    resultsEl.innerHTML = `<p class="global-search-empty">${escapeHtml(message)}</p>`;
+    updateGlobalSearchMeta("");
+}
+
+function isGlobalGameAlreadyInLibrary(gameInput) {
+    const game = normalizeGlobalGameEntry(gameInput);
+    if (!game) return false;
+
+    const normalizedName = normalizeText(game.name);
+
+    return getLibrary().some((entry) => {
+        const docId = String(entry?.docId || entry?.id || "").trim();
+        const rawgId = String(entry?.metadata?.rawgId || "").trim();
+        const entryName = normalizeText(entry?.name || "");
+
+        if (game.globalDocId && docId && game.globalDocId === docId) return true;
+        if (game.rawgId && rawgId && game.rawgId === rawgId) return true;
+        return Boolean(normalizedName) && normalizedName === entryName;
+    });
+}
+
+function renderGlobalSearchResults(results, options) {
+    const settings = options && typeof options === "object" ? options : {};
+    const queryText = String((settings.query ?? globalGameSearchState.lastQuery) || "").trim();
+    const loading = Boolean(settings.loading);
+    const resultsEl = document.getElementById("manual-games-results");
+    if (!resultsEl) return;
+
+    if (loading) {
+        resultsEl.innerHTML = `
+            <div class="steam-loading global-search-loading">
+                <div class="steam-spinner"></div>
+                <span>Buscando jogos no banco global e na RAWG...</span>
+            </div>
+        `;
+        updateGlobalSearchMeta("Buscando...");
+        return;
+    }
+
+    const normalizedResults = Array.isArray(results)
+        ? results.map((entry) => normalizeGlobalGameEntry(entry)).filter(Boolean)
+        : [];
+
+    if (!normalizedResults.length) {
+        const fallbackMessage = settings.emptyMessage || (queryText
+            ? "Nenhum jogo encontrado para essa busca."
+            : "Digite pelo menos 2 caracteres para iniciar a busca global.");
+        resultsEl.innerHTML = `<p class="global-search-empty">${escapeHtml(fallbackMessage)}</p>`;
+        updateGlobalSearchMeta("");
+        return;
+    }
+
+    const hasDbCount = Object.prototype.hasOwnProperty.call(settings, "dbCount");
+    const hasRawgCount = Object.prototype.hasOwnProperty.call(settings, "rawgCount");
+    const dbCount = Number(settings.dbCount) || 0;
+    const rawgCount = Number(settings.rawgCount) || 0;
+    const metaParts = [];
+    if (queryText) metaParts.push(`Busca: "${queryText}"`);
+    metaParts.push(`${normalizedResults.length} resultado(s)`);
+    if (hasDbCount || hasRawgCount) {
+        metaParts.push(`${dbCount} no banco global`);
+        metaParts.push(`${rawgCount} na RAWG`);
+    }
+    updateGlobalSearchMeta(metaParts.join(" | "));
+
+    resultsEl.innerHTML = `<div class="global-search-grid">${normalizedResults.map((entry) => {
+        const gameId = String(entry.globalDocId || "");
+        const alreadyInLibrary = isGlobalGameAlreadyInLibrary(entry);
+        const isPending = globalGameSearchState.pendingAdds.has(gameId);
+        const disabled = alreadyInLibrary || isPending;
+        const releaseText = entry.year ? `Ano: ${escapeHtml(entry.year)}` : "Ano: -";
+        const sourceText = normalizeText(entry.source) === "database" ? "Banco Global" : "RAWG";
+        const buttonLabel = isPending
+            ? "Adicionando..."
+            : alreadyInLibrary
+                ? "Ja na biblioteca"
+                : "+ Adicionar a Minha Biblioteca";
+
+        return `
+            <article class="global-search-card" data-global-card-id="${escapeHtml(gameId)}">
+                <img class="global-search-cover" src="${escapeHtml(entry.coverSrc || DEFAULT_GAME_COVER_PLACEHOLDER)}" alt="${escapeHtml(entry.name)}" loading="lazy" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'">
+                <div class="global-search-body">
+                    <h5 class="global-search-name">${escapeHtml(entry.name)}</h5>
+                    <p class="global-search-sub">${releaseText} | ${sourceText}</p>
+                </div>
+                <button type="button" class="global-search-add-btn" data-global-game-id="${escapeHtml(gameId)}" ${disabled ? "disabled" : ""}>${buttonLabel}</button>
+            </article>
+        `;
+    }).join("")}</div>`;
+
+    bindGlobalSearchResultActions();
+}
+
+function bindGlobalSearchResultActions() {
+    document.querySelectorAll(".global-search-add-btn[data-global-game-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const gameId = String(button.getAttribute("data-global-game-id") || "").trim();
+            if (!gameId) return;
+            void handleAddGlobalSearchGame(gameId);
+        });
+    });
+}
+
+async function searchGlobalGamesInDatabase(searchText, maxResults) {
+    const normalizedSearch = normalizeText(searchText);
+    if (!normalizedSearch) return [];
+
+    const cap = Math.max(1, Number(maxResults) || GLOBAL_SEARCH_RESULTS_LIMIT);
+    const collectionRef = getGlobalGamesCollectionRef();
+    const picked = [];
+    const seenIds = new Set();
+
+    const appendIfMatch = (entry) => {
+        const normalizedEntry = normalizeGlobalGameEntry(entry);
+        if (!normalizedEntry) return;
+
+        const id = String(normalizedEntry.globalDocId || "").trim();
+        if (!id || seenIds.has(id)) return;
+
+        const byName = normalizedEntry.nameLower.includes(normalizedSearch);
+        if (!byName) return;
+
+        seenIds.add(id);
+        picked.push({
+            ...normalizedEntry,
+            source: "database"
+        });
+    };
+
+    try {
+        const prefixSnapshot = await getDocs(query(
+            collectionRef,
+            orderBy("nameLower"),
+            startAt(normalizedSearch),
+            endAt(`${normalizedSearch}\uf8ff`),
+            limit(cap)
+        ));
+
+        prefixSnapshot.docs.forEach((entry) => {
+            appendIfMatch({
+                ...(entry.data() || {}),
+                globalDocId: entry.id
+            });
+        });
+    } catch (error) {
+        console.warn("Falha na busca indexada em games_database.", error);
+    }
+
+    if (picked.length < cap) {
+        try {
+            const fallbackSnapshot = await getDocs(query(
+                collectionRef,
+                limit(Math.max(GLOBAL_SEARCH_DB_READ_LIMIT, cap))
+            ));
+
+            fallbackSnapshot.docs.forEach((entry) => {
+                appendIfMatch({
+                    ...(entry.data() || {}),
+                    globalDocId: entry.id
+                });
+            });
+        } catch (error) {
+            console.warn("Falha no fallback da busca em games_database.", error);
+        }
+    }
+
+    return picked.slice(0, cap);
+}
+
+async function searchGlobalGamesInRawg(searchText, maxResults) {
+    const normalizedSearch = normalizeText(searchText);
+    if (!normalizedSearch) return [];
+
+    const cap = Math.max(1, Number(maxResults) || GLOBAL_SEARCH_RESULTS_LIMIT);
+    const cacheKey = `${normalizedSearch}:${cap}`;
+    const cached = globalGameSearchState.rawgCache.get(cacheKey);
+    if (Array.isArray(cached)) {
+        return cached.slice(0, cap);
+    }
+
+    const requestUrl = `${RAWG_API_BASE}?key=${encodeURIComponent(RAWG_API_KEY)}&search=${encodeURIComponent(searchText)}&page_size=${Math.max(cap, GLOBAL_SEARCH_RAWG_PAGE_SIZE)}`;
+    const response = await fetch(requestUrl, { cache: "no-store" });
+    if (!response.ok) throw new Error(`RAWG ${response.status}`);
+
+    const data = await response.json();
+    const parsed = (Array.isArray(data?.results) ? data.results : [])
+        .map((entry) => normalizeGlobalGameEntry({
+            ...entry,
+            source: "rawg",
+            rawgId: String(entry?.id || "").trim(),
+            coverSrc: String(entry?.background_image || "").trim(),
+            releasedDate: String(entry?.released || "").trim(),
+            year: String(entry?.released || "").trim().slice(0, 4)
+        }))
+        .filter(Boolean)
+        .slice(0, cap);
+
+    globalGameSearchState.rawgCache.set(cacheKey, parsed);
+    return parsed;
+}
+
+function mergeGlobalSearchResults(primaryResults, secondaryResults, maxResults) {
+    const cap = Math.max(1, Number(maxResults) || GLOBAL_SEARCH_RESULTS_LIMIT);
+    const merged = [];
+    const seenKeys = new Set();
+
+    const append = (entry) => {
+        const normalized = normalizeGlobalGameEntry(entry);
+        if (!normalized) return;
+
+        const fallbackNameKey = `${normalizeText(normalized.name)}::${String(normalized.year || "")}`;
+        const key = String(normalized.globalDocId || fallbackNameKey || "").trim();
+        if (!key || seenKeys.has(key)) return;
+
+        seenKeys.add(key);
+        merged.push(normalized);
+    };
+
+    (Array.isArray(primaryResults) ? primaryResults : []).forEach(append);
+    (Array.isArray(secondaryResults) ? secondaryResults : []).forEach(append);
+
+    return merged.slice(0, cap);
+}
+
+async function executeGlobalGameSearch(searchText) {
+    const queryText = String(searchText || "").trim();
+    const normalizedSearch = normalizeText(queryText);
+    const { statusEl } = getGlobalSearchElements();
+
+    globalGameSearchState.lastQuery = queryText;
+
+    if (!normalizedSearch || normalizedSearch.length < 2) {
+        globalGameSearchState.requestToken += 1;
+        globalGameSearchState.results = [];
+        renderGlobalSearchIdleState("Digite pelo menos 2 caracteres para buscar no banco global e na RAWG.");
+        if (statusEl) {
+            statusEl.textContent = "Pesquise para encontrar jogos oficiais e clonar para sua biblioteca.";
+            statusEl.className = "steam-status steam-status--success";
+        }
+        return;
+    }
+
+    const token = ++globalGameSearchState.requestToken;
+    if (statusEl) {
+        statusEl.textContent = "Buscando jogos no banco global e na RAWG...";
+        statusEl.className = "steam-status steam-status--loading";
+    }
+
+    renderGlobalSearchResults([], { query: queryText, loading: true });
+
+    try {
+        const dbResults = await searchGlobalGamesInDatabase(queryText, GLOBAL_SEARCH_RESULTS_LIMIT);
+        if (token !== globalGameSearchState.requestToken) return;
+
+        let rawgResults = [];
+        if (dbResults.length < GLOBAL_SEARCH_RESULTS_LIMIT) {
+            rawgResults = await searchGlobalGamesInRawg(queryText, GLOBAL_SEARCH_RESULTS_LIMIT);
+            if (token !== globalGameSearchState.requestToken) return;
+        }
+
+        const merged = mergeGlobalSearchResults(dbResults, rawgResults, GLOBAL_SEARCH_RESULTS_LIMIT);
+        globalGameSearchState.results = merged;
+
+        renderGlobalSearchResults(merged, {
+            query: queryText,
+            dbCount: dbResults.length,
+            rawgCount: rawgResults.length,
+            emptyMessage: `Nenhum resultado para "${queryText}".`
+        });
+
+        if (statusEl) {
+            statusEl.textContent = merged.length
+                ? `${merged.length} resultado(s) para "${queryText}".`
+                : `Nenhum resultado para "${queryText}".`;
+            statusEl.className = "steam-status steam-status--success";
+        }
+    } catch (error) {
+        if (token !== globalGameSearchState.requestToken) return;
+
+        console.error("Falha na busca global de jogos.", error);
+        globalGameSearchState.results = [];
+        renderGlobalSearchResults([], {
+            query: queryText,
+            emptyMessage: "Nao foi possivel consultar a RAWG agora. Tente novamente em instantes."
+        });
+
+        if (statusEl) {
+            statusEl.textContent = "Falha ao consultar a busca global agora.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+    }
+}
+
+function bindGlobalSearchEvents() {
+    setupAddYourGameSearchInterface();
+
+    const { searchInput, manualToggleBtn } = getGlobalSearchElements();
+    if (!searchInput || !manualToggleBtn) return;
+
+    if (!globalGameSearchState.debounceSearch) {
+        globalGameSearchState.debounceSearch = debounce((nextQuery) => {
+            void executeGlobalGameSearch(nextQuery);
+        }, GLOBAL_SEARCH_DEBOUNCE_MS);
+    }
+
+    if (globalGameSearchState.eventsBound) return;
+
+    searchInput.addEventListener("input", (event) => {
+        const nextQuery = String(event?.target?.value || "");
+        globalGameSearchState.lastQuery = nextQuery;
+
+        if (normalizeText(nextQuery).length < 2) {
+            if (globalGameSearchState.debounceSearch?.cancel) {
+                globalGameSearchState.debounceSearch.cancel();
+            }
+            globalGameSearchState.requestToken += 1;
+            globalGameSearchState.results = [];
+            renderGlobalSearchIdleState(nextQuery.trim()
+                ? "Digite pelo menos 2 caracteres para iniciar a busca."
+                : "Digite para buscar no banco global e na RAWG.");
+            return;
+        }
+
+        globalGameSearchState.debounceSearch(nextQuery);
+    });
+
+    searchInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        if (globalGameSearchState.debounceSearch?.cancel) {
+            globalGameSearchState.debounceSearch.cancel();
+        }
+        void executeGlobalGameSearch(searchInput.value || "");
+    });
+
+    manualToggleBtn.addEventListener("click", () => {
+        setManualFormExpanded(!globalGameSearchState.manualFormExpanded);
+    });
+
+    globalGameSearchState.eventsBound = true;
+}
+
+async function ensureGlobalGameStored(gameInput) {
+    const normalizedGame = normalizeGlobalGameEntry(gameInput);
+    if (!normalizedGame || !normalizedGame.globalDocId) return;
+
+    const gameRef = doc(db, GLOBAL_GAMES_COLLECTION, normalizedGame.globalDocId);
+    const snapshot = await getDoc(gameRef);
+    if (snapshot.exists()) return;
+
+    await setDoc(gameRef, {
+        name: normalizedGame.name,
+        nameLower: normalizeText(normalizedGame.name),
+        coverSrc: normalizedGame.coverSrc,
+        year: normalizedGame.year,
+        releasedDate: normalizedGame.releasedDate,
+        rawgId: normalizedGame.rawgId,
+        rawgSlug: normalizedGame.rawgSlug,
+        source: normalizedGame.source || "rawg",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    }, { merge: false });
+}
+
+async function cloneGlobalGameToPersonalLibrary(gameInput) {
+    const userId = getCurrentUserId();
+    if (!userId) throw new Error("Usuario nao autenticado.");
+
+    const selectedGame = normalizeGlobalGameEntry(gameInput);
+    if (!selectedGame || !selectedGame.globalDocId) {
+        throw new Error("Jogo invalido para clonagem.");
+    }
+
+    if (isGlobalGameAlreadyInLibrary(selectedGame)) {
+        return { alreadyExists: true, game: null };
+    }
+
+    const userLibraryDoc = getUserLibraryDocRef(userId, selectedGame.globalDocId);
+    const existingInCloud = await getDoc(userLibraryDoc);
+    if (existingInCloud.exists()) {
+        return { alreadyExists: true, game: null };
+    }
+
+    await ensureGlobalGameStored(selectedGame);
+
+    const clonedGame = normalizeManualGame({
+        id: selectedGame.globalDocId,
+        docId: selectedGame.globalDocId,
+        appid: "",
+        name: selectedGame.name,
+        playtime_hours: 0,
+        coverSrc: selectedGame.coverSrc,
+        metadata: {
+            ...DEFAULT_STEAM_METADATA,
+            plataforma: "RAWG",
+            anoLancamento: String(selectedGame.year || ""),
+            rawgId: selectedGame.rawgId,
+            rawgSlug: selectedGame.rawgSlug,
+            globalCatalogId: selectedGame.globalDocId
+        }
+    });
+
+    await upsertLibraryGameToCloud(clonedGame, "manual");
+
+    const existingIdx = manualGameState.library.findIndex((entry) => String(entry.docId || entry.id) === selectedGame.globalDocId);
+    if (existingIdx >= 0) {
+        manualGameState.library[existingIdx] = clonedGame;
+    } else {
+        manualGameState.library.unshift(clonedGame);
+    }
+
+    invalidateAnalyticsCaches();
+    return {
+        alreadyExists: false,
+        game: clonedGame
+    };
+}
+
+async function handleAddGlobalSearchGame(gameDocId) {
+    const selected = globalGameSearchState.results.find((entry) => String(entry?.globalDocId || "") === String(gameDocId || ""));
+    const { statusEl } = getGlobalSearchElements();
+
+    if (!selected) return;
+    if (!getCurrentUserId()) {
+        if (statusEl) {
+            statusEl.textContent = "Faca login com o Google para adicionar jogos.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+        return;
+    }
+
+    const stableId = String(selected.globalDocId || "").trim();
+    if (!stableId || globalGameSearchState.pendingAdds.has(stableId)) return;
+
+    globalGameSearchState.pendingAdds.add(stableId);
+    renderGlobalSearchResults(globalGameSearchState.results, {
+        query: globalGameSearchState.lastQuery
+    });
+
+    try {
+        const result = await cloneGlobalGameToPersonalLibrary(selected);
+
+        if (result.alreadyExists) {
+            if (statusEl) {
+                statusEl.textContent = "Este jogo ja existe na sua biblioteca.";
+                statusEl.className = "steam-status steam-status--success";
+            }
+            return;
+        }
+
+        if (!result.game) {
+            throw new Error("Nao foi possivel montar o jogo clonado.");
+        }
+
+        if (statusEl) {
+            statusEl.textContent = `${result.game.name} foi adicionado. Complete Status, Nota e Tempo no modal.`;
+            statusEl.className = "steam-status steam-status--success";
+        }
+
+        updateDashboards();
+        openManualGameModal(result.game.id);
+    } catch (error) {
+        console.error("Falha ao clonar jogo para a biblioteca pessoal.", error);
+        if (statusEl) {
+            statusEl.textContent = "Nao foi possivel adicionar esse jogo agora.";
+            statusEl.className = "steam-status steam-status--error";
+        }
+    } finally {
+        globalGameSearchState.pendingAdds.delete(stableId);
+        renderGlobalSearchResults(globalGameSearchState.results, {
+            query: globalGameSearchState.lastQuery
+        });
+    }
 }
 
 /* ====================== LIBRARY DATA ACCESS ====================== */
@@ -680,6 +1336,16 @@ function bindAuthEvents() {
             userLibraryState.uid = "";
             userLibraryState.loaded = false;
             userLibraryState.loading = false;
+            globalGameSearchState.results = [];
+            globalGameSearchState.lastQuery = "";
+            globalGameSearchState.requestToken += 1;
+            globalGameSearchState.pendingAdds.clear();
+            globalGameSearchState.rawgCache.clear();
+            if (globalGameSearchState.debounceSearch?.cancel) {
+                globalGameSearchState.debounceSearch.cancel();
+            }
+            const globalSearchInput = document.getElementById("global-game-search-input");
+            if (globalSearchInput) globalSearchInput.value = "";
 
             if (myWcState.selectedCupId || myWcState.draftCup) {
                 closeMyWorldCupEditor();
@@ -697,7 +1363,7 @@ function bindAuthEvents() {
             if (activeTab === "steam-library") {
                 renderSteamLibrary(steamState.library);
             } else if (activeTab === "add-your-game") {
-                renderManualGames(manualGameState.library);
+                await handleManualLibraryTabOpen();
             }
         }
 
@@ -3141,6 +3807,13 @@ function renderManualGames(games) {
         return;
     }
 
+    if (globalGameSearchState.initialized && document.getElementById("global-game-search-input")) {
+        renderGlobalSearchResults(globalGameSearchState.results, {
+            query: globalGameSearchState.lastQuery
+        });
+        return;
+    }
+
     const sortedGames = [...games]
         .filter((g) => (Number(g.playtime_hours) || 0) >= 0)
         .sort((a, b) => (Number(b.playtime_hours) || 0) - (Number(a.playtime_hours) || 0));
@@ -3710,6 +4383,9 @@ function bindSteamEvents() {
     const input = document.getElementById("steam-id-input");
     const modal = getSteamModalElements();
 
+    setupAddYourGameSearchInterface();
+    bindGlobalSearchEvents();
+
     if (btn) btn.addEventListener("click", fetchSteamLibrary);
     if (manualAddBtn) manualAddBtn.addEventListener("click", (event) => { addManualGame(event).catch((error) => console.error("Falha ao adicionar jogo manual:", error)); });
     if (manualCoverPickerBtn && manualCoverInput) {
@@ -3854,6 +4530,13 @@ async function handleManualLibraryTabOpen() {
     }
 
     clearTabLockedState("add-your-game");
+    setupAddYourGameSearchInterface();
+    bindGlobalSearchEvents();
+
+    const searchInput = document.getElementById("global-game-search-input");
+    if (searchInput && globalGameSearchState.lastQuery && String(searchInput.value || "") !== String(globalGameSearchState.lastQuery)) {
+        searchInput.value = String(globalGameSearchState.lastQuery || "");
+    }
 
     if (statusEl) {
         statusEl.textContent = "Carregando biblioteca da nuvem...";
@@ -3861,7 +4544,29 @@ async function handleManualLibraryTabOpen() {
     }
 
     await loadUserLibraryFromCloud({ force: true });
-    renderManualGames(manualGameState.library);
+
+    const normalizedQuery = normalizeText(globalGameSearchState.lastQuery);
+    if (normalizedQuery.length >= 2) {
+        if (globalGameSearchState.results.length) {
+            renderGlobalSearchResults(globalGameSearchState.results, {
+                query: globalGameSearchState.lastQuery
+            });
+            if (statusEl) {
+                statusEl.textContent = "Busca pronta. Clique em + Adicionar a Minha Biblioteca para clonar o jogo.";
+                statusEl.className = "steam-status steam-status--success";
+            }
+        } else {
+            await executeGlobalGameSearch(globalGameSearchState.lastQuery);
+        }
+        return;
+    }
+
+    globalGameSearchState.results = [];
+    renderGlobalSearchIdleState("Digite pelo menos 2 caracteres para buscar no banco global e na RAWG.");
+    if (statusEl) {
+        statusEl.textContent = "Pesquise jogos globais e adicione com um clique.";
+        statusEl.className = "steam-status steam-status--success";
+    }
 }
 
 /* ====================== TABS, EVENTS, INIT ====================== */
