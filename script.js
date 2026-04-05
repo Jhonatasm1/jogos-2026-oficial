@@ -1196,7 +1196,8 @@ function getNormalizedLibrarySortDirection(direction) {
 }
 
 function getNormalizedLibrarySearchQuery(value) {
-    return String(value || "").trim();
+    // Preserve raw typing (including spaces) to avoid swallowing spacebar input.
+    return String(value || "");
 }
 
 function getLibrarySortLabel(criteria) {
@@ -4029,7 +4030,10 @@ function renderSteamLibrary(games) {
 
     bindLibrarySortControls();
     if (criteriaSelect) criteriaSelect.value = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
-    if (searchInput) searchInput.value = getNormalizedLibrarySearchQuery(libraryViewState.searchQuery);
+    const activeSearchQueryRaw = getNormalizedLibrarySearchQuery(libraryViewState.searchQuery);
+    if (searchInput && String(searchInput.value || "") !== activeSearchQueryRaw) {
+        searchInput.value = activeSearchQueryRaw;
+    }
     updateLibrarySortDirectionButton();
 
     if (!getCurrentUserId()) {
@@ -4040,7 +4044,9 @@ function renderSteamLibrary(games) {
     }
 
     const sourceGames = Array.isArray(games) ? games.filter(Boolean) : [];
-    const activeSearchQuery = getNormalizedLibrarySearchQuery(libraryViewState.searchQuery);
+    const activeSearchQuery = activeSearchQueryRaw;
+    const activeSearchQueryLabel = activeSearchQuery.trim();
+    const hasActiveSearch = normalizeText(activeSearchQuery).length > 0;
     const filteredGames = filterLibraryByName(sourceGames, activeSearchQuery);
     const sortCriteria = getNormalizedLibrarySortCriteria(libraryViewState.sortCriteria);
     const sortDirection = getNormalizedLibrarySortDirection(libraryViewState.sortDirection);
@@ -4048,8 +4054,8 @@ function renderSteamLibrary(games) {
 
     if (!sortedGames.length) {
         resultsEl.innerHTML = "";
-        statusEl.textContent = activeSearchQuery
-            ? `Nenhum jogo encontrado para "${activeSearchQuery}" na Your Library.`
+        statusEl.textContent = hasActiveSearch
+            ? `Nenhum jogo encontrado para "${activeSearchQueryLabel}" na Your Library.`
             : "Nenhum jogo encontrado na Your Library.";
         statusEl.className = "steam-status steam-status--error";
         return;
@@ -4096,8 +4102,8 @@ function renderSteamLibrary(games) {
         </div>`;
     }).join("") + "</div>";
 
-    const searchSuffix = activeSearchQuery
-        ? ` Filtro: "${activeSearchQuery}" (${sortedGames.length}/${sourceGames.length}).`
+    const searchSuffix = hasActiveSearch
+        ? ` Filtro: "${activeSearchQueryLabel}" (${sortedGames.length}/${sourceGames.length}).`
         : "";
     statusEl.textContent = `${sortedGames.length} jogos em Your Library. Ordenado por ${getLibrarySortLabel(sortCriteria)} (${sortDirection.toUpperCase()}).${searchSuffix} Clique em um card para editar metadados.`;
     statusEl.className = "steam-status steam-status--success";
