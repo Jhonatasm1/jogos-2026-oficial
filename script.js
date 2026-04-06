@@ -7185,6 +7185,9 @@ const TL_DEFAULT_TIERS = [
 const tlEditorState = {
     id: null,
     title: "MINHA TIERLIST",
+    cover: "",
+    visibility: "private",
+    authorId: null,
     tiers: [],
     pool: [],
     nextItemId: 1
