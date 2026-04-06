@@ -7586,6 +7586,8 @@ function bindTierlistEvents() {
     const addTierBtn = document.getElementById("tl-editor-add-tier");
     const uploadInput = document.getElementById("tl-editor-upload");
     const exportBtn = document.getElementById("tl-editor-export");
+    const coverUpload = document.getElementById("tl-cover-upload");
+    const coverPlaceholder = document.getElementById("tl-cover-placeholder");
 
     if (myBtn) myBtn.addEventListener("click", showMyTierlists);
     if (backPublic) backPublic.addEventListener("click", renderTierlists);
@@ -7599,6 +7601,32 @@ function bindTierlistEvents() {
         uploadInput.value = "";
     });
     if (exportBtn) exportBtn.addEventListener("click", exportTlEditorPng);
+
+    if (coverUpload) {
+        coverUpload.addEventListener("change", () => {
+            const file = coverUpload.files[0];
+            if (!file || !file.type.startsWith("image/")) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                tlEditorState.cover = reader.result;
+                const preview = document.getElementById("tl-cover-preview");
+                if (preview) {
+                    preview.src = tlEditorState.cover;
+                    preview.hidden = false;
+                }
+                if (coverPlaceholder) coverPlaceholder.style.display = "none";
+            };
+            reader.readAsDataURL(file);
+            coverUpload.value = "";
+        });
+    }
+
+    // Clicking the preview image re-opens the file picker
+    const coverPreviewImg = document.getElementById("tl-cover-preview");
+    if (coverPreviewImg && coverUpload) {
+        coverPreviewImg.style.cursor = "pointer";
+        coverPreviewImg.addEventListener("click", () => coverUpload.click());
+    }
 }
 
 function init() {
