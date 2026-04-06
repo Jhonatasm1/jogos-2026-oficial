@@ -834,8 +834,21 @@
                 <div id="tl-editor" hidden>
                     <div class="bi-tier-block">
                         <div class="bi-tier-header">
-                            <div>
+                            <div class="tl-editor-meta">
                                 <input id="tl-editor-title" class="bi-tier-title-input" type="text" value="MINHA TIERLIST" aria-label="Titulo da Tier List">
+                                <div class="tl-cover-row">
+                                    <div class="tl-cover-preview-wrap">
+                                        <img id="tl-cover-preview" class="tl-cover-preview" src="" alt="Capa" hidden />
+                                        <label class="tl-cover-placeholder" id="tl-cover-placeholder" for="tl-cover-upload">
+                                            <span>+ Capa</span>
+                                        </label>
+                                        <input id="tl-cover-upload" type="file" accept="image/*" hidden>
+                                    </div>
+                                    <select id="tl-editor-visibility" class="tl-visibility-select">
+                                        <option value="private">&#128274; Privada</option>
+                                        <option value="public">&#127758; P&uacute;blica</option>
+                                    </select>
+                                </div>
                             </div>
                             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
                                 <button id="tl-editor-add-tier" class="bi-export-btn" type="button">+ Tier</button>
