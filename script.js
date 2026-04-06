@@ -5091,6 +5091,19 @@ const wcState = {
 const MY_WC_STORAGE_KEY = "yxt_my_world_cups";
 const MY_WC_STEP_ORDER = ["cover", "choices", "publish"];
 const MY_WC_CHOICES_PER_PAGE = 8;
+const MY_WC_FIRESTORE_SOFT_LIMIT_BYTES = 900000;
+const MY_WC_ALLOWED_LANGUAGES = new Set(["English", "Portugues", "Espanol"]);
+const MY_WC_ALLOWED_VISIBILITIES = new Set(["Public", "Private", "Unlisted"]);
+const MY_WC_ALLOWED_CATEGORIES = new Set([
+    "trilhas sonoras",
+    "jogos",
+    "gêneros",
+    "developers",
+    "dificuldade",
+    "imersão",
+    "mundo aberto",
+    "outra"
+]);
 
 const myWcState = {
     loaded: false,
@@ -6109,6 +6122,223 @@ function normalizeMyWorldCup(cup) {
     };
 }
 
+function normalizeMyWorldCupSelectValue(value, allowedValues, fallback) {
+    const nextValue = String(value || "").trim();
+    if (allowedValues.has(nextValue)) return nextValue;
+    return fallback;
+}
+
+function trimMyWorldCupText(value, fallback, maxLength) {
+    const nextValue = String(value || "").trim();
+    if (!nextValue) return fallback;
+
+    const cap = Number(maxLength);
+    if (!Number.isFinite(cap) || cap <= 0) return nextValue;
+    if (nextValue.length <= cap) return nextValue;
+
+    return nextValue.slice(0, Math.max(1, cap));
+}
+
+function isImageDataUrl(value) {
+    return /^data:image\/[a-z0-9.+-]+;base64,/i.test(String(value || "").trim());
+}
+
+function estimateMyWorldCupPayloadSizeBytes(payload) {
+    try {
+        const serialized = JSON.stringify(payload);
+        if (typeof TextEncoder !== "undefined") {
+            return new TextEncoder().encode(serialized).length;
+        }
+        return serialized.length;
+    } catch {
+        return 0;
+    }
+}
+
+async function optimizeMyWorldCupImageDataUrl(dataUrl, { maxEdge = 960, quality = 0.82 } = {}) {
+    const source = String(dataUrl || "").trim();
+    if (!isImageDataUrl(source)) return source;
+
+    try {
+        const image = await loadImageFromDataUrl(source);
+        const sourceWidth = Number(image.naturalWidth || image.width) || 1;
+        const sourceHeight = Number(image.naturalHeight || image.height) || 1;
+        const longestEdge = Math.max(sourceWidth, sourceHeight);
+        const scale = longestEdge > maxEdge ? (maxEdge / longestEdge) : 1;
+
+        const width = Math.max(1, Math.round(sourceWidth * scale));
+        const height = Math.max(1, Math.round(sourceHeight * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext("2d");
+        if (!context) return source;
+
+        context.drawImage(image, 0, 0, width, height);
+        const optimizedDataUrl = canvas.toDataURL("image/jpeg", quality);
+        if (!optimizedDataUrl || optimizedDataUrl === "data:,") return source;
+
+        return optimizedDataUrl.length < source.length ? optimizedDataUrl : source;
+    } catch {
+        return source;
+    }
+}
+
+async function getOptimizedMyWorldCupImageDataUrl(file, options = {}) {
+    const source = await readFileAsDataUrl(file);
+    return optimizeMyWorldCupImageDataUrl(source, options);
+}
+
+async function buildMyWorldCupCloudPayload(cup, options = {}) {
+    const settings = options && typeof options === "object" ? options : {};
+    const aggressive = Boolean(settings.aggressive);
+    const normalizedCup = normalizeMyWorldCup(cup);
+
+    const optimizedCover = await optimizeMyWorldCupImageDataUrl(
+        String(normalizedCup.cover || DEFAULT_GAME_COVER_PLACEHOLDER),
+        {
+            maxEdge: aggressive ? 960 : 1280,
+            quality: aggressive ? 0.74 : 0.82
+        }
+    );
+
+    const payloadChoices = [];
+    for (const rawChoice of normalizedCup.choices) {
+        const choice = normalizeMyWorldCupChoice(rawChoice);
+        const mediaType = choice.mediaType === "video" ? "video" : "image";
+        const baseChoice = {
+            id: String(choice.id || createMyWorldCupId("choice")),
+            name: trimMyWorldCupText(choice.name, "Nova escolha", 120),
+            mediaType,
+            wins: Math.max(0, Number(choice.wins) || 0),
+            matches: Math.max(0, Number(choice.matches) || 0),
+            championships: Math.max(0, Number(choice.championships) || 0)
+        };
+
+        if (mediaType === "video") {
+            const rawVideoSrc = String(choice.mediaSrc || "").trim();
+            const normalizedVideoSrc = normalizeVideoUrl(rawVideoSrc) || rawVideoSrc;
+            payloadChoices.push({
+                ...baseChoice,
+                mediaSrc: normalizedVideoSrc,
+                cover: String(choice.cover || getVideoCoverFromUrl(normalizedVideoSrc) || DEFAULT_GAME_COVER_PLACEHOLDER)
+            });
+            continue;
+        }
+
+        const rawImageSrc = String(choice.cover || choice.mediaSrc || DEFAULT_GAME_COVER_PLACEHOLDER);
+        const optimizedImageSrc = await optimizeMyWorldCupImageDataUrl(rawImageSrc, {
+            maxEdge: aggressive ? 640 : 900,
+            quality: aggressive ? 0.7 : 0.8
+        });
+
+        payloadChoices.push({
+            ...baseChoice,
+            mediaSrc: aggressive ? "" : optimizedImageSrc,
+            cover: optimizedImageSrc || DEFAULT_GAME_COVER_PLACEHOLDER
+        });
+    }
+
+    const leaderboard = Array.isArray(normalizedCup.stats?.leaderboard)
+        ? normalizedCup.stats.leaderboard
+            .map(normalizeMyWorldCupLeagueEntry)
+            .filter((entry) => Boolean(entry.name))
+            .slice(0, aggressive ? 50 : 200)
+        : [];
+
+    return {
+        id: String(normalizedCup.id || createMyWorldCupId("cup")),
+        authorId: String(normalizedCup.authorId || ""),
+        title: trimMyWorldCupText(normalizedCup.title, "Nova World Cup", 110),
+        description: trimMyWorldCupText(normalizedCup.description, "", 1200),
+        cover: optimizedCover || DEFAULT_GAME_COVER_PLACEHOLDER,
+        language: normalizeMyWorldCupSelectValue(normalizedCup.language, MY_WC_ALLOWED_LANGUAGES, "English"),
+        visibility: normalizeMyWorldCupSelectValue(normalizedCup.visibility, MY_WC_ALLOWED_VISIBILITIES, "Public"),
+        category: normalizeMyWorldCupSelectValue(normalizedCup.category, MY_WC_ALLOWED_CATEGORIES, "jogos"),
+        choices: payloadChoices,
+        stats: {
+            plays: Math.max(0, Number(normalizedCup.stats?.plays) || 0),
+            leaderboard
+        },
+        createdAt: Number(normalizedCup.createdAt) || Date.now(),
+        updatedAt: Date.now()
+    };
+}
+
+function isMyWorldCupPublishRetryable(error) {
+    const code = String(error?.code || "").toLowerCase();
+    const message = String(error?.message || "").toLowerCase();
+
+    if (code === "resource-exhausted") return true;
+    if (code === "invalid-argument" || code === "failed-precondition" || code === "out-of-range") return true;
+    return message.includes("maximum") && message.includes("size");
+}
+
+function getMyWorldCupPublishErrorMessage(error) {
+    const code = String(error?.code || "").toLowerCase();
+    const message = String(error?.message || "").toLowerCase();
+
+    if (code === "permission-denied") {
+        return "Permissao negada no Firestore. Verifique se voce esta logado no autor correto desta World Cup.";
+    }
+
+    if (code === "unauthenticated") {
+        return "Sua sessao expirou. Faca login novamente para publicar.";
+    }
+
+    if (code === "resource-exhausted" || (message.includes("maximum") && message.includes("size"))) {
+        return "A World Cup excedeu o tamanho permitido no Firestore. Reduza o tamanho/quantidade de imagens e tente novamente.";
+    }
+
+    if (code === "invalid-argument") {
+        return "Algum campo da World Cup ficou invalido para o Firestore. Revise URLs de video e capa.";
+    }
+
+    return "Nao foi possivel publicar a World Cup no Firestore.";
+}
+
+async function persistMyWorldCupToCloud(cup, currentUserId) {
+    const normalizedCup = normalizeMyWorldCup({
+        ...cup,
+        authorId: currentUserId,
+        updatedAt: Date.now(),
+        choices: Array.isArray(cup?.choices) ? cup.choices.map((choice) => ({ ...choice })) : []
+    });
+
+    const cupRef = doc(db, WORLD_CUPS_COLLECTION, normalizedCup.id);
+    const writePayload = async (payload) => {
+        await setDoc(cupRef, {
+            ...payload,
+            authorId: currentUserId,
+            updatedAt: Date.now(),
+            lastUpdated: serverTimestamp()
+        }, { merge: true });
+    };
+
+    let payload = await buildMyWorldCupCloudPayload(normalizedCup, { aggressive: false });
+    let usedAggressivePayload = false;
+
+    if (estimateMyWorldCupPayloadSizeBytes(payload) > MY_WC_FIRESTORE_SOFT_LIMIT_BYTES) {
+        payload = await buildMyWorldCupCloudPayload(normalizedCup, { aggressive: true });
+        usedAggressivePayload = true;
+    }
+
+    try {
+        await writePayload(payload);
+        return { normalizedCup, usedAggressivePayload };
+    } catch (error) {
+        if (usedAggressivePayload || !isMyWorldCupPublishRetryable(error)) {
+            throw error;
+        }
+
+        const fallbackPayload = await buildMyWorldCupCloudPayload(normalizedCup, { aggressive: true });
+        await writePayload(fallbackPayload);
+        return { normalizedCup, usedAggressivePayload: true };
+    }
+}
+
 function loadMyWorldCupsFromStorage() {
     try {
         const raw = localStorage.getItem(MY_WC_STORAGE_KEY);
@@ -6841,7 +7071,7 @@ async function appendMyWorldCupChoicesFromFiles(fileList) {
     const appended = [];
     for (const file of files) {
         try {
-            const dataUrl = await readFileAsDataUrl(file);
+            const dataUrl = await getOptimizedMyWorldCupImageDataUrl(file, { maxEdge: 900, quality: 0.8 });
             appended.push(normalizeMyWorldCupChoice({
                 id: createMyWorldCupId("choice"),
                 name: String(file.name || "Imagem").replace(/\.[^/.]+$/, ""),
@@ -7017,7 +7247,7 @@ function bindMyWorldCupEvents() {
             const file = event.target.files?.[0];
             if (!file) return;
 
-            const dataUrl = await readFileAsDataUrl(file);
+            const dataUrl = await getOptimizedMyWorldCupImageDataUrl(file, { maxEdge: 1280, quality: 0.82 });
             mutateSelectedMyWorldCup((draft) => {
                 draft.cover = dataUrl;
             });
@@ -7211,6 +7441,8 @@ function bindMyWorldCupEvents() {
             const draft = getSelectedMyWorldCup();
             if (!draft) return;
 
+            if (feedback) feedback.textContent = "";
+
             const currentUserId = getCurrentUserId();
             if (!currentUserId) {
                 updateStatus("Faca login com Google para publicar sua World Cup.", true);
@@ -7227,21 +7459,13 @@ function bindMyWorldCupEvents() {
                 return;
             }
 
-            const normalized = normalizeMyWorldCup({
-                ...draft,
-                authorId: currentUserId,
-                updatedAt: Date.now(),
-                choices: draft.choices.map((choice) => ({ ...choice }))
-            });
+            const previousButtonLabel = publishBtn.textContent;
+            publishBtn.disabled = true;
+            publishBtn.textContent = "Publicando...";
 
             try {
-                const cupRef = doc(db, WORLD_CUPS_COLLECTION, normalized.id);
-                await setDoc(cupRef, {
-                    ...normalized,
-                    authorId: currentUserId,
-                    updatedAt: Date.now(),
-                    lastUpdated: serverTimestamp()
-                }, { merge: true });
+                const result = await persistMyWorldCupToCloud(draft, currentUserId);
+                const normalized = result.normalizedCup;
 
                 const index = myWcState.selectedCupId
                     ? myWcState.cups.findIndex((cup) => cup.id === myWcState.selectedCupId)
@@ -7257,11 +7481,23 @@ function bindMyWorldCupEvents() {
                 closeMyWorldCupEditor();
                 renderMyWorldCupCards();
                 renderWcGrid();
+
+                if (feedback) {
+                    feedback.textContent = result.usedAggressivePayload
+                        ? "Publicado com compactacao automatica para caber no Firestore."
+                        : "Publicado com sucesso.";
+                }
+
                 updateStatus("World Cup salva e publicada com sucesso.", false);
                 void refreshMyWorldCupsFromCloud({ force: true });
             } catch (error) {
                 console.error("Falha ao publicar World Cup na nuvem.", error);
-                updateStatus("Nao foi possivel publicar a World Cup no Firestore.", true);
+                const friendlyMessage = getMyWorldCupPublishErrorMessage(error);
+                if (feedback) feedback.textContent = friendlyMessage;
+                updateStatus(friendlyMessage, true);
+            } finally {
+                publishBtn.disabled = false;
+                publishBtn.textContent = previousButtonLabel;
             }
         });
     }
