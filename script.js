@@ -5068,6 +5068,8 @@ const GLOBAL_LEAGUE_COLLECTION = "global_league";
 const WORLD_CUPS_COLLECTION = "world_cups";
 const WC_RAWG_REQUEST_TIMEOUT_MS = 9000;
 const WC_RAWG_BACKOFF_MS = 60000;
+const WC_RAWG_PAGE_SIZE = 5;
+const WC_COVER_FAILURE_COOLDOWN_MS = 12000;
 
 const wcState = {
     currentRound: 0,
@@ -5078,7 +5080,9 @@ const wcState = {
     running: false,
     coverCache: new Map(),
     coverRequestCache: new Map(),
+    coverFailureCache: new Map(),
     rawgBackoffUntil: 0,
+    duelRenderToken: 0,
     activeCup: null,
     tournamentSize: 0,
     eliminations: new Map()
@@ -5134,6 +5138,35 @@ function warmWcImageInMemory(url) {
     }
 }
 
+function pickBestRawgCoverResult(gameName, results) {
+    const target = normalizeText(gameName);
+    if (!target) return null;
+
+    let best = null;
+    let bestScore = -Infinity;
+
+    (Array.isArray(results) ? results : []).forEach((entry, index) => {
+        const name = normalizeText(entry?.name || "");
+        if (!name) return;
+
+        let score = 0;
+        if (name === target) score += 120;
+        else if (name.startsWith(target) || target.startsWith(name)) score += 80;
+        else if (name.includes(target) || target.includes(name)) score += 45;
+        else score += 5;
+
+        if (entry?.background_image) score += 8;
+        score += Math.max(0, 6 - index);
+
+        if (score > bestScore) {
+            bestScore = score;
+            best = entry;
+        }
+    });
+
+    return best;
+}
+
 async function fetchRawgCover(gameName) {
     const rawName = String(gameName || "").trim();
     if (!rawName) return DEFAULT_GAME_COVER_PLACEHOLDER;
@@ -5149,8 +5182,12 @@ async function fetchRawgCover(gameName) {
         return wcState.coverRequestCache.get(cacheKey);
     }
 
+    const failureUntil = Number(wcState.coverFailureCache.get(cacheKey) || 0);
+    if (failureUntil > Date.now()) {
+        return DEFAULT_GAME_COVER_PLACEHOLDER;
+    }
+
     if (Date.now() < Number(wcState.rawgBackoffUntil || 0)) {
-        wcState.coverCache.set(cacheKey, DEFAULT_GAME_COVER_PLACEHOLDER);
         return DEFAULT_GAME_COVER_PLACEHOLDER;
     }
 
@@ -5159,7 +5196,7 @@ async function fetchRawgCover(gameName) {
         const timeoutId = setTimeout(() => controller.abort(), WC_RAWG_REQUEST_TIMEOUT_MS);
 
         try {
-            const requestUrl = `${RAWG_API_BASE}?search=${encodeURIComponent(rawName)}&key=${encodeURIComponent(RAWG_API_KEY)}&page_size=1`;
+            const requestUrl = `${RAWG_API_BASE}?search=${encodeURIComponent(rawName)}&key=${encodeURIComponent(RAWG_API_KEY)}&page_size=${WC_RAWG_PAGE_SIZE}`;
             const response = await fetch(requestUrl, {
                 cache: "force-cache",
                 signal: controller.signal
@@ -5175,15 +5212,23 @@ async function fetchRawgCover(gameName) {
             }
 
             const payload = await response.json();
-            const resolvedUrl = String(payload?.results?.[0]?.background_image || "").trim() || DEFAULT_GAME_COVER_PLACEHOLDER;
+            const bestResult = pickBestRawgCoverResult(rawName, payload?.results);
+            const resolvedUrl = String(bestResult?.background_image || "").trim();
+
+            if (!resolvedUrl) {
+                wcState.coverFailureCache.set(cacheKey, Date.now() + WC_COVER_FAILURE_COOLDOWN_MS);
+                return DEFAULT_GAME_COVER_PLACEHOLDER;
+            }
+
             wcState.coverCache.set(cacheKey, resolvedUrl);
+            wcState.coverFailureCache.delete(cacheKey);
             warmWcImageInMemory(resolvedUrl);
             return resolvedUrl;
         } catch (error) {
             if (error?.name !== "AbortError") {
                 console.warn("Falha ao buscar capa na RAWG para World Cup:", rawName, error);
             }
-            wcState.coverCache.set(cacheKey, DEFAULT_GAME_COVER_PLACEHOLDER);
+            wcState.coverFailureCache.set(cacheKey, Date.now() + WC_COVER_FAILURE_COOLDOWN_MS);
             return DEFAULT_GAME_COVER_PLACEHOLDER;
         } finally {
             clearTimeout(timeoutId);
@@ -5276,12 +5321,13 @@ function renderWcCardMedia(cardElement, entry, coverUrl) {
     wrap.innerHTML = `<img class="wc-card-img" src="${escapeHtml(src)}" alt="${escapeHtml(normalized.name)}" onerror="this.src='${DEFAULT_GAME_COVER_PLACEHOLDER}'" />`;
 }
 
-function preloadNextMatchup() {
-    const queue = wcState.matchupsQueue;
-    if (queue.length >= 2) {
-        preloadWcEntryCover(queue[0]);
-        preloadWcEntryCover(queue[1]);
-    }
+function preloadUpcomingMatchups(duelsAhead = 2) {
+    const queue = Array.isArray(wcState.matchupsQueue) ? wcState.matchupsQueue : [];
+    const totalEntries = Math.max(1, Number(duelsAhead) || 1) * 2;
+
+    queue.slice(0, totalEntries).forEach((entry) => {
+        preloadWcEntryCover(entry);
+    });
 }
 
 /* ── Showcase ── */
@@ -5517,6 +5563,7 @@ function startWorldCup(size) {
     wcState.running = true;
     wcState.tournamentSize = size;
     wcState.eliminations = new Map();
+    wcState.duelRenderToken += 1;
 
     const showcase = document.getElementById("wc-showcase");
     const modal = document.getElementById("wc-modal-overlay");
@@ -5533,6 +5580,7 @@ function startWorldCup(size) {
 
 function stopWorldCup() {
     wcState.running = false;
+    wcState.duelRenderToken += 1;
     wcState.matchupsQueue = [];
     wcState.winnersQueue = [];
     wcState.activeCup = null;
@@ -5581,15 +5629,28 @@ async function showNextMatchup() {
 
     if (!cardLeft || !cardRight) return;
 
+    const duelToken = ++wcState.duelRenderToken;
+
     cardLeft.className = "wc-card wc-card--left";
     cardRight.className = "wc-card wc-card--right";
     if (nameLeft) nameLeft.textContent = left.name;
     if (nameRight) nameRight.textContent = right.name;
 
+    // Prevent stale image flashes while async cover lookup is still in flight.
+    renderWcCardMedia(cardLeft, left, DEFAULT_GAME_COVER_PLACEHOLDER);
+    renderWcCardMedia(cardRight, right, DEFAULT_GAME_COVER_PLACEHOLDER);
+
+    // Warm cache for the next two duels (4 entries) to speed up transitions.
+    preloadUpcomingMatchups(2);
+
     const [coverLeft, coverRight] = await Promise.all([
         resolveWcEntryCover(left),
         resolveWcEntryCover(right)
     ]);
+
+    if (!wcState.running || duelToken !== wcState.duelRenderToken) {
+        return;
+    }
 
     left.cover = coverLeft;
     right.cover = coverRight;
@@ -5597,15 +5658,16 @@ async function showNextMatchup() {
     renderWcCardMedia(cardLeft, left, coverLeft);
     renderWcCardMedia(cardRight, right, coverRight);
 
-    preloadNextMatchup();
-
     const pick = (winner, loser, winnerId, loserId) => {
         document.getElementById(winnerId).classList.add("wc-card--picked");
         document.getElementById(loserId).classList.add("wc-card--lost");
         wcState.winnersQueue.push(winner);
         wcState.eliminations.set(loser.name, wcState.currentRound);
         wcState.matchIndex++;
-        setTimeout(() => showNextMatchup(), 550);
+        wcState.duelRenderToken += 1;
+        setTimeout(() => {
+            void showNextMatchup();
+        }, 550);
     };
 
     const onClickLeft = () => {
