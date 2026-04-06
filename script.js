@@ -7307,6 +7307,9 @@ function createNewTierlist() {
     const newTl = {
         id,
         title: "MINHA TIERLIST",
+        cover: "",
+        visibility: "private",
+        authorId: currentUserId,
         tiers: TL_DEFAULT_TIERS.map(t => ({ ...t, items: [] })),
         pool: []
     };
