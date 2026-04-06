@@ -7325,6 +7325,9 @@ function openTlEditor(id) {
 
     tlEditorState.id = tl.id;
     tlEditorState.title = tl.title || "MINHA TIERLIST";
+    tlEditorState.cover = tl.cover || "";
+    tlEditorState.visibility = tl.visibility || "private";
+    tlEditorState.authorId = tl.authorId || null;
     tlEditorState.tiers = (tl.tiers || []).map(t => ({
         key: t.key,
         label: t.label || t.key,
@@ -7342,8 +7345,35 @@ function openTlEditor(id) {
     const titleInput = document.getElementById("tl-editor-title");
     if (titleInput) titleInput.value = tlEditorState.title;
 
+    // Cover preview
+    const coverPreview = document.getElementById("tl-cover-preview");
+    const coverPlaceholder = document.getElementById("tl-cover-placeholder");
+    if (coverPreview) {
+        if (tlEditorState.cover) {
+            coverPreview.src = tlEditorState.cover;
+            coverPreview.hidden = false;
+            if (coverPlaceholder) coverPlaceholder.style.display = "none";
+        } else {
+            coverPreview.src = "";
+            coverPreview.hidden = true;
+            if (coverPlaceholder) coverPlaceholder.style.display = "";
+        }
+    }
+
+    // Visibility select
+    const visSelect = document.getElementById("tl-editor-visibility");
+    if (visSelect) visSelect.value = tlEditorState.visibility;
+
+    // Ownership check
+    const currentUserId = getCurrentUserId();
+    const isOwner = !tlEditorState.authorId || tlEditorState.authorId === currentUserId;
+    const editorBlock = document.querySelector("#tl-editor .bi-tier-block");
+    if (editorBlock) {
+        editorBlock.classList.toggle("tl-editor-readonly", !isOwner);
+    }
+
     const deleteBtn = document.getElementById("tl-editor-delete");
-    if (deleteBtn) deleteBtn.hidden = false;
+    if (deleteBtn) deleteBtn.hidden = !isOwner;
 
     tlShowView("tl-editor");
     renderTlEditorBoard();
