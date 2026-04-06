@@ -3104,6 +3104,7 @@ async function renderTabContent(tabId, options) {
     else if (targetTab === "add-your-game") await handleManualLibraryTabOpen();
     else if (targetTab === "world-cup") renderWorldCup();
     else if (targetTab === "my-world-cups") renderMyWorldCups(Boolean(settings.forceListOnly));
+    else if (targetTab === "tierlists") renderTierlists();
 }
 
 function updateDashboards(options) {
