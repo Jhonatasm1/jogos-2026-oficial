@@ -7173,11 +7173,45 @@ function bindWorldCupEvents() {
 
 /* ====================== TIERLISTS ====================== */
 
+const TL_STORAGE_KEY = "yxt_my_tierlists";
+const TL_DEFAULT_TIERS = [
+    { key: "S", label: "S", color: "#ff7a7a" },
+    { key: "A", label: "A", color: "#f2b976" },
+    { key: "B", label: "B", color: "#f3d97b" },
+    { key: "C", label: "C", color: "#ecf07b" },
+    { key: "D", label: "D", color: "#adea73" }
+];
+
+const tlEditorState = {
+    id: null,
+    title: "MINHA TIERLIST",
+    tiers: [],
+    pool: [],
+    nextItemId: 1
+};
+
+function tlLoadAll() {
+    try {
+        const raw = localStorage.getItem(TL_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+function tlSaveAll(lists) {
+    localStorage.setItem(TL_STORAGE_KEY, JSON.stringify(lists));
+}
+
+function tlShowView(viewId) {
+    ["tl-public", "tl-private", "tl-editor"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = id !== viewId;
+    });
+    const header = document.querySelector("#tierlists .tl-header");
+    if (header) header.hidden = viewId === "tl-editor";
+}
+
 function renderTierlists() {
-    const pub = document.getElementById("tl-public");
-    const priv = document.getElementById("tl-private");
-    if (pub) pub.hidden = false;
-    if (priv) priv.hidden = true;
+    tlShowView("tl-public");
 }
 
 function showMyTierlists() {
@@ -7186,27 +7220,314 @@ function showMyTierlists() {
         handleGoogleLogin();
         return;
     }
-    const pub = document.getElementById("tl-public");
-    const priv = document.getElementById("tl-private");
-    if (pub) pub.hidden = true;
-    if (priv) priv.hidden = false;
+    tlShowView("tl-private");
+    renderMyTierlistCards();
+}
+
+function renderMyTierlistCards() {
+    const grid = document.getElementById("tl-private-grid");
+    const empty = document.getElementById("tl-private-empty");
+    if (!grid) return;
+
+    const lists = tlLoadAll();
+
+    if (!lists.length) {
+        grid.innerHTML = "";
+        if (empty) { empty.hidden = false; grid.appendChild(empty); }
+        return;
+    }
+
+    if (empty) empty.hidden = true;
+
+    grid.innerHTML = lists.map(tl => {
+        const itemCount = (tl.tiers || []).reduce((n, t) => n + (t.items || []).length, 0) + (tl.pool || []).length;
+        return `<div class="wc-cup-card" data-tl-id="${escapeHtml(tl.id)}">
+            <div class="wc-cup-card-body">
+                <h4 class="wc-cup-card-title">${escapeHtml(tl.title || "Sem titulo")}</h4>
+                <span class="wc-cup-card-meta">${itemCount} itens &middot; ${(tl.tiers || []).length} tiers</span>
+                <div class="wc-cup-card-actions">
+                    <button class="wc-cup-card-btn" data-tl-edit="${escapeHtml(tl.id)}">Editar</button>
+                </div>
+            </div>
+        </div>`;
+    }).join("");
+
+    grid.querySelectorAll("[data-tl-edit]").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openTlEditor(btn.getAttribute("data-tl-edit"));
+        });
+    });
+
+    grid.querySelectorAll(".wc-cup-card[data-tl-id]").forEach(card => {
+        card.addEventListener("click", () => {
+            openTlEditor(card.getAttribute("data-tl-id"));
+        });
+    });
+}
+
+function createNewTierlist() {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) { handleGoogleLogin(); return; }
+
+    const id = "tl_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+    const lists = tlLoadAll();
+    const newTl = {
+        id,
+        title: "MINHA TIERLIST",
+        tiers: TL_DEFAULT_TIERS.map(t => ({ ...t, items: [] })),
+        pool: []
+    };
+    lists.unshift(newTl);
+    tlSaveAll(lists);
+    openTlEditor(id);
+}
+
+function openTlEditor(id) {
+    const lists = tlLoadAll();
+    const tl = lists.find(l => l.id === id);
+    if (!tl) return;
+
+    tlEditorState.id = tl.id;
+    tlEditorState.title = tl.title || "MINHA TIERLIST";
+    tlEditorState.tiers = (tl.tiers || []).map(t => ({
+        key: t.key,
+        label: t.label || t.key,
+        color: t.color || "#d4a853",
+        items: (t.items || []).map(it => ({ ...it }))
+    }));
+    tlEditorState.pool = (tl.pool || []).map(it => ({ ...it }));
+    tlEditorState.nextItemId = 1;
+    const allItems = [...tlEditorState.pool, ...tlEditorState.tiers.flatMap(t => t.items)];
+    allItems.forEach(it => {
+        const num = parseInt(String(it.id).replace("tli-", ""), 10);
+        if (num >= tlEditorState.nextItemId) tlEditorState.nextItemId = num + 1;
+    });
+
+    const titleInput = document.getElementById("tl-editor-title");
+    if (titleInput) titleInput.value = tlEditorState.title;
+
+    const deleteBtn = document.getElementById("tl-editor-delete");
+    if (deleteBtn) deleteBtn.hidden = false;
+
+    tlShowView("tl-editor");
+    renderTlEditorBoard();
+}
+
+function renderTlEditorBoard() {
+    const board = document.getElementById("tl-editor-board");
+    const pool = document.getElementById("tl-editor-pool");
+    if (!board) return;
+
+    board.innerHTML = tlEditorState.tiers.map((tier, idx) => {
+        const itemsHtml = tier.items.map(it =>
+            `<div class="bi-tier-item" draggable="true" data-tl-item-id="${it.id}">
+                <img src="${it.src}" alt="${escapeHtml(it.title || "")}" loading="lazy" />
+            </div>`
+        ).join("");
+
+        return `<div class="bi-tier-row" data-tier-idx="${idx}">
+            <div class="bi-tier-label" style="background:${tier.color}">
+                <textarea class="bi-tier-label-input" data-tier-label-idx="${idx}" rows="2">${escapeHtml(tier.label)}</textarea>
+                <button class="tl-editor-remove-tier" data-remove-tier="${idx}" title="Remover tier">&times;</button>
+            </div>
+            <div class="bi-tier-dropzone" data-dropzone="tier-${idx}">${itemsHtml}</div>
+        </div>`;
+    }).join("");
+
+    if (pool) {
+        pool.innerHTML = tlEditorState.pool.map(it =>
+            `<div class="bi-tier-item" draggable="true" data-tl-item-id="${it.id}">
+                <img src="${it.src}" alt="${escapeHtml(it.title || "")}" loading="lazy" />
+            </div>`
+        ).join("");
+    }
+
+    bindTlEditorDragDrop();
+}
+
+function bindTlEditorDragDrop() {
+    const board = document.getElementById("tl-editor-board");
+    const pool = document.getElementById("tl-editor-pool");
+    const trash = document.getElementById("tl-editor-trash");
+    if (!board) return;
+
+    const allItems = document.querySelectorAll("#tl-editor .bi-tier-item[draggable]");
+    allItems.forEach(item => {
+        item.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", item.getAttribute("data-tl-item-id"));
+            e.dataTransfer.effectAllowed = "move";
+        });
+    });
+
+    const dropzones = board.querySelectorAll(".bi-tier-dropzone");
+    const allDropTargets = [...dropzones];
+    if (pool) allDropTargets.push(pool);
+    if (trash) allDropTargets.push(trash);
+
+    allDropTargets.forEach(zone => {
+        zone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            zone.classList.add("is-over");
+        });
+        zone.addEventListener("dragleave", () => zone.classList.remove("is-over"));
+        zone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            zone.classList.remove("is-over");
+            const itemId = e.dataTransfer.getData("text/plain");
+            if (!itemId) return;
+
+            const item = tlRemoveItem(itemId);
+            if (!item) return;
+
+            if (zone === trash) {
+                renderTlEditorBoard();
+                return;
+            }
+
+            if (zone === pool) {
+                tlEditorState.pool.push(item);
+            } else {
+                const tierIdx = Number(zone.getAttribute("data-dropzone")?.replace("tier-", ""));
+                if (tlEditorState.tiers[tierIdx]) {
+                    tlEditorState.tiers[tierIdx].items.push(item);
+                }
+            }
+
+            renderTlEditorBoard();
+        });
+    });
+
+    board.querySelectorAll("[data-tier-label-idx]").forEach(textarea => {
+        textarea.addEventListener("input", () => {
+            const idx = Number(textarea.getAttribute("data-tier-label-idx"));
+            if (tlEditorState.tiers[idx]) {
+                tlEditorState.tiers[idx].label = textarea.value;
+            }
+        });
+    });
+
+    board.querySelectorAll("[data-remove-tier]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const idx = Number(btn.getAttribute("data-remove-tier"));
+            const tier = tlEditorState.tiers[idx];
+            if (!tier) return;
+            tlEditorState.pool.push(...tier.items);
+            tlEditorState.tiers.splice(idx, 1);
+            renderTlEditorBoard();
+        });
+    });
+}
+
+function tlRemoveItem(itemId) {
+    for (const tier of tlEditorState.tiers) {
+        const idx = tier.items.findIndex(it => it.id === itemId);
+        if (idx !== -1) return tier.items.splice(idx, 1)[0];
+    }
+    const poolIdx = tlEditorState.pool.findIndex(it => it.id === itemId);
+    if (poolIdx !== -1) return tlEditorState.pool.splice(poolIdx, 1)[0];
+    return null;
+}
+
+function saveTlEditor() {
+    const titleInput = document.getElementById("tl-editor-title");
+    if (titleInput) tlEditorState.title = titleInput.value.trim() || "MINHA TIERLIST";
+
+    const lists = tlLoadAll();
+    const idx = lists.findIndex(l => l.id === tlEditorState.id);
+    const saved = {
+        id: tlEditorState.id,
+        title: tlEditorState.title,
+        tiers: tlEditorState.tiers.map(t => ({
+            key: t.key,
+            label: t.label,
+            color: t.color,
+            items: t.items.map(it => ({ id: it.id, title: it.title, src: it.src }))
+        })),
+        pool: tlEditorState.pool.map(it => ({ id: it.id, title: it.title, src: it.src }))
+    };
+
+    if (idx !== -1) lists[idx] = saved;
+    else lists.unshift(saved);
+
+    tlSaveAll(lists);
+    showMyTierlists();
+}
+
+function deleteTlEditor() {
+    const lists = tlLoadAll().filter(l => l.id !== tlEditorState.id);
+    tlSaveAll(lists);
+    showMyTierlists();
+}
+
+function addTlTier() {
+    const letters = "SABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const usedKeys = new Set(tlEditorState.tiers.map(t => t.key));
+    let newKey = "NEW";
+    for (const l of letters) {
+        if (!usedKeys.has(l)) { newKey = l; break; }
+    }
+    const colors = ["#ff7a7a","#f2b976","#f3d97b","#ecf07b","#adea73","#78e976","#76dfdb","#76a9df","#7f7ae2"];
+    const color = colors[tlEditorState.tiers.length % colors.length] || "#d4a853";
+
+    tlEditorState.tiers.push({ key: newKey, label: newKey, color, items: [] });
+    renderTlEditorBoard();
+}
+
+function handleTlUpload(files) {
+    if (!files || !files.length) return;
+    Array.from(files).forEach(file => {
+        if (!file.type.startsWith("image/")) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const id = "tli-" + tlEditorState.nextItemId++;
+            tlEditorState.pool.push({ id, title: file.name.replace(/\.[^.]+$/, ""), src: reader.result });
+            renderTlEditorBoard();
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function exportTlEditorPng() {
+    const board = document.getElementById("tl-editor-board");
+    if (!board || typeof html2canvas !== "function") return;
+    const btn = document.getElementById("tl-editor-export");
+    if (btn) { btn.disabled = true; btn.textContent = "Exportando..."; }
+
+    html2canvas(board, { backgroundColor: "#08090d", scale: 2, useCORS: true }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = (tlEditorState.title || "tierlist") + ".png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    }).finally(() => {
+        if (btn) { btn.disabled = false; btn.textContent = "Exportar PNG"; }
+    });
 }
 
 function bindTierlistEvents() {
     const myBtn = document.getElementById("tl-my-btn");
-    const backBtn = document.getElementById("tl-back-public");
+    const backPublic = document.getElementById("tl-back-public");
     const createBtn = document.getElementById("tl-create-btn");
+    const editorBack = document.getElementById("tl-editor-back");
+    const editorSave = document.getElementById("tl-editor-save");
+    const editorDelete = document.getElementById("tl-editor-delete");
+    const addTierBtn = document.getElementById("tl-editor-add-tier");
+    const uploadInput = document.getElementById("tl-editor-upload");
+    const exportBtn = document.getElementById("tl-editor-export");
 
     if (myBtn) myBtn.addEventListener("click", showMyTierlists);
-    if (backBtn) backBtn.addEventListener("click", renderTierlists);
-    if (createBtn) createBtn.addEventListener("click", () => {
-        const currentUserId = getCurrentUserId();
-        if (!currentUserId) {
-            handleGoogleLogin();
-            return;
-        }
-        // placeholder for future creation logic
+    if (backPublic) backPublic.addEventListener("click", renderTierlists);
+    if (createBtn) createBtn.addEventListener("click", createNewTierlist);
+    if (editorBack) editorBack.addEventListener("click", showMyTierlists);
+    if (editorSave) editorSave.addEventListener("click", saveTlEditor);
+    if (editorDelete) editorDelete.addEventListener("click", deleteTlEditor);
+    if (addTierBtn) addTierBtn.addEventListener("click", addTlTier);
+    if (uploadInput) uploadInput.addEventListener("change", () => {
+        handleTlUpload(uploadInput.files);
+        uploadInput.value = "";
     });
+    if (exportBtn) exportBtn.addEventListener("click", exportTlEditorPng);
 }
 
 function init() {
