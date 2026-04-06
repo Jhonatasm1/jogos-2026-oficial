@@ -7255,7 +7255,8 @@ function renderMyTierlistCards() {
     const empty = document.getElementById("tl-private-empty");
     if (!grid) return;
 
-    const lists = tlLoadAll();
+    const currentUserId = getCurrentUserId();
+    const lists = tlLoadAll().filter(l => !l.authorId || l.authorId === currentUserId);
 
     if (!lists.length) {
         grid.innerHTML = "";
@@ -7266,11 +7267,16 @@ function renderMyTierlistCards() {
     if (empty) empty.hidden = true;
 
     grid.innerHTML = lists.map(tl => {
+        const coverHtml = tl.cover
+            ? `<img class="tl-card-cover" src="${tl.cover}" alt="${escapeHtml(tl.title || "")}" loading="lazy">`
+            : `<div class="tl-card-no-cover">🎮</div>`;
         const itemCount = (tl.tiers || []).reduce((n, t) => n + (t.items || []).length, 0) + (tl.pool || []).length;
-        return `<div class="wc-cup-card" data-tl-id="${escapeHtml(tl.id)}">
+        const visLabel = tl.visibility === "public" ? "🌎 Pública" : "🔒 Privada";
+        return `<div class="wc-cup-card" data-tl-id="${escapeHtml(tl.id)}" style="cursor:pointer">
+            ${coverHtml}
             <div class="wc-cup-card-body">
                 <h4 class="wc-cup-card-title">${escapeHtml(tl.title || "Sem titulo")}</h4>
-                <span class="wc-cup-card-meta">${itemCount} itens &middot; ${(tl.tiers || []).length} tiers</span>
+                <span class="wc-cup-card-meta">${itemCount} itens &middot; ${(tl.tiers || []).length} tiers &middot; ${visLabel}</span>
                 <div class="wc-cup-card-actions">
                     <button class="wc-cup-card-btn" data-tl-edit="${escapeHtml(tl.id)}">Editar</button>
                 </div>
