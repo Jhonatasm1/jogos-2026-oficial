@@ -4377,7 +4377,6 @@ body.modal-open {
 }
 
 /* read-only editor state */
-.tl-editor-readonly .bi-tier-item[draggable] { pointer-events: none; cursor: default; }
 .tl-editor-readonly .bi-tier-label-input { pointer-events: none; }
 .tl-editor-readonly .tl-editor-remove-tier { display: none; }
 .tl-editor-readonly #tl-editor-add-tier,

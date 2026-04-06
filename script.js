@@ -7188,6 +7188,7 @@ const tlEditorState = {
     cover: "",
     visibility: "private",
     authorId: null,
+    isOwner: false,
     tiers: [],
     pool: [],
     nextItemId: 1
@@ -7222,6 +7223,38 @@ function setTlEditorFeedback(message, state = "info") {
 
 function clearTlEditorFeedback() {
     setTlEditorFeedback("", "info");
+}
+
+function tlCollectUniqueItemsFromSources(tiers, pool) {
+    const collected = [];
+    const seen = new Set();
+
+    const appendItem = (item) => {
+        const src = String(item?.src || "").trim();
+        if (!src) return;
+
+        const title = String(item?.title || "").trim() || "Item";
+        const rawId = String(item?.id || "").trim();
+        const dedupeKey = rawId || `${title}|${src}`;
+        if (seen.has(dedupeKey)) return;
+
+        seen.add(dedupeKey);
+        collected.push({ id: rawId, title, src });
+    };
+
+    (Array.isArray(pool) ? pool : []).forEach(appendItem);
+    (Array.isArray(tiers) ? tiers : []).forEach((tier) => {
+        (Array.isArray(tier?.items) ? tier.items : []).forEach(appendItem);
+    });
+
+    return collected.map((item, index) => ({
+        ...item,
+        id: item.id || `tli-${index + 1}`
+    }));
+}
+
+function tlCollectAllEditorItems() {
+    return tlCollectUniqueItemsFromSources(tlEditorState.tiers, tlEditorState.pool);
 }
 
 function loadImageFromDataUrl(dataUrl) {
@@ -7389,13 +7422,17 @@ function openTlEditor(id) {
     tlEditorState.cover = tl.cover || "";
     tlEditorState.visibility = tl.visibility || "private";
     tlEditorState.authorId = tl.authorId || null;
-    tlEditorState.tiers = (tl.tiers || []).map(t => ({
+    const baseTiers = (tl.tiers || []).map(t => ({
         key: t.key,
         label: t.label || t.key,
         color: t.color || "#d4a853",
-        items: (t.items || []).map(it => ({ ...it }))
+        items: []
     }));
-    tlEditorState.pool = (tl.pool || []).map(it => ({ ...it }));
+
+    const baseItems = tlCollectUniqueItemsFromSources(tl.tiers || [], tl.pool || []);
+
+    tlEditorState.tiers = baseTiers;
+    tlEditorState.pool = baseItems.map((it) => ({ ...it }));
     tlEditorState.nextItemId = 1;
     const allItems = [...tlEditorState.pool, ...tlEditorState.tiers.flatMap(t => t.items)];
     allItems.forEach(it => {
@@ -7427,7 +7464,8 @@ function openTlEditor(id) {
 
     // Ownership check
     const currentUserId = getCurrentUserId();
-    const isOwner = !tlEditorState.authorId || tlEditorState.authorId === currentUserId;
+    const isOwner = (!tlEditorState.authorId && Boolean(currentUserId)) || tlEditorState.authorId === currentUserId;
+    tlEditorState.isOwner = isOwner;
     const editorBlock = document.querySelector("#tl-editor .bi-tier-block");
     if (editorBlock) {
         editorBlock.classList.toggle("tl-editor-readonly", !isOwner);
@@ -7437,7 +7475,11 @@ function openTlEditor(id) {
     if (deleteBtn) deleteBtn.hidden = !isOwner;
 
     tlShowView("tl-editor");
-    clearTlEditorFeedback();
+    if (isOwner) {
+        setTlEditorFeedback("As posicoes nos tiers nao sao compartilhadas: os itens sempre iniciam em Imagens Disponiveis.", "info");
+    } else {
+        setTlEditorFeedback("Modo individual: organize os itens livremente. Suas mudancas nao alteram a tierlist original.", "info");
+    }
     renderTlEditorBoard();
 }
 
@@ -7558,11 +7600,18 @@ function tlRemoveItem(itemId) {
 }
 
 function saveTlEditor() {
+    if (!tlEditorState.isOwner) {
+        setTlEditorFeedback("Somente o dono pode salvar esta tierlist. Suas mudancas atuais sao apenas locais.", "error");
+        return;
+    }
+
     const titleInput = document.getElementById("tl-editor-title");
     if (titleInput) tlEditorState.title = titleInput.value.trim() || "MINHA TIERLIST";
 
     const visSelect = document.getElementById("tl-editor-visibility");
     if (visSelect) tlEditorState.visibility = visSelect.value;
+
+    const templateItems = tlCollectAllEditorItems();
 
     const lists = tlLoadAll();
     const idx = lists.findIndex(l => l.id === tlEditorState.id);
@@ -7576,9 +7625,9 @@ function saveTlEditor() {
             key: t.key,
             label: t.label,
             color: t.color,
-            items: t.items.map(it => ({ id: it.id, title: it.title, src: it.src }))
+            items: []
         })),
-        pool: tlEditorState.pool.map(it => ({ id: it.id, title: it.title, src: it.src }))
+        pool: templateItems.map(it => ({ id: it.id, title: it.title, src: it.src }))
     };
 
     if (idx !== -1) lists[idx] = saved;
@@ -7594,6 +7643,11 @@ function saveTlEditor() {
 }
 
 function deleteTlEditor() {
+    if (!tlEditorState.isOwner) {
+        setTlEditorFeedback("Somente o dono pode excluir esta tierlist.", "error");
+        return;
+    }
+
     const lists = tlLoadAll().filter(l => l.id !== tlEditorState.id);
     if (!tlSaveAll(lists)) {
         setTlEditorFeedback("Nao foi possivel excluir agora. Tente novamente.", "error");
@@ -7603,6 +7657,11 @@ function deleteTlEditor() {
 }
 
 function addTlTier() {
+    if (!tlEditorState.isOwner) {
+        setTlEditorFeedback("Somente o dono pode editar a estrutura de tiers.", "error");
+        return;
+    }
+
     const letters = "SABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     const usedKeys = new Set(tlEditorState.tiers.map(t => t.key));
     let newKey = "NEW";
@@ -7617,6 +7676,11 @@ function addTlTier() {
 }
 
 async function handleTlUpload(files) {
+    if (!tlEditorState.isOwner) {
+        setTlEditorFeedback("Somente o dono pode adicionar novas imagens a esta tierlist.", "error");
+        return;
+    }
+
     if (!files || !files.length) return;
 
     const imageFiles = Array.from(files).filter(file => String(file.type || "").startsWith("image/"));
@@ -7646,6 +7710,11 @@ async function handleTlUpload(files) {
 }
 
 async function handleTlCoverUpload(file) {
+    if (!tlEditorState.isOwner) {
+        setTlEditorFeedback("Somente o dono pode alterar a capa desta tierlist.", "error");
+        return;
+    }
+
     if (!file || !String(file.type || "").startsWith("image/")) return;
 
     const src = await getOptimizedTierlistImageDataUrl(file, { maxEdge: 1200, quality: 0.82 });
