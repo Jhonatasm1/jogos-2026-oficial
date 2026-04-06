@@ -4228,6 +4228,21 @@ body.modal-open {
     align-items: center;
 }
 
+.tl-editor-feedback {
+    flex: 1 1 100%;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+}
+
+.tl-editor-feedback[data-state="error"] {
+    color: #ff8e8e;
+}
+
+.tl-editor-feedback[data-state="info"] {
+    color: var(--fg-muted);
+}
+
 .tl-delete-btn {
     padding: 0.55rem 1.5rem;
     font-family: "Syne", sans-serif;

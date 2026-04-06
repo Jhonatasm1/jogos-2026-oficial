@@ -7201,7 +7201,65 @@ function tlLoadAll() {
 }
 
 function tlSaveAll(lists) {
-    localStorage.setItem(TL_STORAGE_KEY, JSON.stringify(lists));
+    try {
+        localStorage.setItem(TL_STORAGE_KEY, JSON.stringify(lists));
+        return true;
+    } catch (error) {
+        console.warn("Nao foi possivel salvar tierlists no armazenamento local.", error);
+        return false;
+    }
+}
+
+function setTlEditorFeedback(message, state = "info") {
+    const feedback = document.getElementById("tl-editor-feedback");
+    if (!feedback) return;
+
+    const text = String(message || "").trim();
+    feedback.textContent = text;
+    feedback.dataset.state = state;
+    feedback.hidden = !text;
+}
+
+function clearTlEditorFeedback() {
+    setTlEditorFeedback("", "info");
+}
+
+function loadImageFromDataUrl(dataUrl) {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Nao foi possivel processar a imagem."));
+        image.src = dataUrl;
+    });
+}
+
+async function getOptimizedTierlistImageDataUrl(file, { maxEdge = 960, quality = 0.82 } = {}) {
+    const originalDataUrl = await readFileAsDataUrl(file);
+    const image = await loadImageFromDataUrl(originalDataUrl);
+
+    const sourceWidth = Number(image.naturalWidth || image.width) || 1;
+    const sourceHeight = Number(image.naturalHeight || image.height) || 1;
+    const longestEdge = Math.max(sourceWidth, sourceHeight);
+    const scale = longestEdge > maxEdge ? (maxEdge / longestEdge) : 1;
+
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) return originalDataUrl;
+
+    context.drawImage(image, 0, 0, width, height);
+    const optimizedDataUrl = canvas.toDataURL("image/jpeg", quality);
+
+    if (!optimizedDataUrl || optimizedDataUrl === "data:,") {
+        return originalDataUrl;
+    }
+
+    return optimizedDataUrl.length < originalDataUrl.length ? optimizedDataUrl : originalDataUrl;
 }
 
 function tlShowView(viewId) {
@@ -7314,7 +7372,10 @@ function createNewTierlist() {
         pool: []
     };
     lists.unshift(newTl);
-    tlSaveAll(lists);
+    if (!tlSaveAll(lists)) {
+        alert("Nao foi possivel criar a tierlist agora. Tente reduzir o tamanho das imagens locais e tente novamente.");
+        return;
+    }
     openTlEditor(id);
 }
 
@@ -7376,6 +7437,7 @@ function openTlEditor(id) {
     if (deleteBtn) deleteBtn.hidden = !isOwner;
 
     tlShowView("tl-editor");
+    clearTlEditorFeedback();
     renderTlEditorBoard();
 }
 
@@ -7522,13 +7584,21 @@ function saveTlEditor() {
     if (idx !== -1) lists[idx] = saved;
     else lists.unshift(saved);
 
-    tlSaveAll(lists);
+    if (!tlSaveAll(lists)) {
+        setTlEditorFeedback("Nao foi possivel salvar. Reduza o tamanho/quantidade das imagens e tente novamente.", "error");
+        return;
+    }
+
+    clearTlEditorFeedback();
     showMyTierlists();
 }
 
 function deleteTlEditor() {
     const lists = tlLoadAll().filter(l => l.id !== tlEditorState.id);
-    tlSaveAll(lists);
+    if (!tlSaveAll(lists)) {
+        setTlEditorFeedback("Nao foi possivel excluir agora. Tente novamente.", "error");
+        return;
+    }
     showMyTierlists();
 }
 
@@ -7546,18 +7616,53 @@ function addTlTier() {
     renderTlEditorBoard();
 }
 
-function handleTlUpload(files) {
+async function handleTlUpload(files) {
     if (!files || !files.length) return;
-    Array.from(files).forEach(file => {
-        if (!file.type.startsWith("image/")) return;
-        const reader = new FileReader();
-        reader.onload = () => {
+
+    const imageFiles = Array.from(files).filter(file => String(file.type || "").startsWith("image/"));
+    if (!imageFiles.length) {
+        setTlEditorFeedback("Selecione arquivos de imagem validos para upload.", "error");
+        return;
+    }
+
+    let addedCount = 0;
+    for (const file of imageFiles) {
+        try {
+            const src = await getOptimizedTierlistImageDataUrl(file, { maxEdge: 900, quality: 0.8 });
             const id = "tli-" + tlEditorState.nextItemId++;
-            tlEditorState.pool.push({ id, title: file.name.replace(/\.[^.]+$/, ""), src: reader.result });
-            renderTlEditorBoard();
-        };
-        reader.readAsDataURL(file);
-    });
+            tlEditorState.pool.push({ id, title: file.name.replace(/\.[^.]+$/, ""), src });
+            addedCount += 1;
+        } catch (error) {
+            console.warn("Falha ao processar upload da tierlist.", error);
+        }
+    }
+
+    renderTlEditorBoard();
+    if (addedCount > 0) {
+        setTlEditorFeedback(`${addedCount} imagem(ns) adicionada(s). Clique em Salvar para persistir.`, "info");
+    } else {
+        setTlEditorFeedback("Nenhuma imagem valida foi adicionada.", "error");
+    }
+}
+
+async function handleTlCoverUpload(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) return;
+
+    const src = await getOptimizedTierlistImageDataUrl(file, { maxEdge: 1200, quality: 0.82 });
+    tlEditorState.cover = src;
+
+    const preview = document.getElementById("tl-cover-preview");
+    const coverPlaceholder = document.getElementById("tl-cover-placeholder");
+
+    if (preview) {
+        preview.src = src;
+        preview.hidden = false;
+    }
+    if (coverPlaceholder) {
+        coverPlaceholder.style.display = "none";
+    }
+
+    setTlEditorFeedback("Capa atualizada. Clique em Salvar para persistir.", "info");
 }
 
 function exportTlEditorPng() {
@@ -7597,7 +7702,7 @@ function bindTierlistEvents() {
     if (editorDelete) editorDelete.addEventListener("click", deleteTlEditor);
     if (addTierBtn) addTierBtn.addEventListener("click", addTlTier);
     if (uploadInput) uploadInput.addEventListener("change", () => {
-        handleTlUpload(uploadInput.files);
+        void handleTlUpload(uploadInput.files);
         uploadInput.value = "";
     });
     if (exportBtn) exportBtn.addEventListener("click", exportTlEditorPng);
@@ -7606,17 +7711,10 @@ function bindTierlistEvents() {
         coverUpload.addEventListener("change", () => {
             const file = coverUpload.files[0];
             if (!file || !file.type.startsWith("image/")) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-                tlEditorState.cover = reader.result;
-                const preview = document.getElementById("tl-cover-preview");
-                if (preview) {
-                    preview.src = tlEditorState.cover;
-                    preview.hidden = false;
-                }
-                if (coverPlaceholder) coverPlaceholder.style.display = "none";
-            };
-            reader.readAsDataURL(file);
+            void handleTlCoverUpload(file).catch((error) => {
+                console.warn("Falha ao processar capa da tierlist.", error);
+                setTlEditorFeedback("Nao foi possivel processar a capa. Tente outra imagem.", "error");
+            });
             coverUpload.value = "";
         });
     }
