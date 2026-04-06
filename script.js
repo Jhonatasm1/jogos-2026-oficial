@@ -7215,6 +7215,29 @@ function tlShowView(viewId) {
 
 function renderTierlists() {
     tlShowView("tl-public");
+    const grid = document.getElementById("tl-public-grid");
+    if (!grid) return;
+    const publicLists = tlLoadAll().filter(l => l.visibility === "public");
+    if (!publicLists.length) {
+        grid.innerHTML = `<p class="tl-empty-msg">Nenhuma tierlist pública ainda.</p>`;
+        return;
+    }
+    grid.innerHTML = publicLists.map(tl => {
+        const coverHtml = tl.cover
+            ? `<img class="tl-card-cover" src="${tl.cover}" alt="${escapeHtml(tl.title || "")}" loading="lazy">`
+            : `<div class="tl-card-no-cover">🎮</div>`;
+        const itemCount = (tl.tiers || []).reduce((n, t) => n + (t.items || []).length, 0) + (tl.pool || []).length;
+        return `<div class="wc-cup-card" data-tl-id="${escapeHtml(tl.id)}" style="cursor:pointer">
+            ${coverHtml}
+            <div class="wc-cup-card-body">
+                <h4 class="wc-cup-card-title">${escapeHtml(tl.title || "Sem titulo")}</h4>
+                <span class="wc-cup-card-meta">${itemCount} itens &middot; ${(tl.tiers || []).length} tiers</span>
+            </div>
+        </div>`;
+    }).join("");
+    grid.querySelectorAll(".wc-cup-card[data-tl-id]").forEach(card => {
+        card.addEventListener("click", () => openTlEditor(card.getAttribute("data-tl-id")));
+    });
 }
 
 function showMyTierlists() {
