@@ -7499,11 +7499,17 @@ function saveTlEditor() {
     const titleInput = document.getElementById("tl-editor-title");
     if (titleInput) tlEditorState.title = titleInput.value.trim() || "MINHA TIERLIST";
 
+    const visSelect = document.getElementById("tl-editor-visibility");
+    if (visSelect) tlEditorState.visibility = visSelect.value;
+
     const lists = tlLoadAll();
     const idx = lists.findIndex(l => l.id === tlEditorState.id);
     const saved = {
         id: tlEditorState.id,
         title: tlEditorState.title,
+        cover: tlEditorState.cover,
+        visibility: tlEditorState.visibility,
+        authorId: tlEditorState.authorId || getCurrentUserId(),
         tiers: tlEditorState.tiers.map(t => ({
             key: t.key,
             label: t.label,
