@@ -7646,7 +7646,8 @@ function init() {
             || activeTab === "add-your-game"
             || activeTab === "world-cup"
             || activeTab === "my-world-cups"
-            || activeTab === "user-ranking";
+            || activeTab === "user-ranking"
+            || activeTab === "tierlists";
     }
     if (dom.analyticsScopeWrap) dom.analyticsScopeWrap.hidden = !isAnalyticsTab(activeTab);
     if (dom.analyticsScopeSelect) dom.analyticsScopeSelect.value = analyticsState.scope;
