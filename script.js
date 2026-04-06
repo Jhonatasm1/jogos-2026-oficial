@@ -7171,6 +7171,44 @@ function bindWorldCupEvents() {
     });
 }
 
+/* ====================== TIERLISTS ====================== */
+
+function renderTierlists() {
+    const pub = document.getElementById("tl-public");
+    const priv = document.getElementById("tl-private");
+    if (pub) pub.hidden = false;
+    if (priv) priv.hidden = true;
+}
+
+function showMyTierlists() {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+        handleGoogleLogin();
+        return;
+    }
+    const pub = document.getElementById("tl-public");
+    const priv = document.getElementById("tl-private");
+    if (pub) pub.hidden = true;
+    if (priv) priv.hidden = false;
+}
+
+function bindTierlistEvents() {
+    const myBtn = document.getElementById("tl-my-btn");
+    const backBtn = document.getElementById("tl-back-public");
+    const createBtn = document.getElementById("tl-create-btn");
+
+    if (myBtn) myBtn.addEventListener("click", showMyTierlists);
+    if (backBtn) backBtn.addEventListener("click", renderTierlists);
+    if (createBtn) createBtn.addEventListener("click", () => {
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+            handleGoogleLogin();
+            return;
+        }
+        // placeholder for future creation logic
+    });
+}
+
 function init() {
     ensureMyWorldCupsLoaded();
     startGlobalLeagueRealtimeListener();
@@ -7179,6 +7217,7 @@ function init() {
     bindSteamEvents();
     bindWorldCupEvents();
     bindMyWorldCupEvents();
+    bindTierlistEvents();
     renderMyWorldCupCards();
 
     const activeTab = document.querySelector(".tab-btn.active")?.getAttribute("data-tab") || "bi-gamer";
