@@ -4953,7 +4953,8 @@ function switchTab(tabId) {
             || tabId === "add-your-game"
             || tabId === "world-cup"
             || tabId === "my-world-cups"
-            || tabId === "user-ranking";
+            || tabId === "user-ranking"
+            || tabId === "tierlists";
     }
 
     if (dom.analyticsScopeWrap) {
