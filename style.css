@@ -4376,16 +4376,14 @@ body.modal-open {
     border-radius: 6px 6px 0 0;
 }
 
-/* read-only editor state */
-.tl-editor-readonly .bi-tier-label-input { pointer-events: none; }
-.tl-editor-readonly .tl-editor-remove-tier { display: none; }
-.tl-editor-readonly #tl-editor-add-tier,
-.tl-editor-readonly label[for="tl-editor-upload"],
-.tl-editor-readonly #tl-editor-delete,
-.tl-editor-readonly #tl-editor-save,
-.tl-editor-readonly #tl-cover-placeholder,
-.tl-editor-readonly .tl-visibility-select { display: none; }
-.tl-editor-readonly #tl-editor-title { pointer-events: none; opacity: 0.7; }
+/* participation mode: keep ranking actions, hide owner-only editor controls */
+.tl-editor-participation .tl-editor-remove-tier { display: none; }
+.tl-editor-participation #tl-editor-add-tier,
+.tl-editor-participation label[for="tl-editor-upload"],
+.tl-editor-participation #tl-editor-delete,
+.tl-editor-participation #tl-editor-save,
+.tl-editor-participation #tl-cover-placeholder,
+.tl-editor-participation .tl-visibility-select { display: none; }
 
 /* ── Scrollbar styling ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

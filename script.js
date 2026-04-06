@@ -7174,6 +7174,8 @@ function bindWorldCupEvents() {
 /* ====================== TIERLISTS ====================== */
 
 const TL_STORAGE_KEY = "yxt_my_tierlists";
+const TL_COLLECTION = "tierlists";
+const TL_CACHE_TTL_MS = 15000;
 const TL_DEFAULT_TIERS = [
     { key: "S", label: "S", color: "#ff7a7a" },
     { key: "A", label: "A", color: "#f2b976" },
@@ -7189,24 +7191,221 @@ const tlEditorState = {
     visibility: "private",
     authorId: null,
     isOwner: false,
+    mode: "play",
+    backView: "public",
     tiers: [],
     pool: [],
     nextItemId: 1
 };
 
-function tlLoadAll() {
+const tlRuntimeState = {
+    cache: null,
+    cloudLoadedAt: 0,
+    cloudLoadPromise: null
+};
+
+function tlNormalizeItem(item, fallbackId) {
+    const src = String(item?.src || "").trim();
+    if (!src) return null;
+
+    return {
+        id: String(item?.id || fallbackId || `tli-${Date.now()}`),
+        title: String(item?.title || "").trim() || "Item",
+        src
+    };
+}
+
+function tlNormalizeTier(tier, index) {
+    const fallback = TL_DEFAULT_TIERS[index % TL_DEFAULT_TIERS.length] || { key: `T${index + 1}`, color: "#d4a853" };
+    const key = String(tier?.key || fallback.key || `T${index + 1}`);
+    const label = String(tier?.label || key);
+    const color = String(tier?.color || fallback.color || "#d4a853");
+    const items = Array.isArray(tier?.items)
+        ? tier.items.map((item, itemIndex) => tlNormalizeItem(item, `${key.toLowerCase()}-${itemIndex + 1}`)).filter(Boolean)
+        : [];
+
+    return { key, label, color, items };
+}
+
+function tlNormalizeEntry(entry) {
+    const id = String(entry?.id || "").trim();
+    if (!id) return null;
+
+    const tiersSource = Array.isArray(entry?.tiers) && entry.tiers.length
+        ? entry.tiers
+        : TL_DEFAULT_TIERS.map((tier) => ({ ...tier, items: [] }));
+
+    const tiers = tiersSource.map((tier, index) => tlNormalizeTier(tier, index));
+    const pool = Array.isArray(entry?.pool)
+        ? entry.pool.map((item, index) => tlNormalizeItem(item, `pool-${index + 1}`)).filter(Boolean)
+        : [];
+
+    const updatedAtMs = entry?.updatedAt?.toMillis
+        ? Number(entry.updatedAt.toMillis())
+        : Number(entry?.updatedAtMs || 0);
+
+    const createdAtMs = entry?.createdAt?.toMillis
+        ? Number(entry.createdAt.toMillis())
+        : Number(entry?.createdAtMs || 0);
+
+    return {
+        id,
+        title: String(entry?.title || "MINHA TIERLIST"),
+        cover: String(entry?.cover || ""),
+        visibility: String(entry?.visibility || "private") === "public" ? "public" : "private",
+        authorId: String(entry?.authorId || ""),
+        tiers,
+        pool,
+        updatedAtMs,
+        createdAtMs
+    };
+}
+
+function tlCloneEntry(entry) {
+    return {
+        ...entry,
+        tiers: (entry?.tiers || []).map((tier) => ({
+            ...tier,
+            items: (tier?.items || []).map((item) => ({ ...item }))
+        })),
+        pool: (entry?.pool || []).map((item) => ({ ...item }))
+    };
+}
+
+function tlLoadAllFromLocalStorage() {
     try {
         const raw = localStorage.getItem(TL_STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed
+            .map((entry) => tlNormalizeEntry(entry))
+            .filter(Boolean)
+            .map((entry) => tlCloneEntry(entry));
+    } catch {
+        return [];
+    }
+}
+
+function tlSetCache(lists) {
+    const normalized = (Array.isArray(lists) ? lists : [])
+        .map((entry) => tlNormalizeEntry(entry))
+        .filter(Boolean)
+        .sort((a, b) => Number(b.updatedAtMs || 0) - Number(a.updatedAtMs || 0));
+
+    tlRuntimeState.cache = normalized.map((entry) => tlCloneEntry(entry));
+    localStorage.setItem(TL_STORAGE_KEY, JSON.stringify(tlRuntimeState.cache));
+}
+
+function tlLoadAll() {
+    if (!Array.isArray(tlRuntimeState.cache)) {
+        tlRuntimeState.cache = tlLoadAllFromLocalStorage();
+    }
+
+    return tlRuntimeState.cache.map((entry) => tlCloneEntry(entry));
 }
 
 function tlSaveAll(lists) {
     try {
-        localStorage.setItem(TL_STORAGE_KEY, JSON.stringify(lists));
+        tlSetCache(lists);
         return true;
     } catch (error) {
         console.warn("Nao foi possivel salvar tierlists no armazenamento local.", error);
+        return false;
+    }
+}
+
+function tlBuildCloudPayload(entry, isNew) {
+    const normalized = tlNormalizeEntry(entry);
+    if (!normalized) return null;
+
+    const payload = {
+        id: normalized.id,
+        title: normalized.title,
+        cover: normalized.cover,
+        visibility: normalized.visibility,
+        authorId: normalized.authorId,
+        tiers: normalized.tiers.map((tier) => ({
+            key: tier.key,
+            label: tier.label,
+            color: tier.color,
+            items: (tier.items || []).map((item) => ({
+                id: item.id,
+                title: item.title,
+                src: item.src
+            }))
+        })),
+        pool: normalized.pool.map((item) => ({
+            id: item.id,
+            title: item.title,
+            src: item.src
+        })),
+        updatedAt: serverTimestamp()
+    };
+
+    if (isNew) {
+        payload.createdAt = serverTimestamp();
+    }
+
+    return payload;
+}
+
+async function tlFetchAllFromCloud({ force = false } = {}) {
+    const cacheIsFresh = (Date.now() - Number(tlRuntimeState.cloudLoadedAt || 0)) < TL_CACHE_TTL_MS;
+    if (!force && Array.isArray(tlRuntimeState.cache) && cacheIsFresh) {
+        return tlLoadAll();
+    }
+
+    if (tlRuntimeState.cloudLoadPromise) {
+        return tlRuntimeState.cloudLoadPromise;
+    }
+
+    tlRuntimeState.cloudLoadPromise = (async () => {
+        try {
+            const snapshot = await getDocs(collection(db, TL_COLLECTION));
+            const fromCloud = snapshot.docs
+                .map((docSnap) => tlNormalizeEntry({ id: docSnap.id, ...docSnap.data() }))
+                .filter(Boolean);
+
+            tlSetCache(fromCloud);
+            tlRuntimeState.cloudLoadedAt = Date.now();
+            return tlLoadAll();
+        } catch (error) {
+            console.warn("Nao foi possivel carregar tierlists do cloud.", error);
+            return tlLoadAll();
+        } finally {
+            tlRuntimeState.cloudLoadPromise = null;
+        }
+    })();
+
+    return tlRuntimeState.cloudLoadPromise;
+}
+
+async function tlPersistEntryToCloud(entry, { isNew = false } = {}) {
+    const normalized = tlNormalizeEntry(entry);
+    if (!normalized) return false;
+
+    const payload = tlBuildCloudPayload(normalized, isNew);
+    if (!payload) return false;
+
+    try {
+        await setDoc(doc(db, TL_COLLECTION, normalized.id), payload, { merge: true });
+        return true;
+    } catch (error) {
+        console.warn("Nao foi possivel sincronizar tierlist no cloud.", error);
+        return false;
+    }
+}
+
+async function tlDeleteEntryFromCloud(tierlistId) {
+    const id = String(tierlistId || "").trim();
+    if (!id) return false;
+
+    try {
+        await deleteDoc(doc(db, TL_COLLECTION, id));
+        return true;
+    } catch (error) {
+        console.warn("Nao foi possivel excluir tierlist no cloud.", error);
         return false;
     }
 }
@@ -7257,6 +7456,21 @@ function tlCollectAllEditorItems() {
     return tlCollectUniqueItemsFromSources(tlEditorState.tiers, tlEditorState.pool);
 }
 
+function isTlEditorInEditMode() {
+    return tlEditorState.mode === "edit" && tlEditorState.isOwner;
+}
+
+async function closeTlEditor() {
+    clearTlEditorFeedback();
+
+    if (tlEditorState.backView === "private" && getCurrentUserId()) {
+        await showMyTierlists();
+        return;
+    }
+
+    await renderTierlists();
+}
+
 function loadImageFromDataUrl(dataUrl) {
     return new Promise((resolve, reject) => {
         const image = new Image();
@@ -7304,11 +7518,15 @@ function tlShowView(viewId) {
     if (header) header.hidden = viewId === "tl-editor";
 }
 
-function renderTierlists() {
+async function renderTierlists() {
     tlShowView("tl-public");
     const grid = document.getElementById("tl-public-grid");
     if (!grid) return;
-    const publicLists = tlLoadAll().filter(l => l.visibility === "public");
+
+    grid.innerHTML = `<p class="tl-empty-msg">Carregando tierlists publicas...</p>`;
+    const allTierlists = await tlFetchAllFromCloud({ force: true });
+    const publicLists = allTierlists.filter(l => l.visibility === "public");
+
     if (!publicLists.length) {
         grid.innerHTML = `<p class="tl-empty-msg">Nenhuma tierlist pública ainda.</p>`;
         return;
@@ -7323,31 +7541,49 @@ function renderTierlists() {
             <div class="wc-cup-card-body">
                 <h4 class="wc-cup-card-title">${escapeHtml(tl.title || "Sem titulo")}</h4>
                 <span class="wc-cup-card-meta">${itemCount} itens &middot; ${(tl.tiers || []).length} tiers</span>
+                <div class="wc-cup-card-actions">
+                    <button class="wc-cup-card-btn" data-tl-play="${escapeHtml(tl.id)}">Participar</button>
+                </div>
             </div>
         </div>`;
     }).join("");
+
+    grid.querySelectorAll("[data-tl-play]").forEach(btn => {
+        btn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            openTlEditor(btn.getAttribute("data-tl-play"), { mode: "play", backView: "public" });
+        });
+    });
+
     grid.querySelectorAll(".wc-cup-card[data-tl-id]").forEach(card => {
-        card.addEventListener("click", () => openTlEditor(card.getAttribute("data-tl-id")));
+        card.addEventListener("click", () => {
+            openTlEditor(card.getAttribute("data-tl-id"), { mode: "play", backView: "public" });
+        });
     });
 }
 
-function showMyTierlists() {
-    const currentUserId = getCurrentUserId();
-    if (!currentUserId) {
-        handleGoogleLogin();
-        return;
+async function showMyTierlists() {
+    if (!getCurrentUserId()) {
+        await handleGoogleLogin();
     }
+
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) return;
+
     tlShowView("tl-private");
-    renderMyTierlistCards();
+    await renderMyTierlistCards();
 }
 
-function renderMyTierlistCards() {
+async function renderMyTierlistCards() {
     const grid = document.getElementById("tl-private-grid");
     const empty = document.getElementById("tl-private-empty");
     if (!grid) return;
 
+    grid.innerHTML = `<p class="tl-empty-msg">Carregando suas tierlists...</p>`;
+
     const currentUserId = getCurrentUserId();
-    const lists = tlLoadAll().filter(l => !l.authorId || l.authorId === currentUserId);
+    const allTierlists = await tlFetchAllFromCloud({ force: true });
+    const lists = allTierlists.filter(l => !l.authorId || l.authorId === currentUserId);
 
     if (!lists.length) {
         grid.innerHTML = "";
@@ -7369,29 +7605,35 @@ function renderMyTierlistCards() {
                 <h4 class="wc-cup-card-title">${escapeHtml(tl.title || "Sem titulo")}</h4>
                 <span class="wc-cup-card-meta">${itemCount} itens &middot; ${(tl.tiers || []).length} tiers &middot; ${visLabel}</span>
                 <div class="wc-cup-card-actions">
+                    <button class="wc-cup-card-btn" data-tl-play="${escapeHtml(tl.id)}">Participar</button>
                     <button class="wc-cup-card-btn" data-tl-edit="${escapeHtml(tl.id)}">Editar</button>
                 </div>
             </div>
         </div>`;
     }).join("");
 
-    grid.querySelectorAll("[data-tl-edit]").forEach(btn => {
+    grid.querySelectorAll("[data-tl-play]").forEach(btn => {
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
-            openTlEditor(btn.getAttribute("data-tl-edit"));
+            openTlEditor(btn.getAttribute("data-tl-play"), { mode: "play", backView: "private" });
         });
     });
 
-    grid.querySelectorAll(".wc-cup-card[data-tl-id]").forEach(card => {
-        card.addEventListener("click", () => {
-            openTlEditor(card.getAttribute("data-tl-id"));
+    grid.querySelectorAll("[data-tl-edit]").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openTlEditor(btn.getAttribute("data-tl-edit"), { mode: "edit", backView: "private" });
         });
     });
 }
 
-function createNewTierlist() {
+async function createNewTierlist() {
+    if (!getCurrentUserId()) {
+        await handleGoogleLogin();
+    }
+
     const currentUserId = getCurrentUserId();
-    if (!currentUserId) { handleGoogleLogin(); return; }
+    if (!currentUserId) return;
 
     const id = "tl_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
     const lists = tlLoadAll();
@@ -7409,13 +7651,24 @@ function createNewTierlist() {
         alert("Nao foi possivel criar a tierlist agora. Tente reduzir o tamanho das imagens locais e tente novamente.");
         return;
     }
-    openTlEditor(id);
+
+    const synced = await tlPersistEntryToCloud(newTl, { isNew: true });
+    if (!synced) {
+        alert("A tierlist foi criada localmente, mas nao foi possivel publicar no cloud agora.");
+    } else {
+        await tlFetchAllFromCloud({ force: true });
+    }
+
+    openTlEditor(id, { mode: "edit", backView: "private" });
 }
 
-function openTlEditor(id) {
+function openTlEditor(id, options = {}) {
     const lists = tlLoadAll();
     const tl = lists.find(l => l.id === id);
     if (!tl) return;
+
+    const requestedMode = String(options.mode || "edit").toLowerCase() === "edit" ? "edit" : "play";
+    const requestedBackView = String(options.backView || "public").toLowerCase() === "private" ? "private" : "public";
 
     tlEditorState.id = tl.id;
     tlEditorState.title = tl.title || "MINHA TIERLIST";
@@ -7466,19 +7719,33 @@ function openTlEditor(id) {
     const currentUserId = getCurrentUserId();
     const isOwner = (!tlEditorState.authorId && Boolean(currentUserId)) || tlEditorState.authorId === currentUserId;
     tlEditorState.isOwner = isOwner;
+    tlEditorState.mode = requestedMode === "edit" && isOwner ? "edit" : "play";
+    tlEditorState.backView = tlEditorState.mode === "edit" ? "private" : requestedBackView;
+
+    const isParticipationMode = tlEditorState.mode === "play";
     const editorBlock = document.querySelector("#tl-editor .bi-tier-block");
     if (editorBlock) {
-        editorBlock.classList.toggle("tl-editor-readonly", !isOwner);
+        editorBlock.classList.toggle("tl-editor-participation", isParticipationMode);
     }
 
     const deleteBtn = document.getElementById("tl-editor-delete");
-    if (deleteBtn) deleteBtn.hidden = !isOwner;
+    if (deleteBtn) deleteBtn.hidden = !(tlEditorState.mode === "edit" && isOwner);
+
+    const editorBackBtn = document.getElementById("tl-editor-back");
+    if (editorBackBtn) {
+        editorBackBtn.textContent = isParticipationMode ? "Voltar" : "Cancelar";
+    }
+
+    const coverPreviewImg = document.getElementById("tl-cover-preview");
+    if (coverPreviewImg) {
+        coverPreviewImg.style.cursor = isParticipationMode ? "default" : "pointer";
+    }
 
     tlShowView("tl-editor");
-    if (isOwner) {
-        setTlEditorFeedback("As posicoes nos tiers nao sao compartilhadas: os itens sempre iniciam em Imagens Disponiveis.", "info");
+    if (isParticipationMode) {
+        setTlEditorFeedback("Modo Participar: mova imagens, personalize nomes dos tiers e exporte seu resultado sem alterar a tierlist original.", "info");
     } else {
-        setTlEditorFeedback("Modo individual: organize os itens livremente. Suas mudancas nao alteram a tierlist original.", "info");
+        setTlEditorFeedback("Modo Editar: atualize o template da tierlist. A classificacao final de cada usuario e individual.", "info");
     }
     renderTlEditorBoard();
 }
@@ -7599,9 +7866,9 @@ function tlRemoveItem(itemId) {
     return null;
 }
 
-function saveTlEditor() {
-    if (!tlEditorState.isOwner) {
-        setTlEditorFeedback("Somente o dono pode salvar esta tierlist. Suas mudancas atuais sao apenas locais.", "error");
+async function saveTlEditor() {
+    if (!isTlEditorInEditMode()) {
+        setTlEditorFeedback("Modo Participar nao altera a tierlist publica. Use Exportar PNG para salvar seu resultado.", "error");
         return;
     }
 
@@ -7638,13 +7905,27 @@ function saveTlEditor() {
         return;
     }
 
+    const synced = await tlPersistEntryToCloud(saved, { isNew: false });
+    if (!synced) {
+        setTlEditorFeedback("Salvo localmente, mas nao foi possivel publicar no cloud agora.", "error");
+        return;
+    }
+
+    await tlFetchAllFromCloud({ force: true });
+
     clearTlEditorFeedback();
-    showMyTierlists();
+    await showMyTierlists();
 }
 
-function deleteTlEditor() {
-    if (!tlEditorState.isOwner) {
+async function deleteTlEditor() {
+    if (!isTlEditorInEditMode()) {
         setTlEditorFeedback("Somente o dono pode excluir esta tierlist.", "error");
+        return;
+    }
+
+    const synced = await tlDeleteEntryFromCloud(tlEditorState.id);
+    if (!synced) {
+        setTlEditorFeedback("Nao foi possivel excluir no cloud agora. Tente novamente.", "error");
         return;
     }
 
@@ -7653,11 +7934,13 @@ function deleteTlEditor() {
         setTlEditorFeedback("Nao foi possivel excluir agora. Tente novamente.", "error");
         return;
     }
-    showMyTierlists();
+
+    await tlFetchAllFromCloud({ force: true });
+    await showMyTierlists();
 }
 
 function addTlTier() {
-    if (!tlEditorState.isOwner) {
+    if (!isTlEditorInEditMode()) {
         setTlEditorFeedback("Somente o dono pode editar a estrutura de tiers.", "error");
         return;
     }
@@ -7676,7 +7959,7 @@ function addTlTier() {
 }
 
 async function handleTlUpload(files) {
-    if (!tlEditorState.isOwner) {
+    if (!isTlEditorInEditMode()) {
         setTlEditorFeedback("Somente o dono pode adicionar novas imagens a esta tierlist.", "error");
         return;
     }
@@ -7710,7 +7993,7 @@ async function handleTlUpload(files) {
 }
 
 async function handleTlCoverUpload(file) {
-    if (!tlEditorState.isOwner) {
+    if (!isTlEditorInEditMode()) {
         setTlEditorFeedback("Somente o dono pode alterar a capa desta tierlist.", "error");
         return;
     }
@@ -7763,12 +8046,12 @@ function bindTierlistEvents() {
     const coverUpload = document.getElementById("tl-cover-upload");
     const coverPlaceholder = document.getElementById("tl-cover-placeholder");
 
-    if (myBtn) myBtn.addEventListener("click", showMyTierlists);
-    if (backPublic) backPublic.addEventListener("click", renderTierlists);
-    if (createBtn) createBtn.addEventListener("click", createNewTierlist);
-    if (editorBack) editorBack.addEventListener("click", showMyTierlists);
-    if (editorSave) editorSave.addEventListener("click", saveTlEditor);
-    if (editorDelete) editorDelete.addEventListener("click", deleteTlEditor);
+    if (myBtn) myBtn.addEventListener("click", () => { void showMyTierlists(); });
+    if (backPublic) backPublic.addEventListener("click", () => { void renderTierlists(); });
+    if (createBtn) createBtn.addEventListener("click", () => { void createNewTierlist(); });
+    if (editorBack) editorBack.addEventListener("click", () => { void closeTlEditor(); });
+    if (editorSave) editorSave.addEventListener("click", () => { void saveTlEditor(); });
+    if (editorDelete) editorDelete.addEventListener("click", () => { void deleteTlEditor(); });
     if (addTierBtn) addTierBtn.addEventListener("click", addTlTier);
     if (uploadInput) uploadInput.addEventListener("change", () => {
         void handleTlUpload(uploadInput.files);
@@ -7792,7 +8075,10 @@ function bindTierlistEvents() {
     const coverPreviewImg = document.getElementById("tl-cover-preview");
     if (coverPreviewImg && coverUpload) {
         coverPreviewImg.style.cursor = "pointer";
-        coverPreviewImg.addEventListener("click", () => coverUpload.click());
+        coverPreviewImg.addEventListener("click", () => {
+            if (!isTlEditorInEditMode()) return;
+            coverUpload.click();
+        });
     }
 }
 
