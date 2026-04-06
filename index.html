@@ -829,6 +829,36 @@
                         <p class="tl-empty-msg" id="tl-private-empty">Voc&ecirc; ainda n&atilde;o criou nenhuma tierlist.</p>
                     </div>
                 </div>
+
+                <!-- Tierlist Editor -->
+                <div id="tl-editor" hidden>
+                    <div class="bi-tier-block">
+                        <div class="bi-tier-header">
+                            <div>
+                                <input id="tl-editor-title" class="bi-tier-title-input" type="text" value="MINHA TIERLIST" aria-label="Titulo da Tier List">
+                            </div>
+                            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+                                <button id="tl-editor-add-tier" class="bi-export-btn" type="button">+ Tier</button>
+                                <button id="tl-editor-export" class="bi-export-btn" type="button">Exportar PNG</button>
+                                <label class="bi-upload-btn" for="tl-editor-upload">Upload de Imagens</label>
+                                <input id="tl-editor-upload" type="file" accept="image/*" multiple hidden>
+                            </div>
+                        </div>
+                        <div class="bi-tier-board" id="tl-editor-board"></div>
+                        <div class="bi-tier-footer">
+                            <div class="bi-tier-trash" id="tl-editor-trash">Lixeira (solte aqui para excluir)</div>
+                            <div class="bi-tier-pool-wrap">
+                                <h5>Imagens Dispon&iacute;veis</h5>
+                                <div class="bi-tier-pool" id="tl-editor-pool"></div>
+                            </div>
+                        </div>
+                        <div class="tl-editor-actions">
+                            <button id="tl-editor-save" class="tl-create-btn">Salvar</button>
+                            <button id="tl-editor-back" class="tl-back-btn">Cancelar</button>
+                            <button id="tl-editor-delete" class="tl-delete-btn" hidden>Excluir Tierlist</button>
+                        </div>
+                    </div>
+                </div>
             </section>
         </div>
     </main>
