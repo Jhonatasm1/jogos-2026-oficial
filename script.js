@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment, collectionGroup, onSnapshot, query, orderBy, limit, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, getDocs, updateDoc, serverTimestamp, increment, collectionGroup, onSnapshot, query, where, orderBy, limit, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const TIER_DB_NAME = "theGameOfUsTierDB";
 const TIER_DB_VERSION = 1;
@@ -6363,13 +6363,62 @@ function normalizeCloudWorldCupDoc(snapshot) {
     });
 }
 
-async function loadMyWorldCupsFromCloud() {
-    const snapshot = await getDocs(collection(db, WORLD_CUPS_COLLECTION));
-    if (!snapshot || snapshot.empty) return [];
+function extractMyWorldCupsFromSnapshots(snapshots) {
+    const merged = new Map();
 
-    return snapshot.docs
-        .map((docSnapshot) => normalizeCloudWorldCupDoc(docSnapshot))
-        .filter((cup) => Boolean(cup?.id));
+    (Array.isArray(snapshots) ? snapshots : []).forEach((snapshot) => {
+        if (!snapshot || snapshot.empty) return;
+
+        snapshot.docs.forEach((docSnapshot) => {
+            const normalized = normalizeCloudWorldCupDoc(docSnapshot);
+            if (normalized?.id) {
+                merged.set(normalized.id, normalized);
+            }
+        });
+    });
+
+    return [...merged.values()];
+}
+
+async function loadMyWorldCupsFromCloudWithFallbackQueries() {
+    const cupsRef = collection(db, WORLD_CUPS_COLLECTION);
+    const currentUserId = getCurrentUserId();
+    const queries = [
+        query(cupsRef, where("visibility", "==", "Public")),
+        query(cupsRef, where("visibility", "==", "Unlisted")),
+        query(cupsRef, where("visibility", "==", "public")),
+        query(cupsRef, where("visibility", "==", "unlisted"))
+    ];
+
+    if (currentUserId) {
+        queries.push(query(cupsRef, where("authorId", "==", currentUserId)));
+    }
+
+    const settled = await Promise.allSettled(queries.map((queryRef) => getDocs(queryRef)));
+    const successfulSnapshots = settled
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => result.value);
+
+    return {
+        cups: extractMyWorldCupsFromSnapshots(successfulSnapshots),
+        hadSuccessfulQuery: successfulSnapshots.length > 0
+    };
+}
+
+async function loadMyWorldCupsFromCloud() {
+    const cupsRef = collection(db, WORLD_CUPS_COLLECTION);
+
+    try {
+        const snapshot = await getDocs(cupsRef);
+        if (!snapshot || snapshot.empty) return [];
+        return extractMyWorldCupsFromSnapshots([snapshot]);
+    } catch (error) {
+        const fallback = await loadMyWorldCupsFromCloudWithFallbackQueries();
+        if (fallback.hadSuccessfulQuery) {
+            return fallback.cups;
+        }
+        throw error;
+    }
 }
 
 async function refreshMyWorldCupsFromCloud(options) {
@@ -6404,8 +6453,9 @@ function saveMyWorldCupsToStorage() {
 
 function ensureMyWorldCupsLoaded() {
     if (myWcState.loaded) return;
-    myWcState.cups = [];
+    myWcState.cups = loadMyWorldCupsFromStorage();
     myWcState.loaded = true;
+    myWcState.cloudLoaded = false;
     void refreshMyWorldCupsFromCloud({ force: true });
 }
 
