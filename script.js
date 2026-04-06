@@ -5066,6 +5066,8 @@ const WC_PUBLIC_STATS_KEY = "yxt_wc_public_stats";
 const LEGACY_LEAGUE_EXCLUDED_NAMES = new Set(["une vie a t'aimer"]);
 const GLOBAL_LEAGUE_COLLECTION = "global_league";
 const WORLD_CUPS_COLLECTION = "world_cups";
+const WC_RAWG_REQUEST_TIMEOUT_MS = 9000;
+const WC_RAWG_BACKOFF_MS = 60000;
 
 const wcState = {
     currentRound: 0,
@@ -5075,6 +5077,8 @@ const wcState = {
     totalMatchesInRound: 0,
     running: false,
     coverCache: new Map(),
+    coverRequestCache: new Map(),
+    rawgBackoffUntil: 0,
     activeCup: null,
     tournamentSize: 0,
     eliminations: new Map()
@@ -5113,19 +5117,82 @@ function shuffleArray(arr) {
     return a;
 }
 
-async function fetchWcCover(gameName) {
-    if (wcState.coverCache.has(gameName)) return wcState.coverCache.get(gameName);
+function getWcCoverCacheKey(gameName) {
+    return normalizeText(gameName);
+}
+
+function warmWcImageInMemory(url) {
+    const src = String(url || "").trim();
+    if (!src || src === DEFAULT_GAME_COVER_PLACEHOLDER) return;
+
     try {
-        const result = await searchSteamGameByName(gameName);
-        const url = result && result.appid
-            ? `https://cdn.akamai.steamstatic.com/steam/apps/${result.appid}/header.jpg`
-            : DEFAULT_GAME_COVER_PLACEHOLDER;
-        wcState.coverCache.set(gameName, url);
-        return url;
+        const image = new Image();
+        image.decoding = "async";
+        image.src = src;
     } catch {
-        wcState.coverCache.set(gameName, DEFAULT_GAME_COVER_PLACEHOLDER);
+        // Ignore cache warming errors.
+    }
+}
+
+async function fetchRawgCover(gameName) {
+    const rawName = String(gameName || "").trim();
+    if (!rawName) return DEFAULT_GAME_COVER_PLACEHOLDER;
+
+    const cacheKey = getWcCoverCacheKey(rawName);
+    if (!cacheKey) return DEFAULT_GAME_COVER_PLACEHOLDER;
+
+    if (wcState.coverCache.has(cacheKey)) {
+        return wcState.coverCache.get(cacheKey);
+    }
+
+    if (wcState.coverRequestCache.has(cacheKey)) {
+        return wcState.coverRequestCache.get(cacheKey);
+    }
+
+    if (Date.now() < Number(wcState.rawgBackoffUntil || 0)) {
+        wcState.coverCache.set(cacheKey, DEFAULT_GAME_COVER_PLACEHOLDER);
         return DEFAULT_GAME_COVER_PLACEHOLDER;
     }
+
+    const pendingRequest = (async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), WC_RAWG_REQUEST_TIMEOUT_MS);
+
+        try {
+            const requestUrl = `${RAWG_API_BASE}?search=${encodeURIComponent(rawName)}&key=${encodeURIComponent(RAWG_API_KEY)}&page_size=1`;
+            const response = await fetch(requestUrl, {
+                cache: "force-cache",
+                signal: controller.signal
+            });
+
+            if (response.status === 429) {
+                wcState.rawgBackoffUntil = Date.now() + WC_RAWG_BACKOFF_MS;
+                throw new Error("RAWG 429");
+            }
+
+            if (!response.ok) {
+                throw new Error(`RAWG ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const resolvedUrl = String(payload?.results?.[0]?.background_image || "").trim() || DEFAULT_GAME_COVER_PLACEHOLDER;
+            wcState.coverCache.set(cacheKey, resolvedUrl);
+            warmWcImageInMemory(resolvedUrl);
+            return resolvedUrl;
+        } catch (error) {
+            if (error?.name !== "AbortError") {
+                console.warn("Falha ao buscar capa na RAWG para World Cup:", rawName, error);
+            }
+            wcState.coverCache.set(cacheKey, DEFAULT_GAME_COVER_PLACEHOLDER);
+            return DEFAULT_GAME_COVER_PLACEHOLDER;
+        } finally {
+            clearTimeout(timeoutId);
+            wcState.coverRequestCache.delete(cacheKey);
+        }
+    })();
+
+    wcState.coverRequestCache.set(cacheKey, pendingRequest);
+    return pendingRequest;
 }
 
 function normalizeWcTournamentEntry(entry) {
@@ -5172,25 +5239,23 @@ async function resolveWcEntryCover(entry) {
     }
 
     if (normalized.cover && normalized.cover !== DEFAULT_GAME_COVER_PLACEHOLDER) {
+        warmWcImageInMemory(normalized.cover);
         return normalized.cover;
     }
 
     if (!normalized.name) return DEFAULT_GAME_COVER_PLACEHOLDER;
-    const fetched = await fetchWcCover(normalized.name);
+    const fetched = await fetchRawgCover(normalized.name);
     return fetched || DEFAULT_GAME_COVER_PLACEHOLDER;
 }
 
 function preloadWcEntryCover(entry) {
-    const normalized = normalizeWcTournamentEntry(entry);
-    if (!normalized || normalized.mediaType !== "image") return;
-    if (!normalized.name) return;
-    if (normalized.cover && normalized.cover !== DEFAULT_GAME_COVER_PLACEHOLDER) return;
-
-    fetchWcCover(normalized.name)
+    resolveWcEntryCover(entry)
         .then((coverUrl) => {
+            const resolved = String(coverUrl || DEFAULT_GAME_COVER_PLACEHOLDER);
             if (entry && typeof entry === "object") {
-                entry.cover = coverUrl || DEFAULT_GAME_COVER_PLACEHOLDER;
+                entry.cover = resolved;
             }
+            warmWcImageInMemory(resolved);
         })
         .catch(() => {
             // Keep default placeholder if preloading fails.
